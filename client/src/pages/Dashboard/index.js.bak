@@ -1,0 +1,68 @@
+Object.defineProperty(exports, "__esModule", { value: true });
+var react_1 = require("react");
+var material_1 = require("@mui/material");
+var icons_material_1 = require("@mui/icons-material");
+var react_router_dom_1 = require("react-router-dom");
+var AuthContext_1 = require("../../contexts/AuthContext");
+var user_1 = require("../../types/user");
+var StatCard = function (_a) {
+    var title = _a.title, value = _a.value, icon = _a.icon, progress = _a.progress, onClick = _a.onClick;
+    return (<material_1.Card sx={{ height: '100%' }}>
+    <material_1.CardContent>
+      <material_1.Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+        <material_1.Box>
+          <material_1.Typography color="textSecondary" gutterBottom>
+            {title}
+          </material_1.Typography>
+          <material_1.Typography variant="h4">{value}</material_1.Typography>
+        </material_1.Box>
+        <material_1.Box>
+          {icon}
+          {onClick && (<material_1.IconButton size="small" onClick={onClick} sx={{ ml: 1 }}>
+              <icons_material_1.ArrowForward />
+            </material_1.IconButton>)}
+        </material_1.Box>
+      </material_1.Box>
+      {progress !== undefined && (<>
+          <material_1.LinearProgress variant="determinate" value={progress} sx={{ mb: 1 }}/>
+          <material_1.Typography variant="body2" color="textSecondary">
+            {progress}% Complete
+          </material_1.Typography>
+        </>)}
+    </material_1.CardContent>
+  </material_1.Card>);
+};
+var Dashboard = function () {
+    var navigate = (0, react_router_dom_1.useNavigate)();
+    var { currentUser } = (0, AuthContext_1.useAuthContext)();
+    var canAccessElectrical = (currentUser === null || currentUser === void 0 ? void 0 : currentUser.role) === user_1.UserRole.ADMIN || (currentUser === null || currentUser === void 0 ? void 0 : currentUser.role) === user_1.UserRole.STAFF;
+    var canAccessAudit = (currentUser === null || currentUser === void 0 ? void 0 : currentUser.role) === user_1.UserRole.ADMIN || (currentUser === null || currentUser === void 0 ? void 0 : currentUser.role) === user_1.UserRole.STAFF;
+    var canAccessTesting = (currentUser === null || currentUser === void 0 ? void 0 : currentUser.role) === user_1.UserRole.ADMIN || (currentUser === null || currentUser === void 0 ? void 0 : currentUser.role) === user_1.UserRole.STAFF;
+    var canAccessTam = (currentUser === null || currentUser === void 0 ? void 0 : currentUser.role) === user_1.UserRole.ADMIN || (currentUser === null || currentUser === void 0 ? void 0 : currentUser.role) === user_1.UserRole.MODERATOR;
+    return (<material_1.Box sx={{ p: 3 }}>
+      <material_1.Typography variant="h4" sx={{ mb: 4 }}>
+        Dashboard
+      </material_1.Typography>
+
+      <material_1.Grid container spacing={3}>
+        {canAccessElectrical && (<material_1.Grid item xs={12} sm={6} md={3}>
+            <StatCard title="Electrical System" value="85%" icon={<icons_material_1.ElectricBolt color="primary"/>} progress={85} onClick={function () { return navigate('/electrical-system'); }}/>
+          </material_1.Grid>)}
+
+        {canAccessAudit && (<material_1.Grid item xs={12} sm={6} md={3}>
+            <StatCard title="Energy Audit" value="42" icon={<icons_material_1.Assessment color="secondary"/>} progress={65} onClick={function () { return navigate('/energy-audit'); }}/>
+          </material_1.Grid>)}
+
+        {canAccessTesting && (<material_1.Grid item xs={12} sm={6} md={3}>
+            <StatCard title="System Tests" value="12" icon={<icons_material_1.Speed color="info"/>} progress={45} onClick={function () { return navigate('/testing'); }}/>
+          </material_1.Grid>)}
+
+        {canAccessTam && (<material_1.Grid item xs={12} sm={6} md={3}>
+            <StatCard title="TAM Evaluation" value="78%" icon={<icons_material_1.Poll color="success"/>} progress={78} onClick={function () { return navigate('/tam-evaluation'); }}/>
+          </material_1.Grid>)}
+      </material_1.Grid>
+
+      {/* Additional dashboard content can be added here */}
+    </material_1.Box>);
+};
+export default Dashboard;

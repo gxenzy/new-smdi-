@@ -1,0 +1,176 @@
+import React, { useState } from 'react';
+import { 
+  Box, 
+  Typography, 
+  Button, 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  Dialog, 
+  DialogTitle, 
+  DialogContent, 
+  DialogActions, 
+  TextField, 
+  Alert, 
+  Grid,
+  Avatar,
+  IconButton,
+  Divider
+} from '@mui/material';
+import { 
+  CheckCircle, 
+  Error, 
+  Save, 
+  Edit, 
+  PhotoCamera 
+} from '@mui/icons-material';
+import { useAuthContext } from '../../contexts/AuthContext';
+import { useAppDispatch } from '../../store';
+import { updateUser } from '../../store/slices/authSlice';
+import * as Yup from 'yup';
+import { useFormik } from 'formik';
+
+const validationSchema = Yup.object({
+    firstName: Yup.string().required('First name is required'),
+    lastName: Yup.string().required('Last name is required'),
+    email: Yup.string().email('Invalid email address').required('Email is required'),
+    currentPassword: Yup.string().min(6, 'Password must be at least 6 characters'),
+    newPassword: Yup.string().min(6, 'Password must be at least 6 characters'),
+    confirmPassword: Yup.string().oneOf([Yup.ref('newPassword')], 'Passwords must match'),
+});
+
+const Profile = () => {
+    const { user } = useAuthContext();
+    const dispatch = useAppDispatch();
+    const [editMode, setEditMode] = React.useState(false);
+    const [passwordDialog, setPasswordDialog] = React.useState(false);
+    const [saveSuccess, setSaveSuccess] = React.useState(false);
+    const [saveError, setSaveError] = React.useState(null);
+
+    const formik = useFormik({
+        initialValues: {
+            firstName: user?.firstName || '',
+            lastName: user?.lastName || '',
+            email: user?.email || '',
+            currentPassword: '',
+            newPassword: '',
+            confirmPassword: '',
+        },
+        validationSchema: validationSchema,
+        onSubmit: async (values) => {
+            try {
+                dispatch(updateUser({ ...user, firstName: values.firstName, lastName: values.lastName, email: values.email }));
+                setSaveSuccess(true);
+                setEditMode(false);
+                setTimeout(() => setSaveSuccess(false), 3000);
+            } catch (error) {
+                setSaveError('Failed to update profile. Please try again.');
+                setTimeout(() => setSaveError(null), 3000);
+            }
+        },
+    });
+
+    const handleChangePassword = async () => {
+        try {
+            // API call to change password would go here
+            setPasswordDialog(false);
+            setSaveSuccess(true);
+            formik.setFieldValue('currentPassword', '');
+            formik.setFieldValue('newPassword', '');
+            formik.setFieldValue('confirmPassword', '');
+            setTimeout(() => setSaveSuccess(false), 3000);
+        } catch (error) {
+            setSaveError('Failed to change password. Please try again.');
+            setTimeout(() => setSaveError(null), 3000);
+        }
+    };
+
+    return (
+        <Box sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+                <Typography variant="h4">Profile</Typography>
+                {editMode ? (
+                    <Box>
+                        <Button variant="outlined" onClick={() => setEditMode(false)} sx={{ mr: 1 }}>
+                            Cancel
+                        </Button>
+                        <Button variant="contained" startIcon={<Save />} onClick={formik.handleSubmit}>
+                            Save Changes
+                        </Button>
+                    </Box>
+                ) : (
+                    <Button variant="contained" startIcon={<Edit />} onClick={() => setEditMode(true)}>
+                        Edit Profile
+                    </Button>
+                )}
+            </Box>
+
+            {saveSuccess && <Alert severity="success" sx={{ mb: 3 }}>Changes saved successfully!</Alert>}
+            {saveError && <Alert severity="error" sx={{ mb: 3 }}>{saveError}</Alert>}
+
+            <Grid container spacing={3}>
+                {/* Profile Information */}
+                <Grid item xs={12} md={4}>
+                    <Card>
+                        <CardContent sx={{ textAlign: 'center' }}>
+                            <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                                <Avatar sx={{ width: 120, height: 120, fontSize: '3rem', mb: 2, mx: 'auto' }}>
+                                    {user?.firstName?.[0]}{user?.lastName?.[0]}
+                                </Avatar>
+                                <IconButton sx={{ position: 'absolute', bottom: 0, right: 0, backgroundColor: 'background.paper' }}>
+                                    <PhotoCamera />
+                                </IconButton>
+                            </Box>
+                            <Typography variant="h6">{user?.firstName} {user?.lastName}</Typography>
+                            <Typography color="textSecondary" gutterBottom>{user?.role}</Typography>
+                            <Button variant="outlined" onClick={() => setPasswordDialog(true)} sx={{ mt: 2 }}>
+                                Change Password
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </Grid>
+
+                {/* Profile Details */}
+                <Grid item xs={12} md={8}>
+                    <Card>
+                        <CardHeader title="Profile Details" />
+                        <Divider />
+                        <CardContent>
+                            <Grid container spacing={2}>
+                                <Grid item xs={12} sm={6}>
+                                    <TextField fullWidth label="First Name" name="firstName" value={formik.values.firstName} onChange={formik.handleChange} onBlur={formik.handleBlur} error={formik.touched.firstName && Boolean(formik.errors.firstName)} helperText={formik.touched.firstName && formik.errors.firstName} disabled={!editMode} />
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <TextField fullWidth label="Last Name" name="lastName" value={formik.values.lastName} onChange={formik.handleChange} onBlur={formik.handleBlur} error={formik.touched.lastName && Boolean(formik.errors.lastName)} helperText={formik.touched.lastName && formik.errors.lastName} disabled={!editMode} />
+                                </Grid>
+                                <Grid item xs={12}>
+                                    <TextField fullWidth label="Email" name="email" type="email" value={formik.values.email} onChange={formik.handleChange} onBlur={formik.handleBlur} error={formik.touched.email && Boolean(formik.errors.email)} helperText={formik.touched.email && formik.errors.email} disabled={!editMode} />
+                                </Grid>
+                            </Grid>
+                        </CardContent>
+                    </Card>
+                </Grid>
+            </Grid>
+
+            {/* Change Password Dialog */}
+            <Dialog open={passwordDialog} onClose={() => setPasswordDialog(false)}>
+                <DialogTitle>Change Password</DialogTitle>
+                <DialogContent>
+                    <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <TextField fullWidth label="Current Password" type="password" name="currentPassword" value={formik.values.currentPassword} onChange={formik.handleChange} onBlur={formik.handleBlur} error={formik.touched.currentPassword && Boolean(formik.errors.currentPassword)} helperText={formik.touched.currentPassword && formik.errors.currentPassword} />
+                        <TextField fullWidth label="New Password" type="password" name="newPassword" value={formik.values.newPassword} onChange={formik.handleChange} onBlur={formik.handleBlur} error={formik.touched.newPassword && Boolean(formik.errors.newPassword)} helperText={formik.touched.newPassword && formik.errors.newPassword} />
+                        <TextField fullWidth label="Confirm New Password" type="password" name="confirmPassword" value={formik.values.confirmPassword} onChange={formik.handleChange} onBlur={formik.handleBlur} error={formik.touched.confirmPassword && Boolean(formik.errors.confirmPassword)} helperText={formik.touched.confirmPassword && formik.errors.confirmPassword} />
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setPasswordDialog(false)}>Cancel</Button>
+                    <Button variant="contained" onClick={handleChangePassword} disabled={!formik.values.currentPassword || !formik.values.newPassword || formik.values.newPassword !== formik.values.confirmPassword}>
+                        Change Password
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </Box>
+    );
+};
+
+export default Profile;

@@ -1,0 +1,103 @@
+Object.defineProperty(exports, "__esModule", { value: true });
+var React = require("react");
+var react_router_dom_1 = require("react-router-dom");
+var styles_1 = require("@mui/material/styles");
+var CssBaseline_1 = require("@mui/material/CssBaseline");
+var theme_1 = require("./theme");
+var AuthContext_1 = require("./contexts/AuthContext");
+var MainLayout_1 = require("./layouts/MainLayout");
+var Login = require("./pages/Login").default;
+var Dashboard = require("./pages/Dashboard").default;
+var Profile = require("./pages/Profile").default;
+var Settings = require("./pages/Settings").default;
+var ElectricalSystem = require("./pages/ElectricalSystem").default;
+var EnergyAudit = require("./pages/EnergyAudit").default;
+var SystemTools = require("./pages/SystemTools").default;
+var Testing = require("./pages/Testing").default;
+var TamEvaluation = require("./pages/TamEvaluation").default;
+var UserManagement = require("./pages/UserManagement").default;
+var AdminSettings = require("./pages/AdminSettings").default;
+var NotFound = require("./pages/NotFound").default;
+var user_1 = require("./types/user");
+var ProtectedRoute = function (_a) {
+    var children = _a.children, allowedRoles = _a.allowedRoles;
+    var _b = (0, AuthContext_1.useAuthContext)(), currentUser = _b.currentUser;
+    var location = (0, react_router_dom_1.useLocation)();
+    if (!currentUser) {
+        return <react_router_dom_1.Navigate to="/login" state={{ from: location }} replace/>;
+    }
+    if (allowedRoles && currentUser && !allowedRoles.includes(currentUser.role)) {
+        return <react_router_dom_1.Navigate to="/dashboard" replace/>;
+    }
+    return <>{children}</>;
+};
+var AppRoutes = function () {
+    var location = (0, react_router_dom_1.useLocation)();
+    var isLoginPage = location.pathname === '/login';
+    if (isLoginPage) {
+        return <Login />;
+    }
+    return (<MainLayout_1.default>
+      <react_router_dom_1.Routes>
+        <react_router_dom_1.Route path="/" element={<react_router_dom_1.Navigate to="/dashboard" replace/>}/>
+        
+        <react_router_dom_1.Route path="/login" element={<Login />}/>
+        
+        <react_router_dom_1.Route path="/dashboard" element={<ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>}/>
+
+        <react_router_dom_1.Route path="/profile" element={<ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>}/>
+
+        <react_router_dom_1.Route path="/settings" element={<ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>}/>
+
+        <react_router_dom_1.Route path="/electrical-system" element={<ProtectedRoute allowedRoles={[user_1.UserRole.ADMIN, user_1.UserRole.STAFF]}>
+              <ElectricalSystem />
+            </ProtectedRoute>}/>
+
+        <react_router_dom_1.Route path="/energy-audit" element={<ProtectedRoute allowedRoles={[user_1.UserRole.ADMIN, user_1.UserRole.STAFF]}>
+              <EnergyAudit />
+            </ProtectedRoute>}/>
+
+        <react_router_dom_1.Route path="/system-tools" element={<ProtectedRoute allowedRoles={[user_1.UserRole.ADMIN, user_1.UserRole.STAFF, user_1.UserRole.MODERATOR]}>
+              <SystemTools />
+            </ProtectedRoute>}/>
+
+        <react_router_dom_1.Route path="/testing" element={<ProtectedRoute allowedRoles={[user_1.UserRole.ADMIN, user_1.UserRole.STAFF]}>
+              <Testing />
+            </ProtectedRoute>}/>
+
+        <react_router_dom_1.Route path="/tam-evaluation" element={<ProtectedRoute allowedRoles={[user_1.UserRole.ADMIN, user_1.UserRole.MODERATOR]}>
+              <TamEvaluation />
+            </ProtectedRoute>}/>
+
+        <react_router_dom_1.Route path="/users" element={<ProtectedRoute allowedRoles={[user_1.UserRole.ADMIN]}>
+              <UserManagement />
+            </ProtectedRoute>}/>
+
+        <react_router_dom_1.Route path="/admin" element={<ProtectedRoute allowedRoles={[user_1.UserRole.ADMIN]}>
+              <AdminSettings />
+            </ProtectedRoute>}/>
+
+        <react_router_dom_1.Route path="*" element={<NotFound />}/>
+      </react_router_dom_1.Routes>
+    </MainLayout_1.default>);
+};
+var App = function () {
+    return (<react_router_dom_1.BrowserRouter>
+      <styles_1.ThemeProvider theme={theme_1.theme}>
+        <CssBaseline_1.default />
+        <AuthContext_1.AuthProvider>
+          <react_router_dom_1.Routes>
+            <react_router_dom_1.Route path="/login" element={<Login />}/>
+            <react_router_dom_1.Route path="/*" element={<AppRoutes />}/>
+          </react_router_dom_1.Routes>
+        </AuthContext_1.AuthProvider>
+      </styles_1.ThemeProvider>
+    </react_router_dom_1.BrowserRouter>);
+};
+export default App;

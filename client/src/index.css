@@ -1,0 +1,332 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f5f5f5;
+  zoom: 80%;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Global utility classes */
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.h-full {
+  height: 100%;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.m-0 {
+  margin: 0;
+}
+
+.p-0 {
+  padding: 0;
+}
+
+@media print {
+  /* Hide UI elements */
+  .MuiDrawer-root,
+  .MuiAppBar-root,
+  nav,
+  header,
+  .sidebar,
+  [role="navigation"],
+  .MuiToolbar-root,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Reset page margins and dimensions */
+  @page {
+    size: A4;
+    margin: 1cm;
+  }
+
+  html, body {
+    width: 210mm;
+    height: 297mm;
+    font-size: 11pt;
+  }
+
+  html {
+    font-size: 11pt;
+  }
+
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 100%;
+    background: white !important;
+  }
+
+  #root {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  /* Print page breaks */
+  .page-break {
+    page-break-before: always !important;
+  }
+
+  .page-break-before {
+    page-break-before: always;
+    break-before: always;
+  }
+
+  .page-break-after {
+    page-break-after: always;
+    break-after: always;
+  }
+
+  .no-page-break {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Table specific print styles */
+  .MuiTableContainer-root {
+    overflow: visible !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+    margin-bottom: 1cm;
+  }
+
+  .MuiTable-root {
+    width: 100% !important;
+    table-layout: auto !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+    border-collapse: collapse !important;
+    border: 1px solid #000 !important;
+  }
+
+  .MuiTableHead-root .MuiTableCell-root {
+    font-weight: bold !important;
+    background-color: #1976d2 !important; /* Primary color */
+    color: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    text-align: left !important;
+  }
+
+  .MuiTableRow-root {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .MuiTableCell-root {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    border: 1px solid #000 !important;
+    padding: 6px !important;
+    font-size: 10pt !important;
+    vertical-align: top !important;
+    color: black !important;
+    text-align: left !important;
+  }
+
+  /* Ensure form fields are visible */
+  .MuiTextField-root,
+  .MuiSelect-root,
+  .MuiInput-root {
+    background: white !important;
+    border: 1px solid #ddd !important;
+  }
+
+  .MuiTextField-root,
+  .MuiSelect-root {
+    font-size: 10pt !important;
+  }
+
+  .MuiInputBase-root {
+    border: none !important;
+  }
+
+  .MuiInputBase-input {
+    color: black !important;
+    padding: 0 !important;
+    border: none !important;
+    font-size: 10pt !important;
+  }
+
+  .MuiSelect-select {
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+    min-height: unset !important;
+  }
+
+  /* Force background colors for better printing */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Override input styles specifically for EnergyAuditTables inputs */
+  .MuiPaper-root .MuiTextField-root,
+  .MuiPaper-root .MuiInputBase-root,
+  .MuiPaper-root .MuiInputBase-input {
+    background-color: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    color: black !important;
+    overflow: visible !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    word-break: break-word !important;
+  }
+
+  /* Fix for overlapping fields and double gray box */
+  .MuiPaper-root {
+    background-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  /* Only add border to the introduction section */
+  .MuiPaper-root:first-of-type {
+    border: 1px solid #000 !important;
+    background-color: white !important;
+  }
+
+  /* Specific print styles for Inspector, Location, and Comments inputs */
+  .print-inspector .MuiInputBase-root,
+  .print-location .MuiInputBase-root,
+  .print-comments .MuiInputBase-root {
+    width: 100% !important;
+    max-width: 800px !important;
+    margin: 0 auto !important;
+    display: block !important;
+    padding: 8px !important;
+    border: 1px solid rgba(0, 0, 0, 0.23) !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    height: auto !important;
+  }
+
+  .print-inspector,
+  .print-location,
+  .print-comments {
+    width: 100% !important;
+    max-width: 800px !important;
+    margin: 0 auto !important;
+  }
+
+  .print-inspector textarea,
+  .print-location textarea,
+  .print-comments textarea {
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    resize: none !important;
+  }
+
+  /* Fix text fields for better print layout */
+  .MuiInputBase-input {
+    padding: 0 !important;
+    font-size: 11pt !important;
+    color: black !important;
+    background: transparent !important;
+    border: none !important;
+  }
+
+  /* Enhanced textarea print styles */
+  .print-comments {
+    width: 100% !important;
+    max-width: 800px !important;
+    margin: 0 auto !important;
+  }
+
+  .print-comments .MuiInputBase-root {
+    min-height: unset !important;
+    height: auto !important;
+    overflow: visible !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+  }
+
+  .print-comments textarea {
+    min-height: 120px !important;
+    height: auto !important;
+    overflow: visible !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    resize: vertical !important;
+    line-height: 1.5 !important;
+    font-family: inherit !important;
+    padding: 8px !important;
+    border: 1px solid rgba(0, 0, 0, 0.23) !important;
+  }
+
+  /* Ensure textarea expands properly */
+  @media screen {
+    .print-comments textarea {
+      resize: vertical;
+      min-height: 120px;
+      height: auto;
+      overflow: auto;
+    }
+  }
+}
