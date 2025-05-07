@@ -44,12 +44,12 @@ export const login = async (req: Request, res: Response) => {
         username: user.username,
         role: user.role 
       },
-      process.env.JWT_SECRET || 'your-secret-key',
+      process.env.JWT_SECRET || 'test-secret-key',
       { expiresIn: '24h' }
     );
     console.log('Token created successfully');
 
-    res.json({ token });
+    return res.json({ token });
   } catch (error) {
     console.error('Login error:', error);
     if (error instanceof Error) {
@@ -59,6 +59,6 @@ export const login = async (req: Request, res: Response) => {
         name: error.name
       });
     }
-    res.status(500).json({ message: 'Internal server error' });
+    return res.status(500).json({ message: 'Internal server error' });
   }
 }; 

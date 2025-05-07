@@ -3,7 +3,7 @@ import request from 'supertest';
 import * as fs from 'fs';
 import * as path from 'path';
 import app from '../app';
-import pool from '../config/database';
+import { pool } from '../config/database';
 
 describe('Features Integration Tests', () => {
   let authToken: string;

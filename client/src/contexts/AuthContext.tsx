@@ -6,6 +6,7 @@ import * as profileService from '../services/profileService';
 interface AuthContextType {
   user: User | null;
   currentUser: User | null;
+  token: string | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
@@ -25,6 +26,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const stored = localStorage.getItem('authUser');
     return stored ? JSON.parse(stored) : null;
   });
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,18 +70,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setLoading(true);
       setError(null);
-      
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/auth/login`, {
         username,
         password
       }, {
         withCredentials: true
       });
-
       const userData = response.data.user;
+      const receivedToken = response.data.token;
       setUser(userData);
+      setToken(receivedToken);
       localStorage.setItem('authUser', JSON.stringify(userData));
-      
+      localStorage.setItem('token', receivedToken);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed. Please try again.');
       throw err;
@@ -97,7 +99,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.error('Logout error:', err);
     } finally {
       setUser(null);
+      setToken(null);
       localStorage.removeItem('authUser');
+      localStorage.removeItem('token');
     }
   };
 
@@ -132,10 +136,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      currentUser: user, 
-      login, 
+    <AuthContext.Provider value={{
+      user,
+      currentUser: user,
+      token,
+      login,
       logout,
       loading,
       error,

@@ -1,9 +1,14 @@
 import { Request, Response } from 'express';
-import pool from '../config/database';
+import { pool } from '../config/database';
 import { RowDataPacket } from 'mysql2';
 
 export const getNotifications = async (req: Request, res: Response) => {
   try {
+    console.log('Get notifications request received:', {
+      user: req.user,
+      query: req.query
+    });
+
     const userId = req.user?.id;
     const { page = 1, limit = 10 } = req.query;
 
@@ -12,6 +17,7 @@ export const getNotifications = async (req: Request, res: Response) => {
     const offset = (pageNum - 1) * limitNum;
 
     // Get total count
+    console.log('Getting total count');
     const [countResult] = await pool.query<RowDataPacket[]>(
       'SELECT COUNT(*) as total FROM notifications WHERE user_id = ?',
       [userId]
@@ -19,6 +25,7 @@ export const getNotifications = async (req: Request, res: Response) => {
     const total = countResult[0].total;
 
     // Get paginated notifications
+    console.log('Getting paginated notifications');
     const [notifications] = await pool.query<RowDataPacket[]>(
       `SELECT 
         n.*,
@@ -33,7 +40,8 @@ export const getNotifications = async (req: Request, res: Response) => {
       [userId, limitNum, offset]
     );
 
-    res.json({
+    console.log('Found notifications:', notifications.length);
+    return res.json({
       notifications,
       pagination: {
         total,
@@ -51,7 +59,7 @@ export const getNotifications = async (req: Request, res: Response) => {
         name: error.name
       });
     }
-    res.status(500).json({
+    return res.status(500).json({
       message: 'Error fetching notifications',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -60,26 +68,35 @@ export const getNotifications = async (req: Request, res: Response) => {
 
 export const markAsRead = async (req: Request, res: Response) => {
   try {
+    console.log('Mark as read request received:', {
+      params: req.params,
+      user: req.user
+    });
+
     const userId = req.user?.id;
     const { notificationId } = req.params;
 
     // Check if notification exists and belongs to user
+    console.log('Checking notification ownership:', notificationId);
     const [notifications] = await pool.query<RowDataPacket[]>(
       'SELECT * FROM notifications WHERE id = ? AND user_id = ?',
       [notificationId, userId]
     );
 
     if (notifications.length === 0) {
+      console.log('Notification not found or unauthorized:', notificationId);
       return res.status(404).json({ message: 'Notification not found or unauthorized' });
     }
 
     // Mark as read
+    console.log('Marking notification as read');
     await pool.query(
       'UPDATE notifications SET is_read = true WHERE id = ?',
       [notificationId]
     );
 
-    res.json({ message: 'Notification marked as read' });
+    console.log('Notification marked as read successfully:', notificationId);
+    return res.json({ message: 'Notification marked as read' });
   } catch (error) {
     console.error('Error marking notification as read:', error);
     if (error instanceof Error) {
@@ -89,7 +106,7 @@ export const markAsRead = async (req: Request, res: Response) => {
         name: error.name
       });
     }
-    res.status(500).json({
+    return res.status(500).json({
       message: 'Error marking notification as read',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -98,15 +115,21 @@ export const markAsRead = async (req: Request, res: Response) => {
 
 export const markAllAsRead = async (req: Request, res: Response) => {
   try {
+    console.log('Mark all as read request received:', {
+      user: req.user
+    });
+
     const userId = req.user?.id;
 
     // Mark all as read
+    console.log('Marking all notifications as read');
     await pool.query(
       'UPDATE notifications SET is_read = true WHERE user_id = ?',
       [userId]
     );
 
-    res.json({ message: 'All notifications marked as read' });
+    console.log('All notifications marked as read successfully');
+    return res.json({ message: 'All notifications marked as read' });
   } catch (error) {
     console.error('Error marking all notifications as read:', error);
     if (error instanceof Error) {
@@ -116,7 +139,7 @@ export const markAllAsRead = async (req: Request, res: Response) => {
         name: error.name
       });
     }
-    res.status(500).json({
+    return res.status(500).json({
       message: 'Error marking all notifications as read',
       error: error instanceof Error ? error.message : 'Unknown error'
     });

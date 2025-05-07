@@ -1,8 +1,10 @@
 // User roles for permission checks
 export enum UserRole {
-  ADMIN = 'admin',
-  USER = 'user',
-  AUDITOR = 'auditor'
+  ADMIN = 'ADMIN',
+  AUDITOR = 'AUDITOR',
+  MANAGER = 'MANAGER',
+  REVIEWER = 'REVIEWER',
+  VIEWER = 'VIEWER'
 }
 
 export const enum NotificationType {
@@ -26,21 +28,20 @@ export interface NotificationPreferences {
 }
 
 export interface User {
-  id: number;
+  id: string;
   username: string;
   email: string;
   role: UserRole;
-  firstName: string;
-  lastName: string;
-  department: string;
-  position: string;
-  phoneNumber: string;
+  name: string;
+  firstName?: string;
+  lastName?: string;
+  department?: string;
+  position?: string;
+  phoneNumber?: string;
   isActive: boolean;
-  lastLogin: string;
   createdAt: string;
   updatedAt: string;
-  preferences: UserPreferences;
-  permissions: string[];
+  permissions?: string[];
 }
 
 export interface UserPreferences {
@@ -103,4 +104,16 @@ export interface ProfileUpdateData {
   newPassword?: string;
   confirmPassword?: string;
   preferences?: Partial<UserPreferences>;
-} 
+}
+
+export interface Comment {
+  id: string;
+  author: string;
+  text: string;
+  createdAt: string;
+  attachments?: any[];
+}
+
+export type Severity = 'Low' | 'Medium' | 'High' | 'Critical';
+export type Status = 'Open' | 'In Progress' | 'Resolved';
+export type ApprovalStatus = 'Pending' | 'Approved' | 'Rejected'; 

@@ -26,7 +26,7 @@ const SystemSettings: React.FC = () => {
     siteName: '',
     maintenanceMode: false,
     registrationEnabled: true,
-    defaultRole: UserRole.USER,
+    defaultRole: UserRole.VIEWER,
     passwordPolicy: {
       minLength: 8,
       requireSpecialChar: true,

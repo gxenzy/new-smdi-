@@ -26,6 +26,7 @@ export const uploadAttachment = async (req: MulterRequest, res: Response) => {
     });
 
     if (!req.file) {
+      console.log('No file uploaded');
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
@@ -33,12 +34,14 @@ export const uploadAttachment = async (req: MulterRequest, res: Response) => {
     const userId = req.user?.id;
 
     // Check if finding exists
+    console.log('Checking if finding exists:', findingId);
     const [findings] = await pool.query<RowDataPacket[]>(
       'SELECT id FROM findings WHERE id = ?',
       [findingId]
     );
 
     if (findings.length === 0) {
+      console.log('Finding not found:', findingId);
       // Delete uploaded file
       fs.unlinkSync(req.file.path);
       return res.status(404).json({ message: 'Finding not found' });
@@ -61,6 +64,7 @@ export const uploadAttachment = async (req: MulterRequest, res: Response) => {
     fs.renameSync(req.file.path, newPath);
 
     // Save file info to database
+    console.log('Saving file info to database');
     const [result] = await pool.query(
       'INSERT INTO attachments (finding_id, filename, original_filename, mime_type, size, uploaded_by) VALUES (?, ?, ?, ?, ?, ?)',
       [
@@ -74,6 +78,7 @@ export const uploadAttachment = async (req: MulterRequest, res: Response) => {
     );
 
     // Create notification
+    console.log('Creating notification for upload');
     await pool.query(
       'INSERT INTO notifications (user_id, finding_id, type, message) VALUES (?, ?, ?, ?)',
       [
@@ -90,7 +95,7 @@ export const uploadAttachment = async (req: MulterRequest, res: Response) => {
       originalFilename: req.file.originalname
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       message: 'File uploaded successfully',
       attachmentId: (result as any).insertId,
       filename: uniqueFilename,
@@ -107,12 +112,13 @@ export const uploadAttachment = async (req: MulterRequest, res: Response) => {
     }
     if (req.file && fs.existsSync(req.file.path)) {
       try {
+        console.log('Cleaning up temporary file:', req.file.path);
         fs.unlinkSync(req.file.path);
       } catch (unlinkError) {
         console.error('Error deleting temporary file:', unlinkError);
       }
     }
-    res.status(500).json({
+    return res.status(500).json({
       message: 'Error uploading file',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -122,14 +128,17 @@ export const uploadAttachment = async (req: MulterRequest, res: Response) => {
 export const downloadAttachment = async (req: Request, res: Response) => {
   try {
     const { attachmentId } = req.params;
+    console.log('Download request received for attachment:', attachmentId);
 
     // Get file info from database
+    console.log('Fetching file info from database');
     const [attachments] = await pool.query<RowDataPacket[]>(
       'SELECT * FROM attachments WHERE id = ?',
       [attachmentId]
     );
 
     if (attachments.length === 0) {
+      console.log('Attachment not found:', attachmentId);
       return res.status(404).json({ message: 'Attachment not found' });
     }
 
@@ -137,8 +146,15 @@ export const downloadAttachment = async (req: Request, res: Response) => {
     const filePath = path.join(UPLOAD_DIR, attachment.filename);
 
     if (!fs.existsSync(filePath)) {
+      console.log('File not found on server:', filePath);
       return res.status(404).json({ message: 'File not found on server' });
     }
+
+    console.log('Sending file to client:', {
+      filename: attachment.original_filename,
+      mimeType: attachment.mime_type,
+      size: attachment.size
+    });
 
     // Set headers for file download
     res.setHeader('Content-Type', attachment.mime_type);
@@ -150,6 +166,7 @@ export const downloadAttachment = async (req: Request, res: Response) => {
     // Stream file to response
     const fileStream = fs.createReadStream(filePath);
     fileStream.pipe(res);
+    return res;
   } catch (error) {
     console.error('Error downloading file:', error);
     if (error instanceof Error) {
@@ -159,7 +176,7 @@ export const downloadAttachment = async (req: Request, res: Response) => {
         name: error.name
       });
     }
-    res.status(500).json({
+    return res.status(500).json({
       message: 'Error downloading file',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -170,14 +187,17 @@ export const deleteAttachment = async (req: Request, res: Response) => {
   try {
     const { attachmentId } = req.params;
     const userId = req.user?.id;
+    console.log('Delete request received for attachment:', attachmentId);
 
     // Get file info from database
+    console.log('Fetching file info from database');
     const [attachments] = await pool.query<RowDataPacket[]>(
       'SELECT * FROM attachments WHERE id = ?',
       [attachmentId]
     );
 
     if (attachments.length === 0) {
+      console.log('Attachment not found:', attachmentId);
       return res.status(404).json({ message: 'Attachment not found' });
     }
 
@@ -186,13 +206,16 @@ export const deleteAttachment = async (req: Request, res: Response) => {
     // Delete file from filesystem
     const filePath = path.join(UPLOAD_DIR, attachment.filename);
     if (fs.existsSync(filePath)) {
+      console.log('Deleting file from filesystem:', filePath);
       fs.unlinkSync(filePath);
     }
 
     // Delete from database
+    console.log('Deleting attachment record from database');
     await pool.query('DELETE FROM attachments WHERE id = ?', [attachmentId]);
 
     // Create notification
+    console.log('Creating notification for deletion');
     await pool.query(
       'INSERT INTO notifications (user_id, finding_id, type, message) VALUES (?, ?, ?, ?)',
       [
@@ -203,7 +226,8 @@ export const deleteAttachment = async (req: Request, res: Response) => {
       ]
     );
 
-    res.json({ message: 'Attachment deleted successfully' });
+    console.log('Attachment deleted successfully:', attachmentId);
+    return res.json({ message: 'Attachment deleted successfully' });
   } catch (error) {
     console.error('Error deleting file:', error);
     if (error instanceof Error) {
@@ -213,7 +237,7 @@ export const deleteAttachment = async (req: Request, res: Response) => {
         name: error.name
       });
     }
-    res.status(500).json({
+    return res.status(500).json({
       message: 'Error deleting file',
       error: error instanceof Error ? error.message : 'Unknown error'
     });

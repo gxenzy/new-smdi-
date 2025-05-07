@@ -1,57 +1,55 @@
-import axios from 'axios';
 import { User, SystemSettings, UserRole } from '../types';
-
-const API_URL = process.env.REACT_APP_API_URL;
+import api from './api';
 
 // User Management
 export const getAllUsers = async (): Promise<User[]> => {
-  const response = await axios.get(`${API_URL}/api/admin/users`);
+  const response = await api.get('/users');
   return response.data;
 };
 
-export const getUserById = async (id: number): Promise<User> => {
-  const response = await axios.get(`${API_URL}/api/admin/users/${id}`);
+export const getUserById = async (id: string): Promise<User> => {
+  const response = await api.get(`/users/${id}`);
   return response.data;
 };
 
 export const createUser = async (userData: Partial<User>): Promise<User> => {
-  const response = await axios.post(`${API_URL}/api/admin/users`, userData);
+  const response = await api.post('/users', userData);
   return response.data;
 };
 
-export const updateUser = async (id: number, userData: Partial<User>): Promise<User> => {
-  const response = await axios.put(`${API_URL}/api/admin/users/${id}`, userData);
+export const updateUser = async (id: string, userData: Partial<User>): Promise<User> => {
+  const response = await api.put(`/users/${id}`, userData);
   return response.data;
 };
 
-export const deleteUser = async (id: number): Promise<void> => {
-  await axios.delete(`${API_URL}/api/admin/users/${id}`);
+export const deleteUser = async (id: string): Promise<void> => {
+  await api.delete(`/users/${id}`);
 };
 
-export const toggleUserStatus = async (id: number): Promise<User> => {
-  const response = await axios.patch(`${API_URL}/api/admin/users/${id}/toggle-status`);
+export const toggleUserStatus = async (id: string): Promise<User> => {
+  const response = await api.patch(`/users/${id}/toggle-status`);
   return response.data;
 };
 
 // System Settings
 export const getSystemSettings = async (): Promise<SystemSettings> => {
-  const response = await axios.get(`${API_URL}/api/admin/settings`);
+  const response = await api.get('/settings');
   return response.data;
 };
 
 export const updateSystemSettings = async (settings: Partial<SystemSettings>): Promise<SystemSettings> => {
-  const response = await axios.put(`${API_URL}/api/admin/settings`, settings);
+  const response = await api.put('/settings', settings);
   return response.data;
 };
 
 // Role Management
 export const getRoles = async (): Promise<UserRole[]> => {
-  const response = await axios.get(`${API_URL}/api/admin/roles`);
+  const response = await api.get('/roles');
   return response.data;
 };
 
 export const updateUserRole = async (userId: number, role: UserRole): Promise<User> => {
-  const response = await axios.patch(`${API_URL}/api/admin/users/${userId}/role`, { role });
+  const response = await api.patch(`/users/${userId}/role`, { role });
   return response.data;
 };
 
@@ -64,30 +62,26 @@ export const getAuditLogs = async (params: {
   startDate?: string;
   endDate?: string;
 }): Promise<{ logs: any[]; total: number }> => {
-  const response = await axios.get(`${API_URL}/api/admin/audit-logs`, { params });
+  const response = await api.get('/audit-logs', { params });
   return response.data;
 };
 
 // User Activity
 export const getUserActivity = async (userId: number): Promise<any[]> => {
-  const response = await axios.get(`${API_URL}/api/admin/users/${userId}/activity`);
+  const response = await api.get(`/users/${userId}/activity`);
   return response.data;
 };
 
 // Password Reset
 export const resetUserPassword = async (userId: number): Promise<void> => {
-  await axios.post(`${API_URL}/api/admin/users/${userId}/reset-password`);
+  await api.post(`/users/${userId}/reset-password`);
 };
 
 // Bulk Operations
-export const bulkUpdateUsers = async (userIds: number[], updates: Partial<User>): Promise<User[]> => {
-  const response = await axios.patch(`${API_URL}/api/admin/users/bulk-update`, {
-    userIds,
-    updates
-  });
-  return response.data;
+export const bulkUpdateUsers = async (userIds: string[], updates: Partial<User>): Promise<void> => {
+  await api.patch('/users/bulk-update', { userIds, updates });
 };
 
-export const bulkDeleteUsers = async (userIds: number[]): Promise<void> => {
-  await axios.post(`${API_URL}/api/admin/users/bulk-delete`, { userIds });
+export const bulkDeleteUsers = async (userIds: string[]): Promise<void> => {
+  await api.post('/users/bulk-delete', { userIds });
 }; 

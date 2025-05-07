@@ -1,48 +1,48 @@
-import React from 'react';
-import { Box, Typography, Button, Paper } from '@mui/material';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { showToast } from './ToastNotification';
 
-interface ErrorBoundaryState {
+interface Props {
+  children: ReactNode;
+}
+
+interface State {
   hasError: boolean;
   error: Error | null;
 }
 
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, ErrorBoundaryState> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+class ErrorBoundary extends Component<Props, State> {
+  public state: State = {
+    hasError: false,
+    error: null
+  };
 
-  static getDerivedStateFromError(error: Error) {
+  public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // You can log error info here or send to monitoring service
-    // console.error(error, errorInfo);
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('Uncaught error:', error, errorInfo);
+    showToast.error('Something went wrong. Please try again.');
   }
 
-  handleReset = () => {
-    this.setState({ hasError: false, error: null });
-  };
-
-  render() {
+  public render() {
     if (this.state.hasError) {
       return (
-        <Box sx={{ maxWidth: 600, mx: 'auto', mt: 8 }}>
-          <Paper sx={{ p: 4, textAlign: 'center' }}>
-            <Typography variant="h5" color="error" gutterBottom>
-              Something went wrong.
-            </Typography>
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              {this.state.error?.message || 'An unexpected error occurred.'}
-            </Typography>
-            <Button variant="contained" color="primary" onClick={this.handleReset}>
-              Try Again
-            </Button>
-          </Paper>
-        </Box>
+        <div className="error-boundary">
+          <h2>Oops, something went wrong!</h2>
+          <p>We're sorry, but there was an error loading this page.</p>
+          <button
+            onClick={() => {
+              this.setState({ hasError: false, error: null });
+              window.location.reload();
+            }}
+          >
+            Try Again
+          </button>
+        </div>
       );
     }
+
     return this.props.children;
   }
 }

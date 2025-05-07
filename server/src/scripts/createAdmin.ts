@@ -1,6 +1,6 @@
 import * as bcrypt from 'bcrypt';
 import { pool } from '../config/database';
-import { ResultSetHeader } from 'mysql2/promise';
+import { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 
 async function createAdminUser() {
   try {
@@ -18,7 +18,7 @@ async function createAdminUser() {
 
     // Check if user already exists
     console.log('Checking if user exists...');
-    const [existingUsers] = await pool.query<ResultSetHeader>(
+    const [existingUsers] = await pool.query<RowDataPacket[]>(
       'SELECT id FROM users WHERE username = ? OR email = ?',
       [username, email]
     );
@@ -34,6 +34,7 @@ async function createAdminUser() {
       'INSERT INTO users (username, email, password, first_name, last_name, role) VALUES (?, ?, ?, ?, ?, ?)',
       [username, email, hashedPassword, firstName, lastName, role]
     );
+    console.log('Insert result:', result);
 
     console.log('Admin user created successfully');
     console.log('Username:', username);

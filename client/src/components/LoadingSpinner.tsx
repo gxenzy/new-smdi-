@@ -1,10 +1,26 @@
 import React from 'react';
-import { Box, CircularProgress } from '@mui/material';
+import './LoadingSpinner.css';
 
-const LoadingSpinner: React.FC = () => (
-  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
-    <CircularProgress />
-  </Box>
-);
+interface LoadingSpinnerProps {
+  size?: 'small' | 'medium' | 'large';
+  color?: string;
+  fullScreen?: boolean;
+}
+
+const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
+  size = 'medium',
+  color = '#007bff',
+  fullScreen = false,
+}) => {
+  const spinnerClass = `spinner ${size} ${fullScreen ? 'fullscreen' : ''}`;
+  
+  return (
+    <div className={spinnerClass}>
+      <div className="spinner-inner" style={{ borderTopColor: color }}>
+        <div className="spinner-circle"></div>
+      </div>
+    </div>
+  );
+};
 
 export default LoadingSpinner; 

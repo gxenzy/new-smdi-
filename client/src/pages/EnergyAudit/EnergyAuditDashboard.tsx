@@ -67,7 +67,7 @@ const EnergyAuditDashboard: React.FC = () => {
     // Real-time updates
     // @ts-ignore
     import('socket.io-client').then(({ io }) => {
-      const socket = io('http://localhost:5000');
+      const socket = io('http://localhost:5001');
       socket.on('energyAuditUpdate', fetchAudits);
       socket.on('energyAuditDelete', fetchAudits);
       return () => {

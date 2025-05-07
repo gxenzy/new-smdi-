@@ -7,7 +7,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const socketRef = useRef<Socket | null>(null);
 
   if (!socketRef.current) {
-    socketRef.current = io('http://localhost:5000');
+    socketRef.current = io('http://localhost:5001');
   }
 
   useEffect(() => {

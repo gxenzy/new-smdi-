@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider, useAuthContext } from './contexts/AuthContext';
 import MainLayout from './layouts/MainLayout';
@@ -28,6 +28,8 @@ import { Box, TextField, Button, Typography, Container, Paper } from '@mui/mater
 import FindingsDashboard from './pages/Findings/FindingsDashboard';
 import AnalyticsDashboard from './pages/Analytics/AnalyticsDashboard';
 import EnergyAuditTesting from './pages/EnergyAudit/EnergyAuditTesting';
+import ToastNotification from './components/ToastNotification';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -111,10 +113,9 @@ const LoginForm = () => {
   );
 };
 
-const AppRoutes = () => {
-  const location = useLocation();
-  const isLoginPage = location.pathname === '/login';
+const App: React.FC = () => {
   const { user } = useAuthContext();
+  const location = useLocation();
   const [loading, setLoading] = React.useState(false);
 
   // Example: Simulate loading state for dashboard
@@ -128,47 +129,42 @@ const AppRoutes = () => {
     }
   }, [location.pathname]);
 
-  if (isLoginPage) {
-    return <LoginForm />;
-  }
-
-  return (
-    <MainLayout>
-      {loading && location.pathname === '/dashboard' ? (
-        <LoadingSpinner />
-      ) : (
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/login" element={<LoginForm />} />
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-          <Route path="/electrical-system" element={<ProtectedRoute><ElectricalSystem /></ProtectedRoute>} />
-          <Route path="/energy-audit" element={<ProtectedRoute><EnergyAudit /></ProtectedRoute>} />
-          <Route path="/energy-audit/analytics" element={<ProtectedRoute><EnergyAuditHistoryProvider><EnergyAuditAnalytics /></EnergyAuditHistoryProvider></ProtectedRoute>} />
-          <Route path="/energy-audit/testing" element={<ProtectedRoute><EnergyAuditHistoryProvider><EnergyAuditTesting /></EnergyAuditHistoryProvider></ProtectedRoute>} />
-          <Route path="/system-tools" element={<ProtectedRoute><SystemTools /></ProtectedRoute>} />
-          <Route path="/testing" element={<ProtectedRoute><Testing /></ProtectedRoute>} />
-          <Route path="/tam-evaluation" element={<ProtectedRoute><TamEvaluation /></ProtectedRoute>} />
-          <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
-          <Route path="/admin" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
-          <Route path="/findings" element={<ProtectedRoute><FindingsDashboard /></ProtectedRoute>} />
-          <Route path="/analytics" element={<ProtectedRoute><AnalyticsDashboard /></ProtectedRoute>} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      )}
-    </MainLayout>
-  );
-};
-
-const App = () => {
-  const { user } = useAuthContext();
-
   if (!user) {
     return <LoginForm />;
   }
 
-  return <AppRoutes />;
+  return (
+    <ThemeProvider>
+      <ErrorBoundary>
+        <ToastNotification />
+        <MainLayout>
+          {loading && location.pathname === '/dashboard' ? (
+            <LoadingSpinner />
+          ) : (
+            <Routes>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/login" element={<LoginForm />} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+              <Route path="/electrical-system" element={<ProtectedRoute><ElectricalSystem /></ProtectedRoute>} />
+              <Route path="/energy-audit" element={<ProtectedRoute><EnergyAudit /></ProtectedRoute>} />
+              <Route path="/energy-audit/analytics" element={<ProtectedRoute><EnergyAuditHistoryProvider><EnergyAuditAnalytics /></EnergyAuditHistoryProvider></ProtectedRoute>} />
+              <Route path="/energy-audit/testing" element={<ProtectedRoute><EnergyAuditHistoryProvider><EnergyAuditTesting /></EnergyAuditHistoryProvider></ProtectedRoute>} />
+              <Route path="/system-tools" element={<ProtectedRoute><SystemTools /></ProtectedRoute>} />
+              <Route path="/testing" element={<ProtectedRoute><Testing /></ProtectedRoute>} />
+              <Route path="/tam-evaluation" element={<ProtectedRoute><TamEvaluation /></ProtectedRoute>} />
+              <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
+              <Route path="/admin" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
+              <Route path="/findings" element={<ProtectedRoute><FindingsDashboard /></ProtectedRoute>} />
+              <Route path="/analytics" element={<ProtectedRoute><AnalyticsDashboard /></ProtectedRoute>} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          )}
+        </MainLayout>
+      </ErrorBoundary>
+    </ThemeProvider>
+  );
 };
 
 export default App;

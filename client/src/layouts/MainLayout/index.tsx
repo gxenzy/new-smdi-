@@ -16,6 +16,7 @@ import {
   Divider,
   Snackbar,
   Alert,
+  Fab,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -23,6 +24,9 @@ import {
   Settings as SettingsIcon,
   AccountCircle,
   ExitToApp,
+  Brightness4,
+  Brightness7,
+  KeyboardArrowUp,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../../contexts/AuthContext';
@@ -64,6 +68,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState<typeof notifications[0] | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { isDarkMode, toggleTheme } = useThemeContext();
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const sidebarWidth = sidebarCollapsed ? 64 : drawerWidth;
 
@@ -109,18 +115,21 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     }
   }, [notifications]);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.pageYOffset > 400);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const handleClose = () => {
     setOpen(false);
     if (current) markAsRead(current.id);
   };
 
-  const ThemeToggleButton = () => {
-    const { theme, toggleTheme } = useThemeContext();
-    return (
-      <IconButton color="inherit" onClick={toggleTheme} aria-label="toggle dark mode">
-        {theme === 'light' ? <span role="img" aria-label="dark">🌙</span> : <span role="img" aria-label="light">☀️</span>}
-      </IconButton>
-    );
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -135,6 +144,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           zIndex: (theme) => theme.zIndex.drawer + 1,
           bgcolor: (theme) => theme.palette.mode === 'dark' ? theme.palette.background.paper : theme.palette.background.default,
           transition: 'width 0.3s, margin-left 0.3s',
+          boxShadow: 1,
         }}
       >
         <Toolbar>
@@ -147,18 +157,48 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            SMDI Admin Panel
+          <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+            <Box sx={{ width: 36, height: 36, bgcolor: '#1976d2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: 20 }}>
+              C
+            </Box>
+          </Box>
+          <Typography 
+            variant="h6" 
+            noWrap 
+            component="div" 
+            sx={{ 
+              flexGrow: 1,
+              fontSize: { xs: '1rem', sm: '1.25rem' },
+              color: theme.palette.mode === 'light' ? '#222' : 'inherit',
+              fontWeight: 700
+            }}
+          >
+            CompAT - Compliance Audit Tool
           </Typography>
-          <ThemeToggleButton />
-          <IconButton color="inherit" onClick={handleNotificationsOpen}>
-            <Badge badgeContent={0} color="error">
-              <NotificationsIcon />
-            </Badge>
-          </IconButton>
-          <IconButton color="inherit" onClick={handleProfileMenuOpen}>
-            <AccountCircle />
-          </IconButton>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <IconButton 
+              sx={{ color: theme.palette.mode === 'light' ? '#222' : 'inherit', display: { xs: 'none', sm: 'flex' } }}
+              onClick={toggleTheme}
+            >
+              {isDarkMode ? <Brightness7 /> : <Brightness4 />}
+            </IconButton>
+            <IconButton 
+              sx={{ color: theme.palette.mode === 'light' ? '#222' : 'inherit', '& .MuiBadge-badge': { right: -3, top: 3 } }}
+              onClick={handleNotificationsOpen}
+              aria-label="notifications"
+            >
+              <Badge badgeContent={notifications.length} color="error">
+                <NotificationsIcon />
+              </Badge>
+            </IconButton>
+            <IconButton 
+              sx={{ color: theme.palette.mode === 'light' ? '#222' : 'inherit', display: { xs: 'none', sm: 'flex' }, '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)' } }}
+              onClick={handleProfileMenuOpen}
+              aria-label="profile"
+            >
+              <AccountCircle />
+            </IconButton>
+          </Box>
         </Toolbar>
       </AppBar>
 
@@ -175,16 +215,42 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             boxShadow: sidebarCollapsed ? '2px 0 8px rgba(0,0,0,0.08)' : 'none',
             transition: 'width 0.3s',
             bgcolor: theme.palette.background.default,
+            overflowX: 'hidden',
           },
         }}
       >
         <Sidebar collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
       </Drawer>
 
-      <Main sidebarwidth={sidebarWidth} sx={{ flex: 1, transition: 'margin-left 0.3s' }}>
+      <Main 
+        sidebarwidth={sidebarWidth} 
+        sx={{ 
+          flex: 1, 
+          transition: 'margin-left 0.3s',
+          p: { xs: 2, sm: 3 },
+          width: { xs: '100%', sm: `calc(100% - ${sidebarWidth}px)` },
+        }}
+      >
         <Toolbar />
         {children}
       </Main>
+
+      {/* Scroll to Top Button */}
+      {showScrollTop && (
+        <Fab
+          color="primary"
+          size="small"
+          onClick={scrollToTop}
+          sx={{
+            position: 'fixed',
+            bottom: 16,
+            right: 16,
+            display: { xs: 'none', sm: 'flex' },
+          }}
+        >
+          <KeyboardArrowUp />
+        </Fab>
+      )}
 
       {/* Profile Menu */}
       <Menu
@@ -194,7 +260,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         onClick={handleProfileMenuClose}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        PaperProps={{ sx: { minWidth: 'unset', width: 'auto', px: 0 } }}
+        PaperProps={{ 
+          sx: { 
+            minWidth: '200px',
+            mt: 1.5,
+            '& .MuiMenuItem-root': {
+              px: 2,
+              py: 1.5,
+            }
+          } 
+        }}
       >
         <MenuItem onClick={handleProfileClick}>
           <AccountCircle sx={{ mr: 2 }} />
@@ -218,12 +293,31 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         onClose={handleNotificationsClose}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        PaperProps={{ sx: { minWidth: 'unset', width: 'auto', px: 0 } }}
+        PaperProps={{ 
+          sx: { 
+            minWidth: '300px',
+            maxWidth: '90vw',
+            mt: 1.5,
+          } 
+        }}
       />
 
-      <Snackbar open={open && !!current} autoHideDuration={4000} onClose={handleClose} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+      <Snackbar 
+        open={open && !!current} 
+        autoHideDuration={4000} 
+        onClose={handleClose} 
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        sx={{ bottom: { xs: 90, sm: 24 } }}
+      >
         {current && (
-          <Alert onClose={handleClose} severity={current.type} sx={{ width: '100%' }}>
+          <Alert 
+            onClose={handleClose} 
+            severity={current.type} 
+            sx={{ 
+              width: '100%',
+              boxShadow: 3,
+            }}
+          >
             {current.message}
           </Alert>
         )}

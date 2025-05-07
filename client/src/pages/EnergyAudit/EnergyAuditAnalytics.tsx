@@ -417,22 +417,21 @@ interface SignatureDialogProps {
 }
 
 const SignatureDialog: React.FC<SignatureDialogProps> = ({ open, onClose, onSign, userRole, userName }) => {
-  const signaturePadRef = React.useRef<SignatureCanvas>(null);
+  const [signature, setSignature] = React.useState('');
   const [comments, setComments] = React.useState('');
 
   const handleSign = () => {
-    if (signaturePadRef.current) {
-      const signatureData = signaturePadRef.current.toDataURL();
+    if (signature) {
       onSign({
         id: Date.now().toString(),
-        userId: 'current-user-id', // This would come from your auth system
+        userId: 'current-user-id',
         userName,
         userRole,
         timestamp: new Date().toISOString(),
-        signatureData,
+        signatureData: signature,
         comments,
       });
-      signaturePadRef.current.clear();
+      setSignature('');
       setComments('');
       onClose();
     }
@@ -450,17 +449,14 @@ const SignatureDialog: React.FC<SignatureDialogProps> = ({ open, onClose, onSign
               borderRadius: 1,
               height: 200,
               backgroundColor: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            // @ts-ignore
-            <SignatureCanvas
-              ref={signaturePadRef}
-              canvasProps={{
-                width: 500,
-                height: 200,
-                className: 'signature-canvas',
-              }}
-            />
+            <Typography variant="body2" color="textSecondary">
+              Signature pad will be implemented here
+            </Typography>
           </Box>
           <TextField
             label="Comments"
@@ -478,7 +474,7 @@ const SignatureDialog: React.FC<SignatureDialogProps> = ({ open, onClose, onSign
           onClick={handleSign}
           variant="contained"
           startIcon={<VerifiedIcon />}
-          disabled={!signaturePadRef.current?.isEmpty()}
+          disabled={!signature}
         >
           Sign & Approve
         </Button>

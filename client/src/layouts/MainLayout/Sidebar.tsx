@@ -79,7 +79,17 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
     >
       <Box sx={{ p: 2, textAlign: 'center', minHeight: 56 }}>
         {isOpen ? (
-          <Typography variant="h6" noWrap>Energy Audit System</Typography>
+          <>
+            {/* Profile Section */}
+            <Box sx={{ mt: 1, mb: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <Box sx={{ width: 36, height: 36, bgcolor: '#90caf9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1976d2', fontWeight: 'bold', fontSize: 20, mb: 0.5 }}>
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+              </Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: 14, color: theme.palette.text.primary }} noWrap>
+                {user?.name || ''}
+              </Typography>
+            </Box>
+          </>
         ) : (
           <MenuIcon />
         )}
