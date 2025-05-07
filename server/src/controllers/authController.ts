@@ -49,7 +49,10 @@ export const login = async (req: Request, res: Response) => {
     );
     console.log('Token created successfully');
 
-    return res.json({ token });
+    // Exclude password from user object in response
+    const { password: _pw, ...userWithoutPassword } = user;
+
+    return res.json({ user: userWithoutPassword, token });
   } catch (error) {
     console.error('Login error:', error);
     if (error instanceof Error) {

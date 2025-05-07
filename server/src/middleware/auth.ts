@@ -28,7 +28,7 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'test-secret-key') as {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'e465aa6a212abe4bb21fb3218aa044ed2be68720b46298c20b22f861ab7324f3d299f35ec4720e2ab57a03e4810a7a885e5aac6c1') as {
       id: number;
       username: string;
       role: UserRole;

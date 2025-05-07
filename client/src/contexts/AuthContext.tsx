@@ -24,7 +24,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
     const stored = localStorage.getItem('authUser');
-    return stored ? JSON.parse(stored) : null;
+    if (!stored || stored === 'undefined') return null;
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return null;
+    }
   });
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
   const [loading, setLoading] = useState(false);
@@ -73,8 +78,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/auth/login`, {
         username,
         password
-      }, {
-        withCredentials: true
       });
       const userData = response.data.user;
       const receivedToken = response.data.token;
@@ -82,6 +85,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setToken(receivedToken);
       localStorage.setItem('authUser', JSON.stringify(userData));
       localStorage.setItem('token', receivedToken);
+      console.log('[Auth] Login successful, token:', receivedToken);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed. Please try again.');
       throw err;
