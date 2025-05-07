@@ -1,0 +1,127 @@
+openapi: 3.0.0
+info:
+  title: Energy Audit & User API
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000/api
+paths:
+  /energy-audit:
+    get:
+      summary: Get all energy audits
+      responses:
+        '200': { description: OK }
+    post:
+      summary: Create a new energy audit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnergyAudit'
+      responses:
+        '201': { description: Created }
+  /energy-audit/{id}:
+    get:
+      summary: Get an energy audit by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+    put:
+      summary: Update an energy audit
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnergyAudit'
+      responses:
+        '200': { description: OK }
+    delete:
+      summary: Delete an energy audit
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+  /users:
+    get:
+      summary: Get all users
+      responses:
+        '200': { description: OK }
+    post:
+      summary: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '201': { description: Created }
+  /users/{id}:
+    get:
+      summary: Get a user by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+    put:
+      summary: Update a user
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200': { description: OK }
+    delete:
+      summary: Delete a user
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+components:
+  schemas:
+    EnergyAudit:
+      type: object
+      properties:
+        name: { type: string }
+        status: { type: string }
+        description: { type: string }
+        assignedTo: { type: string }
+        dueDate: { type: string, format: date }
+        findings: { type: array, items: { type: string } }
+        createdAt: { type: string, format: date-time }
+    User:
+      type: object
+      properties:
+        username: { type: string }
+        password: { type: string }
+        email: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        role: { type: string }
+        createdAt: { type: string, format: date-time } 

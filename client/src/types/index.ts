@@ -1,8 +1,8 @@
 // User roles for permission checks
 export enum UserRole {
-  ADMIN = 'ADMIN',
-  MANAGER = 'MANAGER',
-  AUDITOR = 'AUDITOR',
+  ADMIN = 'admin',
+  USER = 'user',
+  AUDITOR = 'auditor'
 }
 
 export const enum NotificationType {
@@ -26,15 +26,32 @@ export interface NotificationPreferences {
 }
 
 export interface User {
-  id: string;
-  name: string;
+  id: number;
+  username: string;
   email: string;
   role: UserRole;
-  team: string;
-  notifications?: any[];
-  createdAt?: string;
-  updatedAt?: string;
-  notificationPreferences?: NotificationPreferences;
+  firstName: string;
+  lastName: string;
+  department: string;
+  position: string;
+  phoneNumber: string;
+  isActive: boolean;
+  lastLogin: string;
+  createdAt: string;
+  updatedAt: string;
+  preferences: UserPreferences;
+  permissions: string[];
+}
+
+export interface UserPreferences {
+  theme: 'light' | 'dark';
+  language: string;
+  notifications: {
+    email: boolean;
+    push: boolean;
+    sms: boolean;
+  };
+  dashboardLayout: string;
 }
 
 export interface AuthState {
@@ -57,4 +74,33 @@ export interface RegisterData extends LoginCredentials {
 export interface AuthResponse {
   user: User;
   token: string;
+}
+
+export interface SystemSettings {
+  siteName: string;
+  maintenanceMode: boolean;
+  registrationEnabled: boolean;
+  defaultRole: UserRole;
+  passwordPolicy: {
+    minLength: number;
+    requireSpecialChar: boolean;
+    requireNumber: boolean;
+    requireUppercase: boolean;
+    requireLowercase: boolean;
+  };
+  sessionTimeout: number;
+  maxLoginAttempts: number;
+}
+
+export interface ProfileUpdateData {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phoneNumber?: string;
+  department?: string;
+  position?: string;
+  currentPassword?: string;
+  newPassword?: string;
+  confirmPassword?: string;
+  preferences?: Partial<UserPreferences>;
 } 

@@ -22,6 +22,8 @@ import {
   DialogContentText,
   DialogActions,
   Typography,
+  Stack,
+  Container,
 } from '@mui/material';
 import {
   Notifications as NotificationIcon,
@@ -37,6 +39,7 @@ import { useAppDispatch } from '../../store';
 import { updateUser } from '../../store/slices/authSlice';
 import { useUserContext } from '../../contexts/UserContext';
 import { NotificationType } from '../../types';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const Settings: React.FC = () => {
   const { currentUser } = useAuthContext();
@@ -44,10 +47,10 @@ const Settings: React.FC = () => {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const { setNotificationPreferences } = useUserContext();
+  const { theme, toggleTheme } = useTheme();
   
   const [settings, setSettings] = useState({
     emailNotifications: false,
-    darkMode: false,
     language: 'en',
     visibility: 'public',
     twoFactorAuth: false,
@@ -85,7 +88,7 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Container maxWidth="lg" sx={{ py: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
         <Typography variant="h4">Settings</Typography>
         <Button
@@ -148,8 +151,8 @@ const Settings: React.FC = () => {
                   <ListItemSecondaryAction>
                     <Switch
                       edge="end"
-                      checked={settings.darkMode}
-                      onChange={(e) => handleSettingChange('darkMode', e.target.checked)}
+                      checked={theme === 'dark'}
+                      onChange={toggleTheme}
                     />
                   </ListItemSecondaryAction>
                 </ListItem>
@@ -196,33 +199,43 @@ const Settings: React.FC = () => {
                     />
                   </ListItemSecondaryAction>
                 </ListItem>
-                <ListItem>
-                  <ListItemText primary="Notification Types" secondary="Select which types of notifications you want to receive" />
-                  <ListItemSecondaryAction>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Button
-                        variant={notifTypes.includes(NotificationType.Info) ? 'contained' : 'outlined'}
-                        onClick={() => handleNotifTypeChange(NotificationType.Info)}
-                      >Info</Button>
-                      <Button
-                        variant={notifTypes.includes(NotificationType.Success) ? 'contained' : 'outlined'}
-                        onClick={() => handleNotifTypeChange(NotificationType.Success)}
-                      >Success</Button>
-                      <Button
-                        variant={notifTypes.includes(NotificationType.Warning) ? 'contained' : 'outlined'}
-                        onClick={() => handleNotifTypeChange(NotificationType.Warning)}
-                      >Warning</Button>
-                      <Button
-                        variant={notifTypes.includes(NotificationType.Error) ? 'contained' : 'outlined'}
-                        onClick={() => handleNotifTypeChange(NotificationType.Error)}
-                      >Error</Button>
-                    </Box>
-                  </ListItemSecondaryAction>
+                <ListItem alignItems="flex-start" sx={{ alignItems: { xs: 'flex-start', sm: 'center' } }}>
+                  <Grid container alignItems="center" spacing={2}>
+                    <Grid item xs={12} sm={4} md={3}>
+                      <ListItemText primary="Notification Types" secondary="Select which types of notifications you want to receive" />
+                    </Grid>
+                    <Grid item xs={12} sm={8} md={9}>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                        <Button
+                          variant={notifTypes.includes(NotificationType.Info) ? 'contained' : 'outlined'}
+                          onClick={() => handleNotifTypeChange(NotificationType.Info)}
+                          sx={{ minWidth: 90 }}
+                        >Info</Button>
+                        <Button
+                          variant={notifTypes.includes(NotificationType.Success) ? 'contained' : 'outlined'}
+                          onClick={() => handleNotifTypeChange(NotificationType.Success)}
+                          sx={{ minWidth: 90 }}
+                        >Success</Button>
+                        <Button
+                          variant={notifTypes.includes(NotificationType.Warning) ? 'contained' : 'outlined'}
+                          onClick={() => handleNotifTypeChange(NotificationType.Warning)}
+                          sx={{ minWidth: 90 }}
+                        >Warning</Button>
+                        <Button
+                          variant={notifTypes.includes(NotificationType.Error) ? 'contained' : 'outlined'}
+                          onClick={() => handleNotifTypeChange(NotificationType.Error)}
+                          sx={{ minWidth: 90 }}
+                        >Error</Button>
+                      </Box>
+                    </Grid>
+                  </Grid>
                 </ListItem>
               </List>
-              <Button variant="contained" sx={{ mt: 2 }} onClick={handleSaveNotificationPrefs}>
-                Save Notification Preferences
-              </Button>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                <Button variant="contained" onClick={handleSaveNotificationPrefs}>
+                  Save Notification Preferences
+                </Button>
+              </Box>
             </CardContent>
           </Card>
         </Grid>
@@ -323,7 +336,7 @@ const Settings: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </Container>
   );
 };
 

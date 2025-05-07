@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const User = require('../models/UserSQL');
 const auth = require('../middleware/auth');
 const validator = require('validator');
 const rateLimit = require('express-rate-limit');
@@ -45,6 +45,7 @@ function validateUserInput({ username, password, email, firstName, lastName, rol
 router.post('/login', authLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
+    console.log('LOGIN ATTEMPT:', username);
 
     // Basic validation
     if (!username || !password) {
@@ -52,13 +53,15 @@ router.post('/login', authLimiter, async (req, res) => {
     }
 
     // Check if user exists
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ where: { username } });
+    console.log('USER FOUND:', !!user, user ? user.username : null, user ? user.password : null);
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
     // Validate password
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log('PASSWORD MATCH:', isMatch);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
@@ -189,6 +192,35 @@ router.get('/user', auth, async (req, res) => {
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Temporary route to create admin user
+router.post('/create-admin', async (req, res) => {
+  try {
+    const hashedPassword = await bcrypt.hash('admin123', 10);
+    const admin = await User.create({
+      username: 'admin',
+      email: 'admin@example.com',
+      password: hashedPassword,
+      role: 'ADMIN',
+      firstName: 'Admin',
+      lastName: 'User',
+      department: 'IT',
+      position: 'Administrator',
+      active: true,
+      settings: JSON.stringify({
+        emailNotifications: true,
+        darkMode: false,
+        language: 'en',
+        timezone: 'UTC'
+      }),
+      notifications: JSON.stringify([])
+    });
+    res.json({ message: 'Admin user created successfully', user: admin });
+  } catch (error) {
+    console.error('Error creating admin:', error);
+    res.status(500).json({ message: 'Error creating admin user', error: error.message });
   }
 });
 

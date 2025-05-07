@@ -215,7 +215,7 @@ const FindingCard: React.FC<FindingCardProps> = ({
         </Alert>
       )}
 
-      <Grid container spacing={2} alignItems="center">
+      <Grid container spacing={2}>
         <Grid item xs={1}>
           <input
             type="checkbox"
@@ -261,6 +261,43 @@ const FindingCard: React.FC<FindingCardProps> = ({
           />
         </Grid>
         <Grid item xs={12} sm={4}>
+          <TextField
+            label="Recommendation"
+            value={finding.recommendation}
+            onChange={(e) => handleUpdate('recommendation', e.target.value)}
+            fullWidth
+            multiline
+            minRows={2}
+            error={!finding.recommendation.trim()}
+            helperText={!finding.recommendation.trim() ? 'Recommendation is required' : ''}
+          />
+          <FormControl fullWidth sx={{ mt: 1 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={finding.status}
+              label="Status"
+              onChange={(e) => handleUpdate('status', e.target.value)}
+            >
+              <MenuItem value="Open">Open</MenuItem>
+              <MenuItem value="In Progress">In Progress</MenuItem>
+              <MenuItem value="Resolved">Resolved</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl fullWidth sx={{ mt: 1 }}>
+            <InputLabel>Assignee</InputLabel>
+            <Select
+              value={finding.assignee || ''}
+              label="Assignee"
+              onChange={(e) => handleUpdate('assignee', e.target.value)}
+            >
+              <MenuItem value="">Unassigned</MenuItem>
+              {users.map(u => (
+                <MenuItem key={u.id} value={u.name}>{u.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
+        <Grid item xs={12} sm={3}>
           <Tooltip title="Upload photo (max 5MB)">
             <Button
               variant="contained"
@@ -311,7 +348,7 @@ const FindingCard: React.FC<FindingCardProps> = ({
           {/* Display attachments */}
           {finding.attachments && finding.attachments.length > 0 && (
             <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {finding.attachments.map(att => (
+              {finding.attachments.map((att, idx) => (
                 <Box key={att.url} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   {att.type.startsWith('image/') ? (
                     <img src={att.url} alt={att.name} style={{ maxWidth: 80, maxHeight: 80, borderRadius: 4 }} />
@@ -320,6 +357,13 @@ const FindingCard: React.FC<FindingCardProps> = ({
                       <Button size="small" variant="outlined">{att.name}</Button>
                     </a>
                   )}
+                  <IconButton size="small" color="error" aria-label="Delete attachment" onClick={() => {
+                    const updated = [...(finding.attachments || [])];
+                    updated.splice(idx, 1);
+                    onUpdate('attachments', updated);
+                  }}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
                 </Box>
               ))}
             </Box>
@@ -344,57 +388,57 @@ const FindingCard: React.FC<FindingCardProps> = ({
               </IconButton>
             </Tooltip>
           </Box>
-          
-          {/* Approval Status & Actions */}
-          <Box sx={{ mb: 1 }}>
-            <Typography variant="subtitle2">Approval Status: <b>{finding.approvalStatus}</b></Typography>
-            {finding.approvalStatus === 'Draft' && currentUser.role === UserRole.AUDITOR && (
-              <Button size="small" color="primary" variant="outlined" sx={{ mr: 1 }} onClick={() => onSetApprovalStatus('Pending Review')}>
-                Submit for Review
-              </Button>
-            )}
-            {finding.approvalStatus === 'Pending Review' && currentUser.role === UserRole.MANAGER && (
-              <Button size="small" color="primary" variant="outlined" sx={{ mr: 1 }} onClick={() => onSetApprovalStatus('Manager Approval')}>
-                Manager Approve
-              </Button>
-            )}
-            {finding.approvalStatus === 'Manager Approval' && currentUser.role === UserRole.ADMIN && (
-              <Button size="small" color="primary" variant="outlined" sx={{ mr: 1 }} onClick={() => onSetApprovalStatus('Final Approval')}>
-                Final Approve
-              </Button>
-            )}
-            {finding.approvalStatus === 'Final Approval' && currentUser.role === UserRole.ADMIN && (
-              <Button size="small" color="success" variant="outlined" sx={{ mr: 1 }} onClick={() => onSetApprovalStatus('Approved')}>
-                Approve
-              </Button>
-            )}
-            {(['Pending Review', 'Manager Approval', 'Final Approval'] as string[]).includes(finding.approvalStatus) &&
-              (currentUser.role === UserRole.MANAGER || currentUser.role === UserRole.ADMIN) && (
-                <Button size="small" color="error" variant="outlined" onClick={() => onSetApprovalStatus('Rejected')}>
-                  Reject
-                </Button>
-            )}
-          </Box>
-
-          {/* Comments */}
-          <Box sx={{ mt: 2 }}>
-            <CommentsSection
-              comments={finding.comments}
-              onAddComment={handleAddComment}
-              onEditComment={handleEditComment}
-              onDeleteComment={handleDeleteComment}
-              currentUser={currentUser.name}
-              users={users}
-            />
-          </Box>
-
-          {/* Activity Log */}
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="subtitle2" gutterBottom>Activity Log</Typography>
-            <ActivityLog activityLog={finding.activityLog || []} />
-          </Box>
         </Grid>
       </Grid>
+
+      {/* Approval Status & Actions */}
+      <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+        <Typography variant="subtitle2">Approval Status: <b>{finding.approvalStatus}</b></Typography>
+        {finding.approvalStatus === 'Draft' && currentUser.role === UserRole.AUDITOR && (
+          <Button size="small" color="primary" variant="outlined" sx={{ mr: 1 }} onClick={() => onSetApprovalStatus('Pending Review')}>
+            Submit for Review
+          </Button>
+        )}
+        {finding.approvalStatus === 'Pending Review' && currentUser.role === UserRole.MANAGER && (
+          <Button size="small" color="primary" variant="outlined" sx={{ mr: 1 }} onClick={() => onSetApprovalStatus('Manager Approval')}>
+            Manager Approve
+          </Button>
+        )}
+        {finding.approvalStatus === 'Manager Approval' && currentUser.role === UserRole.ADMIN && (
+          <Button size="small" color="primary" variant="outlined" sx={{ mr: 1 }} onClick={() => onSetApprovalStatus('Final Approval')}>
+            Final Approve
+          </Button>
+        )}
+        {finding.approvalStatus === 'Final Approval' && currentUser.role === UserRole.ADMIN && (
+          <Button size="small" color="success" variant="outlined" sx={{ mr: 1 }} onClick={() => onSetApprovalStatus('Approved')}>
+            Approve
+          </Button>
+        )}
+        {(['Pending Review', 'Manager Approval', 'Final Approval'] as string[]).includes(finding.approvalStatus) &&
+          (currentUser.role === UserRole.MANAGER || currentUser.role === UserRole.ADMIN) && (
+            <Button size="small" color="error" variant="outlined" onClick={() => onSetApprovalStatus('Rejected')}>
+              Reject
+            </Button>
+        )}
+      </Box>
+
+      {/* Comments */}
+      <Box sx={{ mt: 2 }}>
+        <CommentsSection
+          comments={finding.comments}
+          onAddComment={handleAddComment}
+          onEditComment={handleEditComment}
+          onDeleteComment={handleDeleteComment}
+          currentUser={currentUser.name}
+          users={users}
+        />
+      </Box>
+
+      {/* Activity Log */}
+      <Box sx={{ mt: 2 }}>
+        <Typography variant="subtitle2" gutterBottom>Activity Log</Typography>
+        <ActivityLog activityLog={finding.activityLog || []} />
+      </Box>
 
       <Menu
         anchorEl={anchorEl}

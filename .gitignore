@@ -8,7 +8,7 @@ client/node_modules/
 /coverage
 
 # Production
-/build
+# /build
 client/build/
 
 # Misc

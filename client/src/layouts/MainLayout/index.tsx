@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Box,
@@ -14,6 +14,8 @@ import {
   MenuItem,
   Badge,
   Divider,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -27,26 +29,22 @@ import { useAuthContext } from '../../contexts/AuthContext';
 import Sidebar from './Sidebar';
 import NotificationsMenu from './NotificationsMenu';
 import { styled } from '@mui/material/styles';
+import { useNotificationContext } from '../../contexts/NotificationContext';
+import { useTheme as useThemeContext } from '../../contexts/ThemeContext';
+import NotificationListener from '../../components/NotificationListener';
 
 const drawerWidth = 240;
 
-const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
-  open?: boolean;
-}>(({ theme, open }) => ({
+const Main = styled('main')<{
+  sidebarwidth: number;
+}>(({ theme, sidebarwidth }) => ({
   flexGrow: 1,
   padding: theme.spacing(3),
   transition: theme.transitions.create('margin', {
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.leavingScreen,
   }),
-  marginLeft: `-${drawerWidth}px`,
-  ...(open && {
-    transition: theme.transitions.create('margin', {
-      easing: theme.transitions.easing.easeOut,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
-    marginLeft: 0,
-  }),
+  marginLeft: sidebarwidth,
 }));
 
 interface MainLayoutProps {
@@ -55,32 +53,38 @@ interface MainLayoutProps {
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [notificationsAnchor, setNotificationsAnchor] = useState<null | HTMLElement>(null);
+  const [profileAnchorEl, setProfileAnchorEl] = useState<null | HTMLElement>(null);
+  const [notificationsAnchorEl, setNotificationsAnchorEl] = useState<null | HTMLElement>(null);
   
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
   const { user, logout } = useAuthContext();
+  const { notifications, markAsRead } = useNotificationContext();
+  const [open, setOpen] = useState(false);
+  const [current, setCurrent] = useState<typeof notifications[0] | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const sidebarWidth = sidebarCollapsed ? 64 : drawerWidth;
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
+    setProfileAnchorEl(event.currentTarget);
   };
 
   const handleProfileMenuClose = () => {
-    setAnchorEl(null);
+    setProfileAnchorEl(null);
   };
 
   const handleNotificationsOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setNotificationsAnchor(event.currentTarget);
+    setNotificationsAnchorEl(event.currentTarget);
   };
 
   const handleNotificationsClose = () => {
-    setNotificationsAnchor(null);
+    setNotificationsAnchorEl(null);
   };
 
   const handleLogout = () => {
@@ -98,14 +102,39 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     navigate('/settings');
   };
 
+  useEffect(() => {
+    if (notifications.length > 0) {
+      setCurrent(notifications.find(n => !n.read) || notifications[0]);
+      setOpen(true);
+    }
+  }, [notifications]);
+
+  const handleClose = () => {
+    setOpen(false);
+    if (current) markAsRead(current.id);
+  };
+
+  const ThemeToggleButton = () => {
+    const { theme, toggleTheme } = useThemeContext();
+    return (
+      <IconButton color="inherit" onClick={toggleTheme} aria-label="toggle dark mode">
+        {theme === 'light' ? <span role="img" aria-label="dark">🌙</span> : <span role="img" aria-label="light">☀️</span>}
+      </IconButton>
+    );
+  };
+
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', overflowX: 'hidden' }}>
       <CssBaseline />
+      <NotificationListener />
       <AppBar
         position="fixed"
         sx={{
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
+          width: { sm: `calc(100% - ${sidebarWidth}px)` },
+          ml: { sm: `${sidebarWidth}px` },
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+          bgcolor: (theme) => theme.palette.mode === 'dark' ? theme.palette.background.paper : theme.palette.background.default,
+          transition: 'width 0.3s, margin-left 0.3s',
         }}
       >
         <Toolbar>
@@ -121,6 +150,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             SMDI Admin Panel
           </Typography>
+          <ThemeToggleButton />
           <IconButton color="inherit" onClick={handleNotificationsOpen}>
             <Badge badgeContent={0} color="error">
               <NotificationsIcon />
@@ -132,39 +162,39 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </Toolbar>
       </AppBar>
 
-      <Box
-        component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+      <Drawer
+        variant={isMobile ? 'temporary' : 'permanent'}
+        open={mobileOpen || !sidebarCollapsed}
+        onClose={handleDrawerToggle}
+        ModalProps={{ keepMounted: true }}
+        sx={{
+          '& .MuiDrawer-paper': {
+            boxSizing: 'border-box',
+            width: sidebarWidth,
+            borderRight: `1px solid ${theme.palette.divider}`,
+            boxShadow: sidebarCollapsed ? '2px 0 8px rgba(0,0,0,0.08)' : 'none',
+            transition: 'width 0.3s',
+            bgcolor: theme.palette.background.default,
+          },
+        }}
       >
-        <Drawer
-          variant={isMobile ? 'temporary' : 'permanent'}
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true, // Better open performance on mobile.
-          }}
-          sx={{
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: drawerWidth,
-            },
-          }}
-        >
-          <Sidebar />
-        </Drawer>
-      </Box>
+        <Sidebar collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
+      </Drawer>
 
-      <Main open={!isMobile}>
-        <Toolbar /> {/* Spacing for AppBar */}
+      <Main sidebarwidth={sidebarWidth} sx={{ flex: 1, transition: 'margin-left 0.3s' }}>
+        <Toolbar />
         {children}
       </Main>
 
       {/* Profile Menu */}
       <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
+        anchorEl={profileAnchorEl}
+        open={Boolean(profileAnchorEl)}
         onClose={handleProfileMenuClose}
         onClick={handleProfileMenuClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        PaperProps={{ sx: { minWidth: 'unset', width: 'auto', px: 0 } }}
       >
         <MenuItem onClick={handleProfileClick}>
           <AccountCircle sx={{ mr: 2 }} />
@@ -183,10 +213,21 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
       {/* Notifications Menu */}
       <NotificationsMenu
-        anchorEl={notificationsAnchor}
-        open={Boolean(notificationsAnchor)}
+        anchorEl={notificationsAnchorEl}
+        open={Boolean(notificationsAnchorEl)}
         onClose={handleNotificationsClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        PaperProps={{ sx: { minWidth: 'unset', width: 'auto', px: 0 } }}
       />
+
+      <Snackbar open={open && !!current} autoHideDuration={4000} onClose={handleClose} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        {current && (
+          <Alert onClose={handleClose} severity={current.type} sx={{ width: '100%' }}>
+            {current.message}
+          </Alert>
+        )}
+      </Snackbar>
     </Box>
   );
 };

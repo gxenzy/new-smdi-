@@ -24,6 +24,19 @@ import { saveAs } from 'file-saver';
 
 const steps = ['Lighting', 'HVAC', 'Envelope', 'Summary & Review'];
 
+type AuditSection = 'lighting' | 'hvac' | 'envelope';
+type AuditState = {
+  lighting: Finding[];
+  hvac: Finding[];
+  envelope: Finding[];
+  summary: string;
+};
+
+type NotificationType = 'info' | 'warning' | 'error' | 'success';
+type ApprovalStatus = 'Draft' | 'Pending Review' | 'Manager Approval' | 'Final Approval' | 'Approved' | 'Rejected';
+type FindingStatus = 'Open' | 'In Progress' | 'Resolved';
+type FindingSeverity = 'Low' | 'Medium' | 'High' | 'Critical';
+
 const EnergyAuditWizard: React.FC = () => {
   const { audit, setAudit, workflowStages, setWorkflowStages, reminderDays, escalationDays } = useEnergyAudit();
   const { users, currentUser } = useUserContext();
@@ -32,8 +45,8 @@ const EnergyAuditWizard: React.FC = () => {
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [selectedFindings, setSelectedFindings] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterSeverity, setFilterSeverity] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterSeverity, setFilterSeverity] = useState<FindingSeverity | ''>('');
+  const [filterStatus, setFilterStatus] = useState<FindingStatus | ''>('');
   const [filterAssignee, setFilterAssignee] = useState('');
 
   // Automated reminders for pending approvals
@@ -48,7 +61,7 @@ const EnergyAuditWizard: React.FC = () => {
         ) {
           addNotification({
             message: `Reminder: Finding in ${section.charAt(0).toUpperCase() + section.slice(1)} assigned to ${finding.assignee} is pending approval for more than ${reminderDays ?? 2} days!`,
-            type: 'warning',
+            type: 'warning' as NotificationType,
           });
         }
         if (
@@ -58,7 +71,7 @@ const EnergyAuditWizard: React.FC = () => {
         ) {
           addNotification({
             message: `Escalation: Finding in ${section.charAt(0).toUpperCase() + section.slice(1)} assigned to ${finding.assignee} is overdue for approval by more than ${escalationDays ?? 5} days!`,
-            type: 'error',
+            type: 'error' as NotificationType,
           });
         }
       });
@@ -66,8 +79,8 @@ const EnergyAuditWizard: React.FC = () => {
   }, [audit, addNotification, reminderDays, escalationDays]);
 
   // Add a new finding to a section
-  const addFinding = (section: keyof Omit<typeof audit, 'summary'>) => {
-    setAudit((prev) => ({
+  const addFinding = useCallback((section: AuditSection) => {
+    setAudit((prev: AuditState) => ({
       ...prev,
       [section]: [
         ...prev[section],
@@ -77,12 +90,12 @@ const EnergyAuditWizard: React.FC = () => {
           recommendation: '',
           createdAt: new Date().toISOString(),
           section,
-          severity: 'Medium',
+          severity: 'Medium' as FindingSeverity,
           estimatedCost: 0,
-          status: 'Open',
+          status: 'Open' as FindingStatus,
           assignee: '',
           comments: [],
-          approvalStatus: 'Draft',
+          approvalStatus: 'Draft' as ApprovalStatus,
           activityLog: [{
             id: Date.now().toString() + Math.random(),
             action: 'Created',
@@ -95,29 +108,29 @@ const EnergyAuditWizard: React.FC = () => {
     }));
     addNotification({
       message: `A new finding was added to ${section.charAt(0).toUpperCase() + section.slice(1)} by ${currentUser.name}.`,
-      type: 'info',
+      type: 'info' as NotificationType,
     });
-  };
+  }, [currentUser.name, setAudit, addNotification]);
 
   // Update a finding
-  const updateFinding = (
-    section: keyof Omit<typeof audit, 'summary'>,
+  const updateFinding = useCallback((
+    section: AuditSection,
     id: string,
     field: keyof Omit<Finding, 'id' | 'section' | 'createdAt' | 'comments'>,
-    value: any
+    value: FindingSeverity | FindingStatus | number | string
   ) => {
-    setAudit((prev) => {
+    setAudit((prev: AuditState) => {
       const prevFinding = prev[section].find(f => f.id === id);
       if (field === 'assignee' && value && value !== prevFinding?.assignee) {
         addNotification({
           message: `You have been assigned to a finding in ${section.charAt(0).toUpperCase() + section.slice(1)} by ${currentUser.name}.`,
-          type: 'info',
+          type: 'info' as NotificationType,
         });
       }
       if (field === 'status' && value && value !== prevFinding?.status) {
         addNotification({
           message: `Status of a finding in ${section.charAt(0).toUpperCase() + section.slice(1)} was changed to ${value} by ${currentUser.name}.`,
-          type: 'info',
+          type: 'info' as NotificationType,
         });
       }
       return {
@@ -142,18 +155,18 @@ const EnergyAuditWizard: React.FC = () => {
         ),
       };
     });
-  };
+  }, [currentUser.name, setAudit, addNotification]);
 
   // Handle photo upload
-  const handlePhotoUpload = (
-    section: keyof Omit<typeof audit, 'summary'>,
+  const handlePhotoUpload = useCallback((
+    section: AuditSection,
     id: string,
     file: File
   ) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const base64 = e.target?.result as string;
-      setAudit((prev) => ({
+      setAudit((prev: AuditState) => ({
         ...prev,
         [section]: prev[section].map((f) =>
           f.id === id ? { ...f, photo: base64 } : f
@@ -161,7 +174,7 @@ const EnergyAuditWizard: React.FC = () => {
       }));
     };
     reader.readAsDataURL(file);
-  };
+  }, [setAudit]);
 
   // Export to PDF
   const exportToPDF = () => {
@@ -251,9 +264,9 @@ const EnergyAuditWizard: React.FC = () => {
   };
 
   // Add a comment to a finding
-  const addComment = (section: keyof Omit<typeof audit, 'summary'>, id: string, text: string) => {
+  const addComment = useCallback((section: AuditSection, id: string, text: string) => {
     if (!text.trim()) return;
-    setAudit((prev) => ({
+    setAudit((prev: AuditState) => ({
       ...prev,
       [section]: prev[section].map((f) =>
         f.id === id
@@ -285,7 +298,7 @@ const EnergyAuditWizard: React.FC = () => {
     setCommentInputs((prev) => ({ ...prev, [id]: '' }));
     addNotification({
       message: `${currentUser.name} commented on a finding in ${section.charAt(0).toUpperCase() + section.slice(1)}.`,
-      type: 'info',
+      type: 'info' as NotificationType,
     });
 
     // Mention notifications
@@ -297,19 +310,19 @@ const EnergyAuditWizard: React.FC = () => {
       if (mentionedUser) {
         addNotification({
           message: `You were mentioned by ${currentUser.name} in a comment on a finding in ${section.charAt(0).toUpperCase() + section.slice(1)}.`,
-          type: 'info',
+          type: 'info' as NotificationType,
         });
       }
     }
-  };
+  }, [currentUser.name, users, setAudit, addNotification]);
 
   // Set approval status
-  const setApprovalStatus = (
-    section: keyof Omit<typeof audit, 'summary'>,
+  const setApprovalStatus = useCallback((
+    section: AuditSection,
     id: string,
-    status: string
+    status: ApprovalStatus
   ) => {
-    setAudit((prev) => ({
+    setAudit((prev: AuditState) => ({
       ...prev,
       [section]: prev[section].map((f) =>
         f.id === id ? { ...f, approvalStatus: status, activityLog: [
@@ -329,23 +342,23 @@ const EnergyAuditWizard: React.FC = () => {
     if (finding && finding.assignee) {
       addNotification({
         message: `Your finding in ${section.charAt(0).toUpperCase() + section.slice(1)} is now at stage: ${status} (by ${currentUser.name}).`,
-        type: status === 'Approved' ? 'success' : status === 'Rejected' ? 'warning' : 'info',
+        type: status === 'Approved' ? 'success' : status === 'Rejected' ? 'warning' : 'info' as NotificationType,
       });
     }
-  };
+  }, [currentUser.name, audit, setAudit, addNotification]);
 
   // Bulk action handlers
-  const handleSelectFinding = (id: string) => {
+  const handleSelectFinding = useCallback((id: string) => {
     setSelectedFindings((prev) => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]);
-  };
+  }, []);
 
-  const handleSelectAll = (section: keyof Omit<typeof audit, 'summary'>) => {
+  const handleSelectAll = useCallback((section: AuditSection) => {
     const allIds = audit[section].map(f => f.id);
     setSelectedFindings((prev) => prev.length === allIds.length ? [] : allIds);
-  };
+  }, [audit]);
 
-  const handleBulkApprove = (section: keyof Omit<typeof audit, 'summary'>, status: string) => {
-    setAudit((prev) => ({
+  const handleBulkApprove = useCallback((section: AuditSection, status: ApprovalStatus) => {
+    setAudit((prev: AuditState) => ({
       ...prev,
       [section]: prev[section].map(f =>
         selectedFindings.includes(f.id)
@@ -371,15 +384,15 @@ const EnergyAuditWizard: React.FC = () => {
       if (selectedFindings.includes(f.id) && f.assignee) {
         addNotification({
           message: `Your finding in ${section.charAt(0).toUpperCase() + section.slice(1)} was bulk moved to ${status} by ${currentUser.name}.`,
-          type: status === 'Approved' ? 'success' : status === 'Rejected' ? 'warning' : 'info',
+          type: status === 'Approved' ? 'success' : status === 'Rejected' ? 'warning' : 'info' as NotificationType,
         });
       }
     });
     setSelectedFindings([]);
-  };
+  }, [currentUser.name, audit, selectedFindings, setAudit, addNotification]);
 
   // Render section content
-  const renderSection = (section: keyof Omit<typeof audit, 'summary'>, label: string) => {
+  const renderSection = (section: AuditSection, label: string) => {
     // Filtered findings
     const findings = audit[section].filter(f => {
       const matchesSearch =
@@ -388,6 +401,12 @@ const EnergyAuditWizard: React.FC = () => {
       const matchesSeverity = filterSeverity ? f.severity === filterSeverity : true;
       const matchesStatus = filterStatus ? f.status === filterStatus : true;
       const matchesAssignee = filterAssignee ? f.assignee === filterAssignee : true;
+      
+      // Debug logging
+      console.log('Search term:', searchTerm);
+      console.log('Finding:', f);
+      console.log('Matches search:', matchesSearch);
+      
       return matchesSearch && matchesSeverity && matchesStatus && matchesAssignee;
     });
     return (
@@ -396,17 +415,21 @@ const EnergyAuditWizard: React.FC = () => {
         {/* Search & Filter Controls */}
         <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
           <TextField
-            label="Search"
+            label="Search Findings"
+            placeholder="Search in descriptions and recommendations..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             size="small"
-            sx={{ minWidth: 180 }}
+            sx={{ minWidth: 300 }}
+            InputProps={{
+              title: "Search through finding descriptions and recommendations"
+            }}
           />
           <TextField
             label="Severity"
             select
             value={filterSeverity}
-            onChange={e => setFilterSeverity(e.target.value)}
+            onChange={e => setFilterSeverity(e.target.value as FindingSeverity | '')}
             size="small"
             sx={{ minWidth: 120 }}
           >
@@ -420,7 +443,7 @@ const EnergyAuditWizard: React.FC = () => {
             label="Status"
             select
             value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value)}
+            onChange={e => setFilterStatus(e.target.value as FindingStatus | '')}
             size="small"
             sx={{ minWidth: 120 }}
           >
@@ -485,7 +508,7 @@ const EnergyAuditWizard: React.FC = () => {
             }}
             onPhotoUpload={(file) => handlePhotoUpload(section, finding.id, file)}
             onAddComment={(text) => addComment(section, finding.id, text)}
-            onSetApprovalStatus={(status) => setApprovalStatus(section, finding.id, status)}
+            onSetApprovalStatus={(status) => setApprovalStatus(section, finding.id, status as ApprovalStatus)}
             commentInput={commentInputs[finding.id] || ''}
             onCommentInputChange={(value) => setCommentInputs(prev => ({ ...prev, [finding.id]: value }))}
           />

@@ -32,6 +32,7 @@ import {
   LockOpen as UnlockIcon,
 } from '@mui/icons-material';
 import { User, UserRole } from '../../types';
+import { useSocket } from '../../contexts/SocketContext';
 
 interface UserData {
   id: string;
@@ -73,6 +74,8 @@ const UserManagement: React.FC = () => {
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [alertSeverity, setAlertSeverity] = useState<'success' | 'error'>('success');
+
+  const socket = useSocket();
 
   const handleAddUser = () => {
     setEditingUser(null);
@@ -144,8 +147,27 @@ const UserManagement: React.FC = () => {
   };
 
   useEffect(() => {
-    // If socket is needed, define it locally or mock it for now.
-  }, []);
+    socket.on('userActivity', (event) => {
+      if (event.action === 'created') {
+        setUsers(prev => [...prev, {
+          ...event.user,
+          id: event.user._id || event.user.id || Math.random().toString(36).substr(2, 9),
+          status: event.user.status || 'active',
+        }]);
+      } else if (event.action === 'updated') {
+        setUsers(prev => prev.map(user =>
+          user.id === (event.user._id || event.user.id) ? { ...user, ...event.user } : user
+        ));
+      }
+    });
+    socket.on('userDelete', (userId) => {
+      setUsers(prev => prev.filter(user => user.id !== userId && user._id !== userId));
+    });
+    return () => {
+      socket.off('userActivity');
+      socket.off('userDelete');
+    };
+  }, [socket]);
 
   return (
     <Box sx={{ p: 3 }}>

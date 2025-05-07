@@ -1,87 +1,137 @@
-# SMDI Energy Audit Platform
+# SMDI Admin Panel
 
-This is a web-based platform for managing energy audits, user teams, analytics, and workflow approvals. The project is built with a React frontend and Node.js backend.
+A full-stack web application for energy audit management and monitoring.
 
-## Features
+## Project Structure
 
-- User authentication and management
-- Energy audit data entry and analytics
-- Workflow approval system
-- Notification system
-- Team and role management
-- Admin dashboard and settings
+```
+/
+├── client/                 # React Frontend
+│   ├── src/
+│   │   ├── components/    # Reusable UI components
+│   │   ├── contexts/      # React context providers
+│   │   ├── pages/        # Page components
+│   │   ├── services/     # API service calls
+│   │   ├── store/        # Redux store
+│   │   └── types/        # TypeScript type definitions
+│   └── package.json      # Frontend dependencies
+│
+├── server/                # Node.js/Express Backend
+│   ├── models/           # Sequelize database models
+│   ├── routes/           # Express API routes
+│   ├── services/         # Business logic
+│   ├── middleware/       # Express middleware
+│   ├── server.js         # Main server file
+│   └── package.json      # Backend dependencies
+│
+├── nginx.conf            # Nginx configuration
+├── Dockerfile            # Docker configuration
+└── README.md            # This file
+```
 
-## Tech Stack
+## Prerequisites
 
-- **Frontend:** React, TypeScript, Material-UI
-- **Backend:** Node.js, Express
-- **Database:** (Add your DB here, e.g., PostgreSQL, MySQL, SQLite)
-- **State Management:** Redux Toolkit
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js (v16+ recommended)
+- Node.js >= 14.x
+- MySQL >= 8.0
 - npm or yarn
 
-### Installation
+## Setup Instructions
 
-1. Clone the repository:
-   ```sh
-   git clone https://github.com/gxenzy/new-smdi-.git
-   cd new-smdi-
+### Backend Setup
+
+1. Navigate to the server directory:
+   ```bash
+   cd server
    ```
 
-2. Install dependencies for the client:
-   ```sh
-   cd client
+2. Install dependencies:
+   ```bash
    npm install
    ```
 
-3. (If you have a server directory, add server setup instructions here.)
+3. Set up the database:
+   ```bash
+   mysql -u your_username -p < setup_database.sql
+   mysql -u your_username -p < create_database_and_tables.sql
+   mysql -u your_username -p < setup_energy_monitoring_tables.sql
+   ```
 
-### Running the App
+4. Create a .env file in the server directory:
+   ```
+   PORT=5000
+   DB_HOST=localhost
+   DB_USER=your_username
+   DB_PASS=your_password
+   DB_NAME=smdi_db
+   JWT_SECRET=your_jwt_secret
+   ```
 
-- **Frontend:**
-  ```sh
-  cd client
-  npm start
-  ```
+5. Start the backend server:
+   ```bash
+   npm run dev
+   ```
 
-- **Backend:**
-  ```sh
-  # Add backend start instructions here if applicable
-  ```
+### Frontend Setup
 
-### Database Setup
+1. Navigate to the client directory:
+   ```bash
+   cd client
+   ```
 
-- Run the provided SQL scripts to set up your database:
-  - `create_database_and_tables.sql`
-  - `setup_database.sql`
-  - `setup_energy_monitoring_tables.sql`
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-### Environment Variables
+3. Create a .env file in the client directory:
+   ```
+   REACT_APP_API_URL=http://localhost:5000/api
+   ```
 
-- Copy `.env.example` to `.env` and fill in your environment variables.
+4. Start the frontend development server:
+   ```bash
+   npm start
+   ```
 
-## Folder Structure
+The application will be available at http://localhost:3000
 
-```
-client/           # React frontend
-middleware/       # Express middleware
-models/           # Database models
-routes/           # API routes
-services/         # Service logic
-```
+## Features
+
+- User Authentication & Authorization
+- Energy Audit Management
+- Real-time Monitoring
+- Analytics & Reporting
+- User Management
+- Admin Settings
+- Profile Management
+
+## Technologies Used
+
+### Frontend
+- React
+- TypeScript
+- Material-UI
+- Redux Toolkit
+- Socket.io Client
+- Chart.js
+- Formik & Yup
+
+### Backend
+- Node.js
+- Express
+- MySQL
+- Sequelize ORM
+- Socket.io
+- JWT Authentication
+- bcrypt
 
 ## Contributing
 
-Pull requests are welcome! For major changes, please open an issue first to discuss what you would like to change.
+Please read CONTRIBUTING.md for details on our code of conduct and the process for submitting pull requests.
 
 ## License
 
-[MIT](LICENSE)
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
 

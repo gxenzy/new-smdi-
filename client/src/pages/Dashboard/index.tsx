@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Grid,
@@ -8,6 +8,7 @@ import {
   IconButton,
   LinearProgress,
   CardHeader,
+  CircularProgress,
 } from '@mui/material';
 import {
   ElectricBolt as ElectricIcon,
@@ -22,6 +23,7 @@ import { UserRole } from '../../types';
 import { useEnergyAudit } from '../EnergyAudit/EnergyAuditContext';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, PieChart, Pie, Cell, Legend, ResponsiveContainer } from 'recharts';
 import { useTheme } from '@mui/material/styles';
+import { useSocket } from '../../contexts/SocketContext';
 
 interface StatCardProps {
   title: string;
@@ -81,11 +83,23 @@ const Dashboard: React.FC = () => {
   const { currentUser } = useAuthContext();
   const { audit } = useEnergyAudit();
   const theme = useTheme();
+  const socket = useSocket();
+  const [findings, setFindings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [electricalProgress, setElectricalProgress] = useState(85);
   const [auditCount, setAuditCount] = useState(42);
   const [testingCount, setTestingCount] = useState(12);
   const [tamProgress, setTamProgress] = useState(78);
+  const [severityData, setSeverityData] = useState(audit.lighting.map(f => ({
+    severity: f.severity,
+    count: 1
+  })));
+  const [statusData, setStatusData] = useState(audit.lighting.map(f => ({
+    status: f.status,
+    count: 1
+  })));
 
   const canAccessElectrical = currentUser?.role === UserRole.ADMIN;
   const canAccessAudit = currentUser?.role === UserRole.ADMIN;
@@ -96,17 +110,79 @@ const Dashboard: React.FC = () => {
   const canViewSettings = currentUser?.role === UserRole.ADMIN;
   const canViewAnalytics = currentUser?.role === UserRole.ADMIN;
 
-  // Analytics data
-  const allFindings = [...audit.lighting, ...audit.hvac, ...audit.envelope];
+  useEffect(() => {
+    setSeverityData(audit.lighting.map(f => ({
+      severity: f.severity,
+      count: 1
+    })));
+    setStatusData(audit.lighting.map(f => ({
+      status: f.status,
+      count: 1
+    })));
+  }, [audit]);
+
+  useEffect(() => {
+    socket.on('chartUpdate', (update) => {
+      setSeverityData(prev => prev.map(d =>
+        d.severity === update.category ? { ...d, count: update.findings } : d
+      ));
+      // If you want to update statusData, add similar logic here
+    });
+    return () => {
+      socket.off('chartUpdate');
+    };
+  }, [socket]);
+
+  // Fetch findings from backend
+  const fetchFindings = () => {
+    setLoading(true);
+    setError(null);
+    fetch('/api/findings')
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch findings');
+        return res.json();
+      })
+      .then(data => {
+        setFindings(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err.message);
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchFindings();
+    socket.on('findingUpdate', fetchFindings);
+    socket.on('findingDelete', fetchFindings);
+    return () => {
+      socket.off('findingUpdate', fetchFindings);
+      socket.off('findingDelete', fetchFindings);
+    };
+  }, [socket]);
+
+  // Chart data
   const severityCounts = ['Low', 'Medium', 'High', 'Critical'].map(sev => ({
     severity: sev,
-    count: allFindings.filter(f => f.severity === sev).length
+    count: findings.filter(f => f.severity === sev).length
   }));
   const statusCounts = ['Open', 'In Progress', 'Resolved'].map(status => ({
     status,
-    count: allFindings.filter(f => f.status === status).length
+    count: findings.filter(f => f.status === status).length
   }));
+
+  // Analytics data
+  const allFindings = [...audit.lighting, ...audit.hvac, ...audit.envelope];
   const statusColors = [theme.palette.info.main, theme.palette.warning.main, theme.palette.success.main];
+
+  // Debug output
+  console.log('allFindings', allFindings);
+  console.log('severityCounts', severityCounts);
+  console.log('statusCounts', statusCounts);
+
+  if (loading) return <Box p={3}><CircularProgress /></Box>;
+  if (error) return <Box p={3}><Typography color="error">{error}</Typography></Box>;
 
   return (
     <Box sx={{ p: 3 }}>
@@ -170,14 +246,20 @@ const Dashboard: React.FC = () => {
           <Card>
             <CardHeader title="Findings by Severity" />
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={severityCounts} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
-                  <XAxis dataKey="severity" />
-                  <YAxis allowDecimals={false} />
-                  <RechartsTooltip />
-                  <Bar dataKey="count" fill={theme.palette.primary.main} />
-                </BarChart>
-              </ResponsiveContainer>
+              {severityCounts.length === 0 ? (
+                <Box display="flex" justifyContent="center" alignItems="center" height={250}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={severityCounts} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
+                    <XAxis dataKey="severity" />
+                    <YAxis allowDecimals={false} />
+                    <RechartsTooltip />
+                    <Bar dataKey="count" fill={theme.palette.primary.main} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
         </Grid>
@@ -185,17 +267,23 @@ const Dashboard: React.FC = () => {
           <Card>
             <CardHeader title="Findings by Status" />
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie data={statusCounts} dataKey="count" nameKey="status" cx="50%" cy="50%" outerRadius={80} label>
-                    {statusCounts.map((entry, idx) => (
-                      <Cell key={`cell-${idx}`} fill={statusColors[idx % statusColors.length]} />
-                    ))}
-                  </Pie>
-                  <Legend />
-                  <RechartsTooltip />
-                </PieChart>
-              </ResponsiveContainer>
+              {statusCounts.length === 0 ? (
+                <Box display="flex" justifyContent="center" alignItems="center" height={250}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie data={statusCounts} dataKey="count" nameKey="status" cx="50%" cy="50%" outerRadius={80} label>
+                      {statusCounts.map((entry, idx) => (
+                        <Cell key={`cell-${idx}`} fill={statusColors[idx % statusColors.length]} />
+                      ))}
+                    </Pie>
+                    <Legend />
+                    <RechartsTooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
         </Grid>

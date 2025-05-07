@@ -26,12 +26,14 @@ interface NotificationsMenuProps {
   anchorEl: null | HTMLElement;
   open: boolean;
   onClose: () => void;
+  [key: string]: any;
 }
 
 const NotificationsMenu: React.FC<NotificationsMenuProps> = ({
   anchorEl,
   open,
   onClose,
+  ...props
 }) => {
   const { notifications, markAsRead, markAllAsRead } = useNotificationContext();
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -102,6 +104,7 @@ const NotificationsMenu: React.FC<NotificationsMenuProps> = ({
       }}
       transformOrigin={{ horizontal: 'right', vertical: 'top' }}
       anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+      {...props}
     >
       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>

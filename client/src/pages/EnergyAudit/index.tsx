@@ -18,6 +18,9 @@ import EnergyAuditSchedule from './EnergyAuditSchedule';
 import UserTeamManagement from './UserTeamManagement';
 import EnergyAuditCalendar from './EnergyAuditCalendar';
 import MyTasksDashboard from './MyTasksDashboard';
+import { useSocket } from '../../contexts/SocketContext';
+import { useAuthContext } from '../../contexts/AuthContext';
+import { EnergyAuditHistoryProvider } from './EnergyAuditHistoryContext';
 
 interface TabPanelProps {
     children?: React.ReactNode;
@@ -47,10 +50,47 @@ function TabPanel(props: TabPanelProps) {
 
 const EnergyAudit = () => {
     const [tabValue, setTabValue] = useState(0);
+    const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+    const socket = useSocket();
+    const { currentUser } = useAuthContext();
 
     const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
         setTabValue(newValue);
     };
+
+    // User presence tracking
+    React.useEffect(() => {
+        if (currentUser?.id) {
+            socket.emit('userOnline', currentUser.id);
+        }
+        socket.on('onlineUsers', (users) => {
+            setOnlineUsers(users);
+        });
+        return () => {
+            socket.off('onlineUsers');
+        };
+    }, [socket, currentUser]);
+
+    // Real-time energy audit updates (example)
+    React.useEffect(() => {
+        socket.on('energyAuditUpdate', (newAudit) => {
+            // TODO: update audit state/context as needed
+            console.log('Real-time audit update:', newAudit);
+        });
+        socket.on('energyAuditDelete', (auditId) => {
+            // TODO: update audit state/context as needed
+            console.log('Real-time audit delete:', auditId);
+        });
+        socket.on('activityLog', (activity) => {
+            // TODO: update activity log state/context as needed
+            console.log('Real-time activity log:', activity);
+        });
+        return () => {
+            socket.off('energyAuditUpdate');
+            socket.off('energyAuditDelete');
+            socket.off('activityLog');
+        };
+    }, [socket]);
 
     return (
         <UserProvider>
@@ -61,6 +101,12 @@ const EnergyAudit = () => {
                             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <Typography variant="h4" gutterBottom>Energy Audit</Typography>
                                 <NotificationBell />
+                            </Box>
+                            {/* Online users display */}
+                            <Box sx={{ mb: 2 }}>
+                                <Typography variant="body2" color="textSecondary">
+                                    Online Users: {onlineUsers.join(', ')}
+                                </Typography>
                             </Box>
                             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
                                 <Tabs value={tabValue} onChange={handleTabChange}>
@@ -78,13 +124,17 @@ const EnergyAudit = () => {
                                 <EnergyAuditTables />
                             </TabPanel>
                             <TabPanel value={tabValue} index={1}>
-                                <EnergyAuditTesting />
+                                <EnergyAuditHistoryProvider>
+                                    <EnergyAuditTesting />
+                                </EnergyAuditHistoryProvider>
                             </TabPanel>
                             <TabPanel value={tabValue} index={2}>
                                 <EnergyAuditWizard />
                             </TabPanel>
                             <TabPanel value={tabValue} index={3}>
-                                <EnergyAuditAnalytics />
+                                <EnergyAuditHistoryProvider>
+                                    <EnergyAuditAnalytics />
+                                </EnergyAuditHistoryProvider>
                             </TabPanel>
                             <TabPanel value={tabValue} index={4}>
                                 <EnergyAuditSchedule />

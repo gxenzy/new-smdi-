@@ -72,10 +72,73 @@ interface EnergyAuditContextType {
 }
 
 const defaultAudit: AuditData = {
-  lighting: [],
-  hvac: [],
-  envelope: [],
-  summary: '',
+  lighting: [
+    {
+      id: '1',
+      description: 'Broken light fixture in Room 101',
+      recommendation: 'Replace the light fixture with an energy-efficient LED model',
+      createdAt: new Date().toISOString(),
+      section: 'lighting',
+      severity: 'Medium',
+      estimatedCost: 150,
+      status: 'Open',
+      assignee: '',
+      comments: [],
+      approvalStatus: 'Draft',
+      activityLog: [{
+        id: '1',
+        action: 'Created',
+        user: 'System',
+        timestamp: new Date().toISOString(),
+        details: 'Finding created'
+      }]
+    }
+  ],
+  hvac: [
+    {
+      id: '2',
+      description: 'HVAC system needs maintenance',
+      recommendation: 'Schedule regular maintenance for the HVAC system',
+      createdAt: new Date().toISOString(),
+      section: 'hvac',
+      severity: 'High',
+      estimatedCost: 500,
+      status: 'Open',
+      assignee: '',
+      comments: [],
+      approvalStatus: 'Draft',
+      activityLog: [{
+        id: '2',
+        action: 'Created',
+        user: 'System',
+        timestamp: new Date().toISOString(),
+        details: 'Finding created'
+      }]
+    }
+  ],
+  envelope: [
+    {
+      id: '3',
+      description: 'Window seal damage in Office 3',
+      recommendation: 'Repair window seals to prevent energy loss',
+      createdAt: new Date().toISOString(),
+      section: 'envelope',
+      severity: 'Low',
+      estimatedCost: 200,
+      status: 'Open',
+      assignee: '',
+      comments: [],
+      approvalStatus: 'Draft',
+      activityLog: [{
+        id: '3',
+        action: 'Created',
+        user: 'System',
+        timestamp: new Date().toISOString(),
+        details: 'Finding created'
+      }]
+    }
+  ],
+  summary: ''
 };
 
 const EnergyAuditContext = createContext<EnergyAuditContextType | undefined>(undefined);

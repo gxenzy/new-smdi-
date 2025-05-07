@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -14,6 +14,7 @@ import {
   TextField,
 } from '@mui/material';
 import { saveAs } from 'file-saver';
+import { useSocket } from '../../../contexts/SocketContext';
 
 export interface ActivityLogEntry {
   id: string;
@@ -31,11 +32,32 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activityLog }) => {
   const [userFilter, setUserFilter] = useState('');
   const [actionFilter, setActionFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [liveLog, setLiveLog] = useState<ActivityLogEntry[]>(activityLog);
+  const socket = useSocket();
 
-  const users = Array.from(new Set(activityLog.map(log => log.user)));
-  const actions = Array.from(new Set(activityLog.map(log => log.action)));
+  useEffect(() => {
+    setLiveLog(activityLog);
+  }, [activityLog]);
 
-  const filteredLog = activityLog.filter(log => {
+  useEffect(() => {
+    socket.on('activityLog', (activity) => {
+      setLiveLog(prev => [{
+        id: activity._id || activity.id || String(Date.now()),
+        action: activity.action,
+        user: activity.userId || activity.user,
+        details: activity.details,
+        timestamp: activity.timestamp || new Date().toISOString(),
+      }, ...prev]);
+    });
+    return () => {
+      socket.off('activityLog');
+    };
+  }, [socket]);
+
+  const users = Array.from(new Set(liveLog.map(log => log.user)));
+  const actions = Array.from(new Set(liveLog.map(log => log.action)));
+
+  const filteredLog = liveLog.filter(log => {
     const matchesUser = userFilter ? log.user === userFilter : true;
     const matchesAction = actionFilter ? log.action === actionFilter : true;
     const matchesDate = dateFilter ? log.timestamp.slice(0, 10) === dateFilter : true;
