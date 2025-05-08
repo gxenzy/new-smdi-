@@ -1,30 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, Grid, Button, List, ListItem, ListItemText, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, MenuItem, Avatar } from '@mui/material';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { User, UserRole } from '../../types';
 
-interface User {
-  _id?: string;
-  username: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
+interface UserWithId extends User {
+  _id: string;
   profileImage?: string;
-  active?: boolean;
-  createdAt?: string;
 }
 
-const roleOptions = ['ADMIN', 'MODERATOR', 'STAFF', 'USER'];
+const roleOptions = Object.values(UserRole);
 
 const UserDashboard: React.FC = () => {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserWithId[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [createUser, setCreateUser] = useState<Partial<User>>({ role: 'USER' });
+  const [createUser, setCreateUser] = useState<Partial<UserWithId>>({ role: UserRole.VIEWER });
   const [createPassword, setCreatePassword] = useState('');
   const [creating, setCreating] = useState(false);
-  const [editUser, setEditUser] = useState<User | null>(null);
-  const [editFields, setEditFields] = useState<Partial<User>>({});
+  const [editUser, setEditUser] = useState<UserWithId | null>(null);
+  const [editFields, setEditFields] = useState<Partial<UserWithId>>({});
   const [editPassword, setEditPassword] = useState('');
   const [editLoading, setEditLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
@@ -78,7 +72,7 @@ const UserDashboard: React.FC = () => {
       })
       .then(() => {
         setSnackbar({ open: true, message: 'User created!', severity: 'success' });
-        setCreateUser({ role: 'USER' });
+        setCreateUser({ role: UserRole.VIEWER });
         setCreatePassword('');
         fetchUsers();
       })
@@ -87,7 +81,7 @@ const UserDashboard: React.FC = () => {
   };
 
   // Edit
-  const openEdit = (user: User) => {
+  const openEdit = (user: UserWithId) => {
     setEditUser(user);
     setEditFields({ ...user });
     setEditPassword('');
@@ -114,7 +108,7 @@ const UserDashboard: React.FC = () => {
   };
 
   // Delete
-  const handleDelete = (user: User) => {
+  const handleDelete = (user: UserWithId) => {
     setDeleteLoading(user._id || '');
     fetch(`/api/users/${user._id}`, { method: 'DELETE' })
       .then(res => {
@@ -127,6 +121,15 @@ const UserDashboard: React.FC = () => {
       })
       .catch(err => setSnackbar({ open: true, message: err.message, severity: 'error' }))
       .finally(() => setDeleteLoading(null));
+  };
+
+  const handleRoleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, isEdit = false) => {
+    const newRole = e.target.value as UserRole;
+    if (isEdit) {
+      setEditFields(f => ({ ...f, role: newRole }));
+    } else {
+      setCreateUser(u => ({ ...u, role: newRole }));
+    }
   };
 
   if (loading) return <LoadingSpinner />;
@@ -144,7 +147,7 @@ const UserDashboard: React.FC = () => {
           <TextField label="First Name" value={createUser.firstName || ''} onChange={e => setCreateUser(u => ({ ...u, firstName: e.target.value }))} size="small" />
           <TextField label="Last Name" value={createUser.lastName || ''} onChange={e => setCreateUser(u => ({ ...u, lastName: e.target.value }))} size="small" />
           <TextField label="Password" type="password" value={createPassword} onChange={e => setCreatePassword(e.target.value)} size="small" />
-          <TextField select label="Role" value={createUser.role || 'USER'} onChange={e => setCreateUser(u => ({ ...u, role: e.target.value }))} size="small">
+          <TextField select label="Role" value={createUser.role || UserRole.VIEWER} onChange={e => handleRoleChange(e)} size="small">
             {roleOptions.map(role => <MenuItem key={role} value={role}>{role}</MenuItem>)}
           </TextField>
           <Button variant="contained" color="primary" onClick={handleCreate} disabled={creating || !createUser.username || !createUser.email || !createUser.firstName || !createUser.lastName || !createPassword}>
@@ -173,7 +176,7 @@ const UserDashboard: React.FC = () => {
                       <>
                         <span>Email: {user.email}</span><br />
                         <span>Role: {user.role}</span><br />
-                        <span>Status: {user.active ? 'Active' : 'Inactive'}</span><br />
+                        <span>Status: {user.isActive ? 'Active' : 'Inactive'}</span><br />
                         {user.createdAt && <span>Created: {new Date(user.createdAt).toLocaleDateString()}</span>}
                       </>
                     }
@@ -193,7 +196,7 @@ const UserDashboard: React.FC = () => {
           <TextField label="First Name" value={editFields.firstName || ''} onChange={e => setEditFields(f => ({ ...f, firstName: e.target.value }))} />
           <TextField label="Last Name" value={editFields.lastName || ''} onChange={e => setEditFields(f => ({ ...f, lastName: e.target.value }))} />
           <TextField label="Password (leave blank to keep)" type="password" value={editPassword} onChange={e => setEditPassword(e.target.value)} />
-          <TextField select label="Role" value={editFields.role || 'USER'} onChange={e => setEditFields(f => ({ ...f, role: e.target.value }))}>
+          <TextField select label="Role" value={editFields.role || UserRole.VIEWER} onChange={e => handleRoleChange(e, true)}>
             {roleOptions.map(role => <MenuItem key={role} value={role}>{role}</MenuItem>)}
           </TextField>
         </DialogContent>

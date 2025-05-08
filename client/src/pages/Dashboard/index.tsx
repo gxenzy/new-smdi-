@@ -12,6 +12,9 @@ import {
   Paper,
   useTheme,
   useMediaQuery,
+  Alert,
+  Snackbar,
+  Button,
 } from '@mui/material';
 import {
   ElectricBolt as ElectricIcon,
@@ -48,34 +51,46 @@ const StatCard: React.FC<StatCardProps> = ({
   onClick,
   color,
 }) => (
-  <Card sx={{ height: '100%' }}>
+  <Card 
+    sx={{ 
+      height: '100%', 
+      cursor: onClick ? 'pointer' : 'default',
+      transition: 'transform 0.2s',
+      '&:hover': onClick ? { transform: 'translateY(-4px)' } : {}
+    }}
+    onClick={onClick}
+  >
     <CardContent>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <Box>
-          <Typography color="textSecondary" gutterBottom>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h6" color="textSecondary">
             {title}
           </Typography>
-          <Typography variant="h4" component="div">
-            {value}
-          </Typography>
-        </Box>
         <Box sx={{ color }}>
           {icon}
         </Box>
       </Box>
+      <Typography variant="h4" component="div" sx={{ mb: 1 }}>
+        {value}
+      </Typography>
+      {progress !== undefined && (
+        <Box sx={{ width: '100%', mt: 2 }}>
+          <LinearProgress 
+            variant="determinate" 
+            value={progress} 
+            sx={{ 
+              height: 8, 
+              borderRadius: 4,
+              backgroundColor: 'rgba(0, 0, 0, 0.1)',
+              '& .MuiLinearProgress-bar': {
+                backgroundColor: color
+              }
+            }} 
+          />
+        </Box>
+      )}
     </CardContent>
   </Card>
 );
-
-// Sample data - replace with real data from your API
-const energyData = [
-  { name: 'Jan', value: 4000 },
-  { name: 'Feb', value: 3000 },
-  { name: 'Mar', value: 2000 },
-  { name: 'Apr', value: 2780 },
-  { name: 'May', value: 1890 },
-  { name: 'Jun', value: 2390 },
-];
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -87,6 +102,15 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // State for real data
+  const [totalEnergyUsage, setTotalEnergyUsage] = useState<number | null>(null);
+  const [activeUsers, setActiveUsers] = useState<number | null>(null);
+  const [auditsCompleted, setAuditsCompleted] = useState<number | null>(null);
+  const [alerts, setAlerts] = useState<number | null>(null);
+  const [energyTrend, setEnergyTrend] = useState<{ name: string; value: number }[]>([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [dateRange, setDateRange] = useState<{ start: string; end: string } | null>(null);
 
   const [electricalProgress, setElectricalProgress] = useState(85);
   const [auditCount, setAuditCount] = useState(42);
@@ -193,74 +217,168 @@ const Dashboard: React.FC = () => {
   console.log('severityCounts', severityCounts);
   console.log('statusCounts', statusCounts);
 
-  if (loading) return <Box p={3}><CircularProgress /></Box>;
-  if (error) return <Box p={3}><Typography color="error">{error}</Typography></Box>;
+  // Fetch dashboard data from backend
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      // Fetch all dashboard data in parallel
+      const [energyRes, usersRes, auditsRes, alertsRes, trendRes, activityRes] = await Promise.all([
+        fetch(`${process.env.REACT_APP_API_URL}/api/dashboard/energy-usage/total`, { headers }),
+        fetch(`${process.env.REACT_APP_API_URL}/api/dashboard/users/active`, { headers }),
+        fetch(`${process.env.REACT_APP_API_URL}/api/dashboard/audits/completed`, { headers }),
+        fetch(`${process.env.REACT_APP_API_URL}/api/dashboard/alerts/count`, { headers }),
+        fetch(`${process.env.REACT_APP_API_URL}/api/dashboard/energy-usage/trend`, { headers }),
+        fetch(`${process.env.REACT_APP_API_URL}/api/dashboard/activity/recent`, { headers }),
+      ]);
+
+      // Check for errors in responses
+      const responses = [energyRes, usersRes, auditsRes, alertsRes, trendRes, activityRes];
+      const errors = responses.filter(res => !res.ok);
+      if (errors.length > 0) {
+        throw new Error('One or more API requests failed');
+      }
+
+      // Parse responses
+      const [energyData, usersData, auditsData, alertsData, trendData, activityData] = await Promise.all(
+        responses.map(res => res.json())
+      );
+
+      setTotalEnergyUsage(energyData.total);
+      setActiveUsers(usersData.count);
+      setAuditsCompleted(auditsData.count);
+      setAlerts(alertsData.count);
+      setEnergyTrend(trendData.trend);
+      setRecentActivity(activityData.activity);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load dashboard data');
+      setSnackbar({
+        open: true,
+        message: err.message || 'Failed to load dashboard data',
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+
+    // Set up real-time updates via socket
+    if (socket) {
+      socket.on('dashboardUpdate', fetchDashboardData);
+      return () => {
+        socket.off('dashboardUpdate', fetchDashboardData);
+      };
+    }
+  }, [token, socket]);
+
+  // Trend indicators (dummy logic, replace with real trend calculation)
+  const trendUp = (curr: number | null, prev: number | null) => curr !== null && prev !== null && curr > prev;
+  const trendDown = (curr: number | null, prev: number | null) => curr !== null && prev !== null && curr < prev;
+
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button variant="contained" onClick={fetchDashboardData}>
+          Retry
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2, sm: 3 } }}>
       <Typography variant="h4" gutterBottom sx={{ mb: 4 }}>
         Dashboard Overview
       </Typography>
-
+      {/* Filters */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="subtitle1">Date Range:</Typography>
+        {/* Add your date range picker here and update setDateRange */}
+      </Box>
       <Grid container spacing={3}>
         {/* Stats Cards */}
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Total Energy Usage"
-            value="24,500 kWh"
+            value={typeof totalEnergyUsage === 'number' ? `${totalEnergyUsage.toLocaleString()} kWh` : '--'}
             icon={<TrendingUp sx={{ fontSize: 40 }} />}
             color={theme.palette.primary.main}
+            onClick={() => navigate('/energy-audit/analytics')}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Active Users"
-            value="156"
+            value={activeUsers !== null ? activeUsers : '--'}
             icon={<People sx={{ fontSize: 40 }} />}
             color={theme.palette.success.main}
+            onClick={() => navigate('/users')}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Audits Completed"
-            value="45"
+            value={auditsCompleted !== null ? auditsCompleted : '--'}
             icon={<AuditIcon sx={{ fontSize: 40 }} />}
             color={theme.palette.info.main}
+            onClick={() => navigate('/energy-audit')}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Alerts"
-            value="3"
+            value={alerts !== null ? alerts : '--'}
             icon={<Warning sx={{ fontSize: 40 }} />}
             color={theme.palette.error.main}
+            onClick={() => navigate('/admin')}
           />
         </Grid>
-
         {/* Energy Usage Chart */}
         <Grid item xs={12} md={8}>
           <Card>
             <CardHeader
               title="Energy Usage Trend"
               action={
-                <IconButton aria-label="settings">
-                  <MoreVert />
+                <IconButton onClick={() => navigate('/energy-audit/analytics')}>
+                  <ArrowIcon />
                 </IconButton>
               }
             />
             <CardContent>
               <Box sx={{ height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={energyData}>
+                  <LineChart data={energyTrend}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" />
                     <YAxis />
                     <Tooltip />
+                    <Legend />
                     <Line
                       type="monotone"
                       dataKey="value"
                       stroke={theme.palette.primary.main}
-                      strokeWidth={2}
+                      name="Energy Usage (kWh)"
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -268,7 +386,6 @@ const Dashboard: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-
         {/* Recent Activity */}
         <Grid item xs={12} md={4}>
           <Card sx={{ height: '100%' }}>
@@ -282,44 +399,62 @@ const Dashboard: React.FC = () => {
             />
             <CardContent>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {[1, 2, 3].map((item) => (
-                  <Paper
-                    key={item}
-                    sx={{
-                      p: 2,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2,
-                      bgcolor: theme.palette.background.default,
-                    }}
-                  >
-                    <Box
+                {recentActivity.length === 0 ? (
+                  <Typography variant="body2" color="textSecondary">No recent activity.</Typography>
+                ) : (
+                  recentActivity.map((activity, idx) => (
+                    <Paper
+                      key={activity.id || idx}
                       sx={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: '50%',
-                        bgcolor: theme.palette.primary.main,
+                        p: 2,
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
+                        gap: 2,
+                        bgcolor: theme.palette.background.default,
                       }}
                     >
-                      {item}
-                    </Box>
-                    <Box>
-                      <Typography variant="subtitle2">Activity {item}</Typography>
-                      <Typography variant="body2" color="textSecondary">
-                        Description of activity {item}
-                      </Typography>
-                    </Box>
-                  </Paper>
-                ))}
+                      <Box
+                        sx={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: '50%',
+                          bgcolor: theme.palette.primary.main,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                        }}
+                      >
+                        {idx + 1}
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2">{activity.title || activity.action}</Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          {activity.description || activity.details || ''}
+                        </Typography>
+                      </Box>
+                    </Paper>
+                  ))
+                )}
               </Box>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

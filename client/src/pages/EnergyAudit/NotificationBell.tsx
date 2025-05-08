@@ -20,7 +20,12 @@ const NotificationBell: React.FC = () => {
           <NotificationsIcon />
         </Badge>
       </IconButton>
-      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        container={document.body}
+        disablePortal={false}
+      >
         <MenuItem disabled>
           <Typography variant="subtitle2">Notifications</Typography>
         </MenuItem>

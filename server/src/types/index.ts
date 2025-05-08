@@ -3,9 +3,9 @@ import { ResultSetHeader, RowDataPacket } from 'mysql2';
 export type QueryResult<T = RowDataPacket> = [T[], ResultSetHeader];
 
 export enum UserRole {
-  ADMIN = 'admin',
-  AUDITOR = 'auditor',
-  USER = 'user'
+  ADMIN = 'ADMIN',
+  MANAGER = 'MANAGER',
+  USER = 'USER'
 }
 
 export interface User extends RowDataPacket {

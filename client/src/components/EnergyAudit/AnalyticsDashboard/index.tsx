@@ -1,18 +1,17 @@
 import React, { useState } from 'react';
 import { Box, Typography, Paper, Grid, List, ListItem, ListItemText, Button, Snackbar, Alert } from '@mui/material';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from 'recharts';
-import { Finding } from '../../../pages/EnergyAudit/EnergyAuditContext';
-import { ActivityLogEntry } from '../ActivityLog';
+import { Finding, ActivityLogEntry } from '../../../types/energy-audit';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { saveAs } from 'file-saver';
 
-interface AnalyticsDashboardProps {
+interface Props {
   findings: Finding[];
   activityLog: ActivityLogEntry[];
 }
 
-const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ findings, activityLog }) => {
+const AnalyticsDashboard: React.FC<Props> = ({ findings, activityLog }) => {
   // Most active users (by comment count)
   const userCommentCounts: Record<string, number> = {};
   findings.forEach(finding => {

@@ -7,11 +7,10 @@ import { User, UserRole } from '../types';
 // Lazy load components
 const Login = lazy(() => import('../pages/Login'));
 const Dashboard = lazy(() => import('../pages/Dashboard'));
-const ElectricalSystem = lazy(() => import('../pages/ElectricalSystem'));
+// const ElectricalSystem = lazy(() => import('../pages/ElectricalSystem'));
 const EnergyAudit = lazy(() => import('../pages/EnergyAudit'));
 const SystemTools = lazy(() => import('../pages/SystemTools'));
-const Testing = lazy(() => import('../pages/Testing'));
-const TamEvaluation = lazy(() => import('../pages/TamEvaluation'));
+// const Testing = lazy(() => import('../pages/Testing'));
 const UserManagement = lazy(() => import('../pages/UserManagement'));
 const AdminSettings = lazy(() => import('../pages/AdminSettings'));
 const Profile = lazy(() => import('../pages/Profile'));
@@ -54,11 +53,10 @@ const AppRoutes: React.FC = () => {
 
         {/* Protected Routes */}
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/electrical-system" element={<ProtectedRoute><ElectricalSystem /></ProtectedRoute>} />
+        {/* Route for ElectricalSystem backed up */}
         <Route path="/energy-audit" element={<ProtectedRoute><EnergyAudit /></ProtectedRoute>} />
         <Route path="/system-tools" element={<ProtectedRoute><SystemTools /></ProtectedRoute>} />
-        <Route path="/testing" element={<ProtectedRoute><Testing /></ProtectedRoute>} />
-        <Route path="/tam-evaluation" element={<ProtectedRoute><TamEvaluation /></ProtectedRoute>} />
+        {/* Route for Testing backed up */}
         <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

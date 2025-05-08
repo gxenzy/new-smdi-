@@ -108,8 +108,8 @@ const EnergyAudit = () => {
                                     Online Users: {onlineUsers.join(', ')}
                                 </Typography>
                             </Box>
-                            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-                                <Tabs value={tabValue} onChange={handleTabChange}>
+                            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3, width: '100%', minWidth: 0 }}>
+                                <Tabs value={tabValue} onChange={handleTabChange} variant="fullWidth" sx={{ minWidth: 0 }}>
                                     <Tab label="Audit Tables" />
                                     <Tab label="Testing" />
                                     <Tab label="Advanced Audit Wizard" />

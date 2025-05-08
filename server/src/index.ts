@@ -10,6 +10,7 @@ import authRouter from './routes/authRoutes';
 import attachmentsRouter from './routes/attachmentsRoutes';
 import commentsRouter from './routes/commentsRoutes';
 import notificationsRouter from './routes/notificationsRoutes';
+import dashboardRouter from './routes/dashboardRoutes';
 
 dotenv.config();
 
@@ -58,6 +59,7 @@ app.use('/api/findings', findingsRouter);
 app.use('/api/attachments', attachmentsRouter);
 app.use('/api/comments', commentsRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/dashboard', dashboardRouter);
 
 // Error handling middleware
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {

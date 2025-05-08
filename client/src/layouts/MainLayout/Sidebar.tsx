@@ -28,13 +28,17 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { UserRole } from '../../types';
 
+// Backup of removed sidebar items:
+// { text: 'Electrical System', icon: <ElectricIcon />, path: '/electrical-system' },
+// { text: 'Testing', icon: <TestingIcon />, path: '/testing' },
+// { text: 'TAM Evaluation', icon: <TamIcon />, path: '/tam-evaluation' },
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-  { text: 'Electrical System', icon: <ElectricIcon />, path: '/electrical-system' },
+  // { text: 'Electrical System', icon: <ElectricIcon />, path: '/electrical-system' }, // backed up
   { text: 'Energy Audit', icon: <AuditIcon />, path: '/energy-audit' },
   { text: 'System Tools', icon: <ToolsIcon />, path: '/system-tools' },
-  { text: 'Testing', icon: <TestingIcon />, path: '/testing' },
-  { text: 'TAM Evaluation', icon: <TamIcon />, path: '/tam-evaluation' },
+  // { text: 'Testing', icon: <TestingIcon />, path: '/testing' }, // backed up
+  // { text: 'TAM Evaluation', icon: <TamIcon />, path: '/tam-evaluation' }, // fully removed
   { text: 'User Management', icon: <UsersIcon />, path: '/users' },
   { text: 'Admin Settings', icon: <AdminIcon />, path: '/admin' },
 ];

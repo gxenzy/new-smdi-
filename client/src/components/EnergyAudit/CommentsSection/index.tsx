@@ -5,6 +5,8 @@ import {
   List,
   ListItem,
   ListItemText,
+  ListItemAvatar,
+  Avatar,
   TextField,
   Button,
   IconButton,
@@ -12,6 +14,7 @@ import {
   MenuItem,
   Chip,
   Link as MuiLink,
+  Paper,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -19,7 +22,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import InsertPhotoIcon from '@mui/icons-material/InsertPhoto';
-import { Comment } from '../../../pages/EnergyAudit/EnergyAuditContext';
+import { Comment } from '../../../types/energy-audit';
 import ReactMarkdown from 'react-markdown';
 
 interface User {
@@ -34,12 +37,12 @@ interface Attachment {
 }
 
 interface CommentsSectionProps {
-  comments: (Comment & { attachments?: Attachment[] })[];
-  onAddComment: (text: string, attachments?: Attachment[]) => void;
-  onEditComment: (id: string, text: string, attachments?: Attachment[]) => void;
+  comments: Comment[];
+  onAddComment: (text: string, attachments?: Comment['attachments']) => void;
+  onEditComment: (id: string, text: string, attachments?: Comment['attachments']) => void;
   onDeleteComment: (id: string) => void;
   currentUser: string;
-  users?: User[];
+  users: string[];
 }
 
 function renderWithMentionsAndMarkdown(text: string, users: User[] = []) {
@@ -81,11 +84,11 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
   onEditComment,
   onDeleteComment,
   currentUser,
-  users = [],
+  users,
 }) => {
-  const [commentInput, setCommentInput] = useState('');
+  const [newComment, setNewComment] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editInput, setEditInput] = useState('');
+  const [editText, setEditText] = useState('');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [mentionStart, setMentionStart] = useState<number | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -95,8 +98,8 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
 
   // Mention autocomplete logic
   const handleInputChange = (value: string, isEdit = false) => {
-    if (isEdit) setEditInput(value);
-    else setCommentInput(value);
+    if (isEdit) setEditText(value);
+    else setNewComment(value);
     const cursor = (isEdit ? editInputRef.current : inputRef.current)?.selectionStart || value.length;
     const lastAt = value.lastIndexOf('@', cursor - 1);
     if (lastAt !== -1 && (lastAt === 0 || /\s/.test(value[lastAt - 1]))) {
@@ -109,7 +112,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
   };
 
   const handleMentionSelect = (user: User, isEdit = false) => {
-    const value = isEdit ? editInput : commentInput;
+    const value = isEdit ? editText : newComment;
     if (mentionStart === null) return;
     const before = value.slice(0, mentionStart);
     const after = value.slice((isEdit ? editInputRef.current : inputRef.current)?.selectionStart || value.length);
@@ -135,40 +138,33 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
     else setAttachments(prev => [...prev, ...newAttachments]);
   };
 
-  const handleAddComment = () => {
-    if (commentInput.trim()) {
-      onAddComment(commentInput, attachments);
-      setCommentInput('');
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newComment.trim()) {
+      onAddComment(newComment, attachments);
+      setNewComment('');
       setAttachments([]);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent, isEdit = false) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (isEdit) handleEditSave(editingId!);
-      else handleAddComment();
-    }
+  const handleEdit = (comment: Comment) => {
+    setEditingId(comment.id);
+    setEditText(comment.text);
+    setEditAttachments(comment.attachments || []);
   };
 
-  const handleEdit = (id: string, text: string, attachments?: Attachment[]) => {
-    setEditingId(id);
-    setEditInput(text);
-    setEditAttachments(attachments || []);
-  };
-
-  const handleEditSave = (id: string) => {
-    if (editInput.trim()) {
-      onEditComment(id, editInput, editAttachments);
+  const handleSaveEdit = (id: string) => {
+    if (editText.trim()) {
+      onEditComment(id, editText, editAttachments);
       setEditingId(null);
-      setEditInput('');
+      setEditText('');
       setEditAttachments([]);
     }
   };
 
   const handleEditCancel = () => {
     setEditingId(null);
-    setEditInput('');
+    setEditText('');
     setEditAttachments([]);
   };
 
@@ -177,7 +173,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
     if (mentionStart === null) return [];
     const match = value.slice(mentionStart + 1).match(/^(\w*)/);
     const prefix = match ? match[1].toLowerCase() : '';
-    return users.filter(u => u.name.toLowerCase().startsWith(prefix));
+    return users.map(name => ({ id: name, name }));
   };
 
   // Render attachments
@@ -199,135 +195,105 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
   );
 
   return (
-    <Box>
-      <Typography variant="subtitle2" gutterBottom>
+    <Paper sx={{ p: 2, mt: 2 }}>
+      <Typography variant="h6" gutterBottom>
         Comments
       </Typography>
-      <List dense>
-        {comments.length === 0 && (
-          <ListItem>
-            <ListItemText primary="No comments yet." />
-          </ListItem>
-        )}
-        {comments.map((comment) => (
-          <ListItem key={comment.id} alignItems="flex-start" secondaryAction={
-            comment.author === currentUser && editingId !== comment.id && (
-              <>
-                <IconButton edge="end" aria-label="edit" onClick={() => handleEdit(comment.id, comment.text, comment.attachments)} size="small">
-                  <EditIcon fontSize="small" />
-                </IconButton>
-                <IconButton edge="end" aria-label="delete" onClick={() => onDeleteComment(comment.id)} size="small">
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </>
-            )
-          }>
-            {editingId === comment.id ? (
-              <>
-                <TextField
-                  inputRef={editInputRef}
-                  value={editInput}
-                  onChange={e => handleInputChange(e.target.value, true)}
-                  size="small"
-                  fullWidth
-                  multiline
-                  minRows={2}
-                  sx={{ mr: 1 }}
-                  onKeyPress={e => handleKeyPress(e, true)}
-                  placeholder="Type @ to mention someone..."
-                />
-                <input
-                  type="file"
-                  multiple
-                  style={{ display: 'none' }}
-                  id={`edit-attachment-input-${comment.id}`}
-                  onChange={e => handleAttachment(e, true)}
-                />
-                <label htmlFor={`edit-attachment-input-${comment.id}`}>
-                  <IconButton component="span" size="small">
-                    <AttachFileIcon fontSize="small" />
+      <List>
+        {comments.map(comment => (
+          <ListItem
+            key={comment.id}
+            alignItems="flex-start"
+            secondaryAction={
+              comment.author === currentUser && (
+                <Box>
+                  <IconButton edge="end" onClick={() => handleEdit(comment)}>
+                    <EditIcon />
                   </IconButton>
-                </label>
-                <IconButton aria-label="save" onClick={() => handleEditSave(comment.id)} size="small">
-                  <SaveIcon fontSize="small" />
-                </IconButton>
-                <IconButton aria-label="cancel" onClick={handleEditCancel} size="small">
-                  <CancelIcon fontSize="small" />
-                </IconButton>
-                {renderAttachments(editAttachments)}
-                <Menu
-                  anchorEl={anchorEl}
-                  open={Boolean(anchorEl) && mentionStart !== null}
-                  onClose={() => { setMentionStart(null); setAnchorEl(null); }}
-                  anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-                >
-                  {getMentionOptions(editInput).map(user => (
-                    <MenuItem key={user.id} onClick={() => handleMentionSelect(user, true)}>
-                      @{user.name}
-                    </MenuItem>
-                  ))}
-                </Menu>
-              </>
-            ) : (
-              <ListItemText
-                primary={renderWithMentionsAndMarkdown(comment.text, users)}
-                secondary={<>
-                  {`By ${comment.author} on ${new Date(comment.createdAt).toLocaleString()}`}
-                  {renderAttachments(comment.attachments)}
-                </>}
-              />
-            )}
+                  <IconButton edge="end" onClick={() => onDeleteComment(comment.id)}>
+                    <DeleteIcon />
+                  </IconButton>
+                </Box>
+              )
+            }
+          >
+            <ListItemAvatar>
+              <Avatar>{comment.author[0]}</Avatar>
+            </ListItemAvatar>
+            <ListItemText
+              primary={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography component="span" variant="subtitle2">
+                    {comment.author}
+                  </Typography>
+                  <Typography component="span" variant="caption" color="text.secondary">
+                    {new Date(comment.createdAt).toLocaleString()}
+                  </Typography>
+                </Box>
+              }
+              secondary={
+                editingId === comment.id ? (
+                  <Box sx={{ mt: 1 }}>
+                    <TextField
+                      fullWidth
+                      multiline
+                      value={editText}
+                      onChange={(e) => handleInputChange(e.target.value, true)}
+                      size="small"
+                    />
+                    <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={() => handleSaveEdit(comment.id)}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        size="small"
+                        onClick={handleEditCancel}
+                      >
+                        Cancel
+                      </Button>
+                    </Box>
+                  </Box>
+                ) : (
+                  <Box>
+                    <Typography component="div" variant="body2">
+                      {renderWithMentionsAndMarkdown(comment.text, getMentionOptions(comment.text))}
+                    </Typography>
+                    {comment.attachments && comment.attachments.length > 0 && (
+                      <Box sx={{ mt: 1 }}>
+                        {renderAttachments(comment.attachments)}
+                      </Box>
+                    )}
+                  </Box>
+                )
+              }
+            />
           </ListItem>
         ))}
       </List>
-      <TextField
-        inputRef={inputRef}
-        label="Add Comment"
-        value={commentInput}
-        onChange={e => handleInputChange(e.target.value)}
-        onKeyPress={e => handleKeyPress(e)}
-        size="small"
-        fullWidth
-        multiline
-        minRows={2}
-        sx={{ mt: 1 }}
-        placeholder="Type @ to mention someone..."
-      />
-      <input
-        type="file"
-        multiple
-        style={{ display: 'none' }}
-        id="attachment-input"
-        onChange={e => handleAttachment(e)}
-      />
-      <label htmlFor="attachment-input">
-        <IconButton component="span" size="small">
-          <AttachFileIcon fontSize="small" />
-        </IconButton>
-      </label>
-      {renderAttachments(attachments)}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl) && mentionStart !== null}
-        onClose={() => { setMentionStart(null); setAnchorEl(null); }}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-      >
-        {getMentionOptions(commentInput).map(user => (
-          <MenuItem key={user.id} onClick={() => handleMentionSelect(user)}>
-            @{user.name}
-          </MenuItem>
-        ))}
-      </Menu>
-      <Button
-        size="small"
-        variant="outlined"
-        sx={{ mt: 1 }}
-        onClick={handleAddComment}
-        disabled={!commentInput.trim()}
-      >
-        Add Comment
-      </Button>
-    </Box>
+      <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
+        <TextField
+          fullWidth
+          multiline
+          rows={2}
+          placeholder="Add a comment..."
+          value={newComment}
+          onChange={(e) => handleInputChange(e.target.value)}
+        />
+        <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
+          <Button
+            variant="contained"
+            type="submit"
+            disabled={!newComment.trim()}
+          >
+            Add Comment
+          </Button>
+        </Box>
+      </Box>
+    </Paper>
   );
 };
 

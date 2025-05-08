@@ -14,7 +14,7 @@ const config = {
   },
   ports: {
     client: 3000,
-    server: 5000
+    server: 8000
   }
 };
 

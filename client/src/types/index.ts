@@ -1,10 +1,15 @@
-// User roles for permission checks
+/**
+ * Unified user role definitions for the entire application.
+ * These roles are used for permission checks and access control.
+ */
 export enum UserRole {
-  ADMIN = 'ADMIN',
-  AUDITOR = 'AUDITOR',
-  MANAGER = 'MANAGER',
-  REVIEWER = 'REVIEWER',
-  VIEWER = 'VIEWER'
+  ADMIN = 'ADMIN',           // Full system access
+  AUDITOR = 'AUDITOR',       // Can perform energy audits
+  MANAGER = 'MANAGER',       // Can approve and manage audits
+  REVIEWER = 'REVIEWER',     // Can review but not modify audits
+  VIEWER = 'VIEWER',         // Read-only access
+  STAFF = 'STAFF',          // General staff access
+  MODERATOR = 'MODERATOR'   // Content moderation access
 }
 
 export const enum NotificationType {
@@ -116,4 +121,6 @@ export interface Comment {
 
 export type Severity = 'Low' | 'Medium' | 'High' | 'Critical';
 export type Status = 'Open' | 'In Progress' | 'Resolved';
-export type ApprovalStatus = 'Pending' | 'Approved' | 'Rejected'; 
+export type ApprovalStatus = 'Pending' | 'Approved' | 'Rejected';
+
+export * from './energy-audit'; 

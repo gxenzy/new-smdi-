@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+When impleminting something with lots of implementation in Road Map, Phase, etc., all implementation will be code at one for all.
