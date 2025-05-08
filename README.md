@@ -85,8 +85,16 @@ A full-stack web application for energy audit management and monitoring.
 
 3. Create a .env file in the client directory:
    ```
-   REACT_APP_API_URL=http://localhost:5000/api
+   REACT_APP_API_URL=http://localhost:8000/api
+   REACT_APP_WS_URL=ws://localhost:8000
+   REACT_APP_VERSION=1.0.0
+   REACT_APP_TITLE=Energy Audit System
+   SKIP_PREFLIGHT_CHECK=true
+   TSC_COMPILE_ON_ERROR=true
+   GENERATE_SOURCEMAP=true
    ```
+
+   **Note:** Each variable must be on its own line. Do NOT put them all on one line.
 
 4. Start the frontend development server:
    ```bash
@@ -136,3 +144,11 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ---
 
 *Feel free to update this README with more specific details about your project!*
+
+## Troubleshooting
+
+### API Authentication or 401/403 Errors
+- Ensure your `client/.env` file is formatted with one variable per line (see above).
+- The `REACT_APP_API_URL` must match your backend port and end with `/api` (e.g., `http://localhost:8000/api`).
+- After editing `.env`, always restart the frontend (`npm start`).
+- Log out and log in again if you change the API URL.
