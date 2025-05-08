@@ -34,6 +34,7 @@ import {
   PowerSettingsNew as PowerIcon,
   ThreeDRotation as ThreeDIcon,
 } from '@mui/icons-material';
+import { glassCardSx } from '../../theme/glassCardSx';
 
 interface ElectricalComponent {
   id: string;
@@ -216,7 +217,7 @@ const ElectricalSystem = () => {
       <Grid container spacing={3}>
         {/* System Overview */}
         <Grid item xs={12} md={4}>
-          <Card>
+          <Card sx={glassCardSx({ blur: 10, accent: '#1976d2', bgOpacity: 0.6 })}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 System Overview
@@ -251,7 +252,7 @@ const ElectricalSystem = () => {
           </Card>
 
           {/* DIALux Models */}
-          <Card sx={{ mt: 3 }}>
+          <Card sx={glassCardSx({ blur: 10, accent: '#1976d2', bgOpacity: 0.6 })}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 3D Models (DIALux)
@@ -286,7 +287,7 @@ const ElectricalSystem = () => {
 
         {/* Component List */}
         <Grid item xs={12} md={8}>
-          <Card>
+          <Card sx={glassCardSx({ blur: 10, accent: '#1976d2', bgOpacity: 0.6 })}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 Components

@@ -8,6 +8,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import * as XLSX from 'xlsx';
+import { glassCardSx } from '../../theme/glassCardSx';
 
 interface User { username: string; email: string; firstName: string; lastName: string; role: string; createdAt?: string; }
 interface Audit { name: string; status: string; assignedTo?: string; dueDate?: string; createdAt?: string; }
@@ -161,7 +162,7 @@ const AnalyticsDashboard: React.FC = () => {
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <Box sx={{ maxWidth: 1400, mx: 'auto', mt: 4 }}>
         <Typography variant="h4" gutterBottom>Analytics Dashboard</Typography>
-        <Paper sx={{ p: 2, mb: 3 }}>
+        <Paper sx={glassCardSx({ blur: 12, accent: '#1976d2' })}>
           <Grid container spacing={2} alignItems="center">
             <Grid item>
               <DatePicker label="Start Date" value={startDate} onChange={setStartDate} renderInput={(params) => <TextField {...params} size="small" />} />
@@ -188,7 +189,7 @@ const AnalyticsDashboard: React.FC = () => {
         </Paper>
         <Grid container spacing={3}>
           <Grid item xs={12} md={4}>
-            <Paper sx={{ p: 3 }}>
+            <Paper sx={glassCardSx({ blur: 12, accent: '#1976d2' })}>
               <Typography variant="h6">User Roles Distribution</Typography>
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
@@ -202,7 +203,7 @@ const AnalyticsDashboard: React.FC = () => {
             </Paper>
           </Grid>
           <Grid item xs={12} md={4}>
-            <Paper sx={{ p: 3 }}>
+            <Paper sx={glassCardSx({ blur: 12, accent: '#1976d2' })}>
               <Typography variant="h6">Audit Status Distribution</Typography>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={statusData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
@@ -216,7 +217,7 @@ const AnalyticsDashboard: React.FC = () => {
             </Paper>
           </Grid>
           <Grid item xs={12} md={4}>
-            <Paper sx={{ p: 3 }}>
+            <Paper sx={glassCardSx({ blur: 12, accent: '#1976d2' })}>
               <Typography variant="h6">Audit Completion Rate</Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ flex: 1 }}>
@@ -227,7 +228,7 @@ const AnalyticsDashboard: React.FC = () => {
             </Paper>
           </Grid>
           <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3 }}>
+            <Paper sx={glassCardSx({ blur: 12, accent: '#1976d2' })}>
               <Typography variant="h6">Audits Created Per Month</Typography>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={auditsByMonthData}>
@@ -241,7 +242,7 @@ const AnalyticsDashboard: React.FC = () => {
             </Paper>
           </Grid>
           <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3 }}>
+            <Paper sx={glassCardSx({ blur: 12, accent: '#1976d2' })}>
               <Typography variant="h6">User Signups Per Month</Typography>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={usersByMonthData}>
@@ -255,7 +256,7 @@ const AnalyticsDashboard: React.FC = () => {
             </Paper>
           </Grid>
           <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3 }}>
+            <Paper sx={glassCardSx({ blur: 12, accent: '#1976d2' })}>
               <Typography variant="h6">Most Active Users (by audits assigned)</Typography>
               <List>
                 {mostActiveUsers.map(u => (
@@ -267,7 +268,7 @@ const AnalyticsDashboard: React.FC = () => {
             </Paper>
           </Grid>
           <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3 }}>
+            <Paper sx={glassCardSx({ blur: 12, accent: '#1976d2' })}>
               <Typography variant="h6">Recent Activity</Typography>
               <TableContainer>
                 <Table size="small">

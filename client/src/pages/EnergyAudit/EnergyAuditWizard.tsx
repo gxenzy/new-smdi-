@@ -10,6 +10,11 @@ import {
   Grid,
   Divider,
   MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Fab,
 } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 import jsPDF from 'jspdf';
@@ -48,6 +53,15 @@ const EnergyAuditWizard: React.FC = () => {
   const [filterSeverity, setFilterSeverity] = useState<FindingSeverity | ''>('');
   const [filterStatus, setFilterStatus] = useState<FindingStatus | ''>('');
   const [filterAssignee, setFilterAssignee] = useState('');
+  const [addModalOpen, setAddModalOpen] = useState<AuditSection | null>(null);
+  const [newFinding, setNewFinding] = useState({
+    description: '',
+    recommendation: '',
+    severity: 'Medium',
+    status: 'Open',
+    estimatedCost: 0,
+    assignee: '',
+  });
 
   // Automated reminders for pending approvals
   useEffect(() => {
@@ -391,6 +405,49 @@ const EnergyAuditWizard: React.FC = () => {
     setSelectedFindings([]);
   }, [currentUser.name, audit, selectedFindings, setAudit, addNotification]);
 
+  const handleOpenAddModal = (section: AuditSection) => {
+    setAddModalOpen(section);
+    setNewFinding({
+      description: '',
+      recommendation: '',
+      severity: 'Medium',
+      status: 'Open',
+      estimatedCost: 0,
+      assignee: '',
+    });
+  };
+
+  const handleAddFinding = () => {
+    if (!addModalOpen) return;
+    setAudit((prev: AuditState) => ({
+      ...prev,
+      [addModalOpen]: [
+        ...prev[addModalOpen],
+        {
+          id: Date.now().toString() + Math.random(),
+          description: newFinding.description,
+          recommendation: newFinding.recommendation,
+          createdAt: new Date().toISOString(),
+          section: addModalOpen,
+          severity: newFinding.severity as FindingSeverity,
+          estimatedCost: Number(newFinding.estimatedCost),
+          status: newFinding.status as FindingStatus,
+          assignee: newFinding.assignee,
+          comments: [],
+          approvalStatus: 'Draft' as ApprovalStatus,
+          activityLog: [{
+            id: Date.now().toString() + Math.random(),
+            action: 'Created',
+            user: currentUser.name,
+            timestamp: new Date().toISOString(),
+            details: 'Finding created',
+          }],
+        },
+      ],
+    }));
+    setAddModalOpen(null);
+  };
+
   // Render section content
   const renderSection = (section: AuditSection, label: string) => {
     // Filtered findings
@@ -412,6 +469,38 @@ const EnergyAuditWizard: React.FC = () => {
     return (
       <Box>
         <Typography variant="h6" gutterBottom>{label} Findings</Typography>
+        <Fab color="primary" size="small" aria-label="add" sx={{ ml: 2, mb: 2 }} onClick={() => handleOpenAddModal(section)}>
+          <AddIcon />
+        </Fab>
+        <Dialog open={addModalOpen === section} onClose={() => setAddModalOpen(null)} maxWidth="sm" fullWidth>
+          <DialogTitle>Add Finding</DialogTitle>
+          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField label="Description" value={newFinding.description} onChange={e => setNewFinding(f => ({ ...f, description: e.target.value }))} fullWidth />
+            <TextField label="Recommendation" value={newFinding.recommendation} onChange={e => setNewFinding(f => ({ ...f, recommendation: e.target.value }))} fullWidth />
+            <TextField label="Severity" select value={newFinding.severity} onChange={e => setNewFinding(f => ({ ...f, severity: e.target.value }))} fullWidth>
+              <MenuItem value="Low">Low</MenuItem>
+              <MenuItem value="Medium">Medium</MenuItem>
+              <MenuItem value="High">High</MenuItem>
+              <MenuItem value="Critical">Critical</MenuItem>
+            </TextField>
+            <TextField label="Status" select value={newFinding.status} onChange={e => setNewFinding(f => ({ ...f, status: e.target.value }))} fullWidth>
+              <MenuItem value="Open">Open</MenuItem>
+              <MenuItem value="In Progress">In Progress</MenuItem>
+              <MenuItem value="Resolved">Resolved</MenuItem>
+            </TextField>
+            <TextField label="Estimated Cost (₱)" type="number" value={newFinding.estimatedCost} onChange={e => setNewFinding(f => ({ ...f, estimatedCost: Number(e.target.value) }))} fullWidth />
+            <TextField label="Assignee" select value={newFinding.assignee} onChange={e => setNewFinding(f => ({ ...f, assignee: e.target.value }))} fullWidth>
+              <MenuItem value="">None</MenuItem>
+              {users.map(u => (
+                <MenuItem key={u.id} value={u.name}>{u.name}</MenuItem>
+              ))}
+            </TextField>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setAddModalOpen(null)}>Cancel</Button>
+            <Button onClick={handleAddFinding} variant="contained" color="primary" disabled={!newFinding.description || !newFinding.recommendation}>Add</Button>
+          </DialogActions>
+        </Dialog>
         {/* Search & Filter Controls */}
         <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
           <TextField

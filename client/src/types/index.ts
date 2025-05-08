@@ -47,6 +47,7 @@ export interface User {
   createdAt: string;
   updatedAt: string;
   permissions?: string[];
+  notificationPreferences?: NotificationPreferences;
 }
 
 export interface UserPreferences {

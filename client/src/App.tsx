@@ -30,91 +30,11 @@ import AnalyticsDashboard from './pages/Analytics/AnalyticsDashboard';
 import EnergyAuditTesting from './pages/EnergyAudit/EnergyAuditTesting';
 import ToastNotification from './components/ToastNotification';
 import { ThemeProvider } from './contexts/ThemeContext';
-
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-}
-
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { user } = useAuthContext();
-  const location = useLocation();
-
-  if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
-  return <>{children}</>;
-};
-
-const LoginForm = () => {
-  const { login } = useAuthContext();
-  const [email, setEmail] = React.useState('');
-  const [password, setPassword] = React.useState('');
-  const [error, setError] = React.useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await login(email, password);
-    } catch (err) {
-      setError('Invalid credentials');
-    }
-  };
-
-  return (
-    <Container maxWidth="sm">
-      <Box sx={{ mt: 8 }}>
-        <Paper sx={{ p: 4 }}>
-          <Typography variant="h4" align="center" gutterBottom>
-            Energy Audit Login
-          </Typography>
-          {error && (
-            <Typography color="error" align="center" gutterBottom>
-              {error}
-            </Typography>
-          )}
-          <form onSubmit={handleSubmit}>
-            <TextField
-              fullWidth
-              label="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              margin="normal"
-              required
-            />
-            <TextField
-              fullWidth
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              margin="normal"
-              required
-            />
-            <Button
-              fullWidth
-              type="submit"
-              variant="contained"
-              sx={{ mt: 3 }}
-            >
-              Login
-            </Button>
-          </form>
-          <Typography variant="body2" align="center" sx={{ mt: 2 }}>
-            Demo Credentials:
-            <br />
-            Admin: admin@example.com / admin123
-            <br />
-            Auditor: demo@example.com / demo123
-          </Typography>
-        </Paper>
-      </Box>
-    </Container>
-  );
-};
+import ProtectedRoute from './components/ProtectedRoute';
+import LoginForm from './pages/Login/LoginForm';
 
 const App: React.FC = () => {
-  const { user } = useAuthContext();
+  const { user, isAuthenticated } = useAuthContext();
   const location = useLocation();
   const [loading, setLoading] = React.useState(false);
 
@@ -129,7 +49,7 @@ const App: React.FC = () => {
     }
   }, [location.pathname]);
 
-  if (!user) {
+  if (!isAuthenticated) {
     return <LoginForm />;
   }
 
@@ -148,7 +68,11 @@ const App: React.FC = () => {
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/electrical-system" element={<ProtectedRoute><ElectricalSystem /></ProtectedRoute>} />
-              <Route path="/energy-audit" element={<ProtectedRoute><EnergyAudit /></ProtectedRoute>} />
+              <Route path="/energy-audit" element={
+                <ProtectedRoute>
+                  <EnergyAudit />
+                </ProtectedRoute>
+              } />
               <Route path="/energy-audit/analytics" element={<ProtectedRoute><EnergyAuditHistoryProvider><EnergyAuditAnalytics /></EnergyAuditHistoryProvider></ProtectedRoute>} />
               <Route path="/energy-audit/testing" element={<ProtectedRoute><EnergyAuditHistoryProvider><EnergyAuditTesting /></EnergyAuditHistoryProvider></ProtectedRoute>} />
               <Route path="/system-tools" element={<ProtectedRoute><SystemTools /></ProtectedRoute>} />

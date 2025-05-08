@@ -33,6 +33,7 @@ import { UserRole } from '../../types';
 import { useEnergyAudit } from '../EnergyAudit/EnergyAuditContext';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, Legend, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import { useSocket } from '../../contexts/SocketContext';
+import { glassCardSx } from '../../theme/glassCardSx';
 
 interface StatCardProps {
   title: string;
@@ -56,20 +57,21 @@ const StatCard: React.FC<StatCardProps> = ({
       height: '100%', 
       cursor: onClick ? 'pointer' : 'default',
       transition: 'transform 0.2s',
-      '&:hover': onClick ? { transform: 'translateY(-4px)' } : {}
+      '&:hover': onClick ? { transform: 'translateY(-4px)' } : {},
+      ...glassCardSx(),
     }}
     onClick={onClick}
   >
     <CardContent>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6" color="textSecondary">
+        <Typography variant="h6" color="textSecondary" sx={{ color: '#222' }}>
             {title}
           </Typography>
         <Box sx={{ color }}>
           {icon}
         </Box>
       </Box>
-      <Typography variant="h4" component="div" sx={{ mb: 1 }}>
+      <Typography variant="h4" component="div" sx={{ mb: 1, color: '#222' }}>
         {value}
       </Typography>
       {progress !== undefined && (

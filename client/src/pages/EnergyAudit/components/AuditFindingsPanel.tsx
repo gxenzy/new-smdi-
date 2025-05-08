@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, Grid, Button, List, ListItem, ListItemText, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, MenuItem, Fab, IconButton } from '@mui/material';
-import LoadingSpinner from '../../components/LoadingSpinner';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis } from 'recharts';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import AddIcon from '@mui/icons-material/Add';
-import MuiAlert from '@mui/material/Alert';
-import { useTheme } from '@mui/material/styles';
-import { glassCardSx } from '../../theme/glassCardSx';
+import { glassCardSx } from '../../../theme/glassCardSx';
+
+const typeOptions = ['Safety', 'Efficiency', 'Compliance', 'Other'];
+const statusOptions = ['Open', 'In Progress', 'Resolved', 'Closed'];
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
 interface Finding {
   _id?: string;
@@ -22,15 +23,15 @@ interface Finding {
   updatedAt?: string;
 }
 
-const typeOptions = ['Safety', 'Efficiency', 'Compliance', 'Other'];
-const statusOptions = ['Open', 'In Progress', 'Resolved', 'Closed'];
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+interface AuditFindingsPanelProps {
+  auditId: string;
+}
 
-const FindingsDashboard: React.FC = () => {
+const AuditFindingsPanel: React.FC<AuditFindingsPanelProps> = ({ auditId }) => {
   const [findings, setFindings] = useState<Finding[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [createFinding, setCreateFinding] = useState<Partial<Finding>>({ type: 'Other', status: 'Open' });
+  const [createFinding, setCreateFinding] = useState<Partial<Finding>>({ type: 'Other', status: 'Open', auditId });
   const [creating, setCreating] = useState(false);
   const [editFinding, setEditFinding] = useState<Finding | null>(null);
   const [editFields, setEditFields] = useState<Partial<Finding>>({});
@@ -38,15 +39,37 @@ const FindingsDashboard: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success'|'error' }>({ open: false, message: '', severity: 'success' });
   const [multiAddOpen, setMultiAddOpen] = useState(false);
-  const [multiFindings, setMultiFindings] = useState<Partial<Finding>[]>([{ type: 'Other', status: 'Open' }]);
+  const [multiFindings, setMultiFindings] = useState<Partial<Finding>[]>([{ type: 'Other', status: 'Open', auditId }]);
   const [actionSnackbar, setActionSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
 
+  // Helper to get auth headers
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  };
+
+  // Fetch findings for this auditId
   const fetchFindings = () => {
     setLoading(true);
     setError(null);
-    fetch('/api/findings')
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch findings');
+    fetch(`/api/findings?auditId=${auditId}`, {
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+    })
+      .then(async res => {
+        if (!res.ok) {
+          let errorMsg = 'Unknown error';
+          try {
+            const err = await res.json();
+            errorMsg = err.message || errorMsg;
+          } catch {
+            if (res.status === 401) errorMsg = 'Authentication required. Please log in.';
+            else errorMsg = `Error ${res.status}`;
+          }
+          throw new Error(errorMsg);
+        }
         return res.json();
       })
       .then(data => {
@@ -60,6 +83,7 @@ const FindingsDashboard: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!auditId) return;
     fetchFindings();
     // Real-time updates
     // @ts-ignore
@@ -73,15 +97,19 @@ const FindingsDashboard: React.FC = () => {
         socket.disconnect();
       };
     });
-  }, []);
+    // eslint-disable-next-line
+  }, [auditId]);
 
   // Create
   const handleCreate = () => {
     setCreating(true);
     fetch('/api/findings', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(createFinding),
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ...createFinding, auditId }),
     })
       .then(res => {
         if (!res.ok) throw new Error('Failed to create finding');
@@ -89,7 +117,7 @@ const FindingsDashboard: React.FC = () => {
       })
       .then(() => {
         setSnackbar({ open: true, message: 'Finding created!', severity: 'success' });
-        setCreateFinding({ type: 'Other', status: 'Open' });
+        setCreateFinding({ type: 'Other', status: 'Open', auditId });
         fetchFindings();
       })
       .catch(err => setSnackbar({ open: true, message: err.message, severity: 'error' }))
@@ -106,7 +134,10 @@ const FindingsDashboard: React.FC = () => {
     setEditLoading(true);
     fetch(`/api/findings/${editFinding._id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(editFields),
     })
       .then(res => {
@@ -125,7 +156,10 @@ const FindingsDashboard: React.FC = () => {
   // Delete
   const handleDelete = (finding: Finding) => {
     setDeleteLoading(finding._id || '');
-    fetch(`/api/findings/${finding._id}`, { method: 'DELETE' })
+    fetch(`/api/findings/${finding._id}`, { 
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    })
       .then(res => {
         if (!res.ok) throw new Error('Failed to delete finding');
         return res.json();
@@ -159,7 +193,7 @@ const FindingsDashboard: React.FC = () => {
     ? (resolvedFindings.reduce((sum, f) => sum + (new Date(f.updatedAt!).getTime() - new Date(f.createdAt!).getTime()), 0) / resolvedFindings.length / (1000 * 60 * 60 * 24)).toFixed(1)
     : 'N/A';
 
-  // Add export handlers
+  // Export handlers
   const handleExportExcel = () => {
     const ws = XLSX.utils.json_to_sheet(findings.map(({ _id, ...rest }) => rest));
     const wb = XLSX.utils.book_new();
@@ -169,7 +203,6 @@ const FindingsDashboard: React.FC = () => {
   const handleExportPDF = () => {
     const doc = new jsPDF();
     doc.text('Findings', 14, 16);
-    // Prepare data for autoTable
     const tableColumn = ['Title', 'Description', 'Type', 'Status', 'Audit ID'];
     const tableRows = findings.map(f => [f.title, f.description || '', f.type, f.status, f.auditId]);
     // @ts-ignore
@@ -193,11 +226,12 @@ const FindingsDashboard: React.FC = () => {
     window.URL.revokeObjectURL(url);
   };
 
+  // Multi-add logic
   const handleMultiAddFinding = (idx: number, field: keyof Finding, value: any) => {
-    setMultiFindings(prev => prev.map((f, i) => i === idx ? { ...f, [field]: value } : f));
+    setMultiFindings(prev => prev.map((f, i) => i === idx ? { ...f, [field]: value, auditId } : f));
   };
   const handleAddRow = () => {
-    setMultiFindings(prev => [...prev, { type: 'Other', status: 'Open' }]);
+    setMultiFindings(prev => [...prev, { type: 'Other', status: 'Open', auditId }]);
   };
   const handleRemoveRow = (idx: number) => {
     setMultiFindings(prev => prev.filter((_, i) => i !== idx));
@@ -208,14 +242,17 @@ const FindingsDashboard: React.FC = () => {
       multiFindings.filter(f => f.title && f.auditId).map(finding =>
         fetch('/api/findings', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(finding),
+          headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ...finding, auditId }),
         })
       )
     )
       .then(() => {
         setSnackbar({ open: true, message: 'Findings created!', severity: 'success' });
-        setMultiFindings([{ type: 'Other', status: 'Open' }]);
+        setMultiFindings([{ type: 'Other', status: 'Open', auditId }]);
         setMultiAddOpen(false);
         fetchFindings();
       })
@@ -223,19 +260,13 @@ const FindingsDashboard: React.FC = () => {
       .finally(() => setCreating(false));
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
-  if (loading) return <LoadingSpinner />;
-  if (error) return <Typography color="error">{error}</Typography>;
+  if (!auditId) return null;
+  if (loading) return <Typography>Loading findings...</Typography>;
+  if (error) return <Typography color="error" sx={{ whiteSpace: 'pre-wrap', p: 2, border: '1px solid red', borderRadius: 1 }}>{error}</Typography>;
 
   return (
-    <Box sx={{ maxWidth: 1000, mx: 'auto', mt: 4, px: { xs: 1, sm: 2 } }}>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-        <Button variant="outlined" onClick={handlePrint} aria-label="Print Findings">Print</Button>
-      </Box>
-      <Typography variant="h4" gutterBottom>Findings Management</Typography>
+    <Box sx={{ mb: 4 }}>
+      <Typography variant="h6" gutterBottom>Findings Management (for this Audit)</Typography>
       <Fab color="primary" aria-label="add" sx={{ position: 'fixed', bottom: 32, right: 32, zIndex: 1200 }} onClick={() => setMultiAddOpen(true)}>
         <AddIcon />
       </Fab>
@@ -252,7 +283,6 @@ const FindingsDashboard: React.FC = () => {
               <TextField select label="Status" value={finding.status || 'Open'} onChange={e => handleMultiAddFinding(idx, 'status', e.target.value)} size="small" fullWidth>
                 {statusOptions.map(status => <MenuItem key={status} value={status}>{status}</MenuItem>)}
               </TextField>
-              <TextField label="Audit ID" value={finding.auditId || ''} onChange={e => handleMultiAddFinding(idx, 'auditId', e.target.value)} size="small" fullWidth />
               <IconButton onClick={() => handleRemoveRow(idx)} disabled={multiFindings.length === 1} aria-label="Remove Row"><span style={{fontWeight:'bold',fontSize:18}}>-</span></IconButton>
             </Box>
           ))}
@@ -260,33 +290,32 @@ const FindingsDashboard: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setMultiAddOpen(false)}>Cancel</Button>
-          <Button onClick={handleMultiCreate} variant="contained" color="primary" disabled={creating || multiFindings.some(f => !f.title || !f.auditId)}>
+          <Button onClick={handleMultiCreate} variant="contained" color="primary" disabled={creating || multiFindings.some(f => !f.title)}>
             {creating ? 'Creating...' : 'Create All'}
           </Button>
         </DialogActions>
       </Dialog>
       {/* Create Finding Form */}
-      <Paper sx={glassCardSx({ blur: 6, accent: '#388e3c' })}>
-        <Typography variant="h6" gutterBottom>Create New Finding</Typography>
+      <Paper sx={glassCardSx({ accent: '#7b1fa2' })}>
+        <Typography variant="subtitle1" gutterBottom>Create New Finding</Typography>
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, alignItems: { sm: 'center' }, flexWrap: 'wrap' }}>
-          <TextField label="Title" value={createFinding.title || ''} onChange={e => setCreateFinding(f => ({ ...f, title: e.target.value }))} size="small" inputProps={{ 'aria-label': 'Finding Title' }} fullWidth={true} />
-          <TextField label="Description" value={createFinding.description || ''} onChange={e => setCreateFinding(f => ({ ...f, description: e.target.value }))} size="small" inputProps={{ 'aria-label': 'Finding Description' }} fullWidth={true} />
-          <TextField select label="Type" value={createFinding.type || 'Other'} onChange={e => setCreateFinding(f => ({ ...f, type: e.target.value }))} size="small" inputProps={{ 'aria-label': 'Finding Type' }} fullWidth={true}>
+          <TextField label="Title" value={createFinding.title || ''} onChange={e => setCreateFinding(f => ({ ...f, title: e.target.value }))} size="small" fullWidth={true} />
+          <TextField label="Description" value={createFinding.description || ''} onChange={e => setCreateFinding(f => ({ ...f, description: e.target.value }))} size="small" fullWidth={true} />
+          <TextField select label="Type" value={createFinding.type || 'Other'} onChange={e => setCreateFinding(f => ({ ...f, type: e.target.value }))} size="small" fullWidth={true}>
             {typeOptions.map(type => <MenuItem key={type} value={type}>{type}</MenuItem>)}
           </TextField>
-          <TextField select label="Status" value={createFinding.status || 'Open'} onChange={e => setCreateFinding(f => ({ ...f, status: e.target.value }))} size="small" inputProps={{ 'aria-label': 'Finding Status' }} fullWidth={true}>
+          <TextField select label="Status" value={createFinding.status || 'Open'} onChange={e => setCreateFinding(f => ({ ...f, status: e.target.value }))} size="small" fullWidth={true}>
             {statusOptions.map(status => <MenuItem key={status} value={status}>{status}</MenuItem>)}
           </TextField>
-          <TextField label="Audit ID" value={createFinding.auditId || ''} onChange={e => setCreateFinding(f => ({ ...f, auditId: e.target.value }))} size="small" inputProps={{ 'aria-label': 'Audit ID' }} fullWidth={true} />
-          <Button variant="contained" color="primary" onClick={handleCreate} disabled={creating || !createFinding.title || !createFinding.auditId} aria-label="Create Finding">
+          <Button variant="contained" color="primary" onClick={handleCreate} disabled={creating || !createFinding.title}>
             {creating ? 'Creating...' : 'Create Finding'}
           </Button>
         </Box>
       </Paper>
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
-          <Paper sx={glassCardSx({ blur: 6, accent: '#388e3c' })}>
-            <Typography variant="h6">Findings by Type</Typography>
+          <Paper sx={glassCardSx({ accent: '#7b1fa2' })}>
+            <Typography variant="subtitle1">Findings by Type</Typography>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie data={typeData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label>
@@ -299,8 +328,8 @@ const FindingsDashboard: React.FC = () => {
           </Paper>
         </Grid>
         <Grid item xs={12} md={6}>
-          <Paper sx={glassCardSx({ blur: 6, accent: '#388e3c' })}>
-            <Typography variant="h6">Findings by Status</Typography>
+          <Paper sx={glassCardSx({ accent: '#7b1fa2' })}>
+            <Typography variant="subtitle1">Findings by Status</Typography>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label>
@@ -313,19 +342,19 @@ const FindingsDashboard: React.FC = () => {
           </Paper>
         </Grid>
       </Grid>
-      <Paper sx={glassCardSx({ blur: 6, accent: '#388e3c' })}>
+      <Paper sx={glassCardSx({ accent: '#7b1fa2' })}>
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 2, justifyContent: 'flex-end' }}>
-          <Button variant="outlined" onClick={handleExportExcel} aria-label="Export to Excel">Export to Excel</Button>
-          <Button variant="outlined" onClick={handleExportCSV} aria-label="Export to CSV">Export to CSV</Button>
-          <Button variant="outlined" onClick={handleExportPDF} aria-label="Export to PDF">Export to PDF</Button>
+          <Button variant="outlined" onClick={handleExportExcel}>Export to Excel</Button>
+          <Button variant="outlined" onClick={handleExportCSV}>Export to CSV</Button>
+          <Button variant="outlined" onClick={handleExportPDF}>Export to PDF</Button>
         </Box>
-        <Typography variant="h6">All Findings</Typography>
+        <Typography variant="subtitle1">All Findings for this Audit</Typography>
         <List>
           {findings.map(finding => (
             <ListItem key={finding._id} secondaryAction={
               <>
-                <Button variant="outlined" size="small" sx={{ mr: 1 }} onClick={() => openEdit(finding)} aria-label={`Edit finding ${finding.title}`}>Edit</Button>
-                <Button variant="outlined" color="error" size="small" onClick={() => handleDelete(finding)} disabled={deleteLoading === finding._id} aria-label={`Delete finding ${finding.title}`}>
+                <Button variant="outlined" size="small" sx={{ mr: 1 }} onClick={() => openEdit(finding)}>Edit</Button>
+                <Button variant="outlined" color="error" size="small" onClick={() => handleDelete(finding)} disabled={deleteLoading === finding._id}>
                   {deleteLoading === finding._id ? 'Deleting...' : 'Delete'}
                 </Button>
               </>
@@ -336,7 +365,6 @@ const FindingsDashboard: React.FC = () => {
                   <>
                     <span>Type: {finding.type}</span><br />
                     <span>Status: {finding.status}</span><br />
-                    <span>Audit ID: {finding.auditId}</span><br />
                     {finding.description && <span>Description: {finding.description}</span>}
                   </>
                 }
@@ -346,22 +374,21 @@ const FindingsDashboard: React.FC = () => {
         </List>
       </Paper>
       {/* Edit Finding Modal */}
-      <Dialog open={!!editFinding} onClose={() => setEditFinding(null)} aria-labelledby="edit-finding-dialog-title">
-        <DialogTitle id="edit-finding-dialog-title">Edit Finding</DialogTitle>
+      <Dialog open={!!editFinding} onClose={() => setEditFinding(null)}>
+        <DialogTitle>Edit Finding</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: { xs: 200, sm: 300 } }}>
-          <TextField label="Title" value={editFields.title || ''} onChange={e => setEditFields(f => ({ ...f, title: e.target.value }))} inputProps={{ 'aria-label': 'Edit Title' }} fullWidth />
-          <TextField label="Description" value={editFields.description || ''} onChange={e => setEditFields(f => ({ ...f, description: e.target.value }))} inputProps={{ 'aria-label': 'Edit Description' }} fullWidth />
-          <TextField select label="Type" value={editFields.type || 'Other'} onChange={e => setEditFields(f => ({ ...f, type: e.target.value }))} inputProps={{ 'aria-label': 'Edit Type' }} fullWidth>
+          <TextField label="Title" value={editFields.title || ''} onChange={e => setEditFields(f => ({ ...f, title: e.target.value }))} fullWidth />
+          <TextField label="Description" value={editFields.description || ''} onChange={e => setEditFields(f => ({ ...f, description: e.target.value }))} fullWidth />
+          <TextField select label="Type" value={editFields.type || 'Other'} onChange={e => setEditFields(f => ({ ...f, type: e.target.value }))} fullWidth>
             {typeOptions.map(type => <MenuItem key={type} value={type}>{type}</MenuItem>)}
           </TextField>
-          <TextField select label="Status" value={editFields.status || 'Open'} onChange={e => setEditFields(f => ({ ...f, status: e.target.value }))} inputProps={{ 'aria-label': 'Edit Status' }} fullWidth>
+          <TextField select label="Status" value={editFields.status || 'Open'} onChange={e => setEditFields(f => ({ ...f, status: e.target.value }))} fullWidth>
             {statusOptions.map(status => <MenuItem key={status} value={status}>{status}</MenuItem>)}
           </TextField>
-          <TextField label="Audit ID" value={editFields.auditId || ''} onChange={e => setEditFields(f => ({ ...f, auditId: e.target.value }))} inputProps={{ 'aria-label': 'Edit Audit ID' }} fullWidth />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditFinding(null)} aria-label="Cancel Edit">Cancel</Button>
-          <Button onClick={handleEdit} variant="contained" color="primary" disabled={editLoading || !editFields.title || !editFields.auditId} aria-label="Save Edit">
+          <Button onClick={() => setEditFinding(null)}>Cancel</Button>
+          <Button onClick={handleEdit} variant="contained" color="primary" disabled={editLoading || !editFields.title}>
             {editLoading ? 'Saving...' : 'Save'}
           </Button>
         </DialogActions>
@@ -374,7 +401,6 @@ const FindingsDashboard: React.FC = () => {
       <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
         <Button variant="contained" color="primary" onClick={async () => {
           try {
-            // Stub: send findings data to external API
             await fetch('https://example.com/api/external', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -401,50 +427,27 @@ const FindingsDashboard: React.FC = () => {
           setActionSnackbar({ open: true, message: 'Weekly webhook scheduled!', severity: 'success' });
         }}>Schedule Weekly Webhook</Button>
       </Box>
-      <Snackbar open={actionSnackbar.open} autoHideDuration={3000} onClose={() => setActionSnackbar({ ...actionSnackbar, open: false })}>
-        <MuiAlert elevation={6} variant="filled" severity={actionSnackbar.severity} sx={{ width: '100%' }}>
-          {actionSnackbar.message}
-        </MuiAlert>
+      <Snackbar open={actionSnackbar.open} autoHideDuration={3000} onClose={() => setActionSnackbar({ ...actionSnackbar, open: false })} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+        <Alert severity={actionSnackbar.severity} sx={{ width: '100%' }}>{actionSnackbar.message}</Alert>
       </Snackbar>
-      {/* Historical Comparison & Insights */}
-      <Paper sx={glassCardSx({ blur: 6, accent: '#388e3c' })}>
-        <Typography variant="h6" gutterBottom>Historical Comparison</Typography>
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={findingsByMonthData}>
+      {/* Insights Section */}
+      <Paper sx={glassCardSx({ accent: '#7b1fa2' })}>
+        <Typography variant="subtitle1">Insights</Typography>
+        <Box sx={{ mb: 1 }}>Most Common Type: <b>{mostCommonType}</b></Box>
+        <Box sx={{ mb: 1 }}>Average Resolve Time (days): <b>{avgResolveTime}</b></Box>
+        <Typography variant="subtitle2" sx={{ mt: 2 }}>Findings Over Time</Typography>
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={findingsByMonthData} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
             <XAxis dataKey="month" />
             <YAxis allowDecimals={false} />
             <Tooltip />
             <Legend />
-            <Bar dataKey="count" fill="#1976d2" name="Findings Created" />
+            <Bar dataKey="count" fill="#1976d2" />
           </BarChart>
         </ResponsiveContainer>
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="subtitle1">Insights</Typography>
-          <Typography variant="body2">Most common finding type: <b>{mostCommonType}</b></Typography>
-          <Typography variant="body2">Average days to resolve: <b>{avgResolveTime}</b></Typography>
-        </Box>
       </Paper>
-      {/* Add print-specific CSS */}
-      <style>{`
-        @media print {
-          body * {
-            visibility: hidden !important;
-          }
-          #findings-print-root, #findings-print-root * {
-            visibility: visible !important;
-          }
-          #findings-print-root {
-            position: absolute !important;
-            left: 0; top: 0; width: 100vw; background: white;
-          }
-        }
-      `}</style>
-      <div id="findings-print-root">
-        {/* ... all main findings content ... */}
-        {/* Existing dashboard content goes here */}
-      </div>
     </Box>
   );
 };
 
-export default FindingsDashboard; 
+export default AuditFindingsPanel; 

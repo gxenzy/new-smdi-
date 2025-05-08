@@ -1,5 +1,5 @@
 import * as React from 'react';
-import * as ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { store } from './store';
 import App from './App';
@@ -18,7 +18,12 @@ import { EnergyAuditProvider } from './pages/EnergyAudit/EnergyAuditContext';
 const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('Failed to find the root element');
 
-ReactDOM.render(
+const root = createRoot(rootElement);
+const future = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true,
+};
+root.render(
   <Provider store={store}>
     <SocketProvider>
       <ThemeProvider>
@@ -28,7 +33,7 @@ ReactDOM.render(
             <NotificationProvider>
               <AuthProvider>
                 <EnergyAuditProvider>
-                  <BrowserRouter>
+                  <BrowserRouter future={future}>
                     <App />
                   </BrowserRouter>
                 </EnergyAuditProvider>
@@ -38,6 +43,5 @@ ReactDOM.render(
         </SnackbarProvider>
       </ThemeProvider>
     </SocketProvider>
-  </Provider>,
-  rootElement
+  </Provider>
 );

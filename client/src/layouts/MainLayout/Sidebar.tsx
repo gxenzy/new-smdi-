@@ -27,6 +27,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { UserRole } from '../../types';
+import { useThemeMode } from '../../contexts/ThemeContext';
 
 // Backup of removed sidebar items:
 // { text: 'Electrical System', icon: <ElectricIcon />, path: '/electrical-system' },
@@ -53,6 +54,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
   const location = useLocation();
   const { user } = useAuthContext();
   const theme = useTheme();
+  const { mode } = useThemeMode();
 
   const handleNavigation = (path: string) => {
     navigate(path);
@@ -69,13 +71,16 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
     <Box
       sx={{
         width: isOpen ? 240 : 64,
-        bgcolor: theme.palette.background.default,
-        color: theme.palette.text.primary,
+        bgcolor: 'rgba(255,255,255,0.7)',
+        color: '#222',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        boxShadow: '2px 0 24px rgba(0,0,0,0.08)',
+        borderRight: '1px solid rgba(0,0,0,0.06)',
         height: '100vh',
         display: 'flex',
         flexDirection: 'column',
         transition: 'width 0.3s',
-        borderRight: `1px solid ${theme.palette.divider}`,
         position: 'relative',
         zIndex: 1200,
         overflow: 'hidden',
@@ -89,7 +94,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
               <Box sx={{ width: 36, height: 36, bgcolor: '#90caf9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1976d2', fontWeight: 'bold', fontSize: 20, mb: 0.5 }}>
                 {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
               </Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: 14, color: theme.palette.text.primary }} noWrap>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: 14, color: mode === 'gradient' ? '#fff' : theme.palette.text.primary }} noWrap>
                 {user?.name || ''}
               </Typography>
             </Box>
@@ -109,9 +114,17 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
               sx={{
                 mb: 1,
                 borderRadius: 1,
-                bgcolor: location.pathname === item.path ? theme.palette.action.selected : 'transparent',
+                bgcolor:
+                  location.pathname === item.path
+                    ? mode === 'gradient'
+                      ? 'rgba(255,255,255,0.18)'
+                      : theme.palette.action.selected
+                    : 'transparent',
                 '&:hover': {
-                  bgcolor: theme.palette.action.hover,
+                  bgcolor:
+                    mode === 'gradient'
+                      ? 'rgba(255,255,255,0.12)'
+                      : theme.palette.action.hover,
                 },
                 color: 'inherit',
                 opacity: 1,
@@ -121,8 +134,10 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
                 minHeight: 48,
               }}
             >
-              <ListItemIcon sx={{ color: 'inherit', minWidth: 40, justifyContent: 'center' }}>{item.icon}</ListItemIcon>
-              {isOpen && <ListItemText primary={item.text} primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: location.pathname === item.path ? 'bold' : 'normal' }} />}
+              <>
+                <ListItemIcon sx={{ color: mode === 'gradient' ? '#fff' : 'inherit', minWidth: 40, justifyContent: 'center' }}>{item.icon}</ListItemIcon>
+                {isOpen && <ListItemText primary={item.text} primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: location.pathname === item.path ? 'bold' : 'normal', color: '#222' }} />}
+              </>
             </ListItem>
           </Tooltip>
         ))}

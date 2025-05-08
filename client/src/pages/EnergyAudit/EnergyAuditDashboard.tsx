@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, Grid, Button, List, ListItem, ListItemText, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert } from '@mui/material';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { glassCardSx } from '../../theme/glassCardSx';
 
 interface Audit {
   _id?: string;
@@ -67,7 +68,7 @@ const EnergyAuditDashboard: React.FC = () => {
     // Real-time updates
     // @ts-ignore
     import('socket.io-client').then(({ io }) => {
-      const socket = io('http://localhost:5001');
+      const socket = io(process.env.REACT_APP_WS_URL || 'http://localhost:8000');
       socket.on('energyAuditUpdate', fetchAudits);
       socket.on('energyAuditDelete', fetchAudits);
       return () => {
@@ -198,19 +199,19 @@ const EnergyAuditDashboard: React.FC = () => {
       </Paper>
       <Grid container spacing={3}>
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3 }}>
+          <Paper sx={glassCardSx({ accent: '#00897b' })}>
             <Typography variant="h6">Total Audits</Typography>
             <Typography variant="h3">{stats.totalAudits}</Typography>
           </Paper>
         </Grid>
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3 }}>
+          <Paper sx={glassCardSx({ accent: '#00897b' })}>
             <Typography variant="h6">Pending Audits</Typography>
             <Typography variant="h3" color="warning.main">{stats.pendingAudits}</Typography>
           </Paper>
         </Grid>
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3 }}>
+          <Paper sx={glassCardSx({ accent: '#00897b' })}>
             <Typography variant="h6">Completed Audits</Typography>
             <Typography variant="h3" color="success.main">{stats.completedAudits}</Typography>
           </Paper>

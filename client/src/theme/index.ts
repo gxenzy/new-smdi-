@@ -172,43 +172,44 @@ export const darkTheme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#90caf9',
-      light: '#e3f2fd',
-      dark: '#1976d2',
+      main: '#3584e4',
+      light: '#569cd6',
+      dark: '#1b2838',
     },
     secondary: {
-      main: '#ce93d8',
-      light: '#f3e5f5',
-      dark: '#7b1fa2',
+      main: '#3a3d41',
+      light: '#444a56',
+      dark: '#23272f',
     },
     error: {
-      main: '#ef9a9a',
-      light: '#ffcdd2',
+      main: '#f44747',
+      light: '#ff616e',
       dark: '#b71c1c',
     },
     warning: {
-      main: '#ffb74d',
-      light: '#ffe0b2',
-      dark: '#f57c00',
+      main: '#ffb86c',
+      light: '#ffd6a5',
+      dark: '#c49000',
     },
     info: {
-      main: '#81d4fa',
+      main: '#82aaff',
       light: '#b3e5fc',
       dark: '#01579b',
     },
     success: {
-      main: '#a5d6a7',
-      light: '#c8e6c9',
+      main: '#4ec9b0',
+      light: '#7fffd4',
       dark: '#1b5e20',
     },
     background: {
-      default: '#18191A',
-      paper: '#23272F',
+      default: '#1e1e1e',
+      paper: '#23272f',
     },
     text: {
-      primary: '#fff',
-      secondary: '#B0B3B8',
+      primary: '#d4d4d4',
+      secondary: '#a0a0a0',
     },
+    divider: '#3a3d41',
   },
   typography: {
     fontFamily: [
@@ -223,26 +224,32 @@ export const darkTheme = createTheme({
     h1: {
       fontSize: '2.5rem',
       fontWeight: 500,
+      color: '#fff',
     },
     h2: {
       fontSize: '2rem',
       fontWeight: 500,
+      color: '#fff',
     },
     h3: {
       fontSize: '1.75rem',
       fontWeight: 500,
+      color: '#fff',
     },
     h4: {
       fontSize: '1.5rem',
       fontWeight: 500,
+      color: '#fff',
     },
     h5: {
       fontSize: '1.25rem',
       fontWeight: 500,
+      color: '#fff',
     },
     h6: {
       fontSize: '1rem',
       fontWeight: 500,
+      color: '#fff',
     },
   },
   components: {
@@ -251,6 +258,11 @@ export const darkTheme = createTheme({
         root: {
           textTransform: 'none',
           borderRadius: 8,
+          backgroundColor: '#23272f',
+          color: '#d4d4d4',
+          '&:hover': {
+            backgroundColor: '#252526',
+          },
         },
       },
     },
@@ -258,24 +270,26 @@ export const darkTheme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 12,
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          backgroundColor: '#252526',
+          color: '#d4d4d4',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
         },
       },
     },
     MuiDrawer: {
       styleOverrides: {
         paper: {
-          backgroundColor: '#23272F',
-          color: '#90caf9',
-          borderRight: '1px solid #333',
+          backgroundColor: '#23272f',
+          color: '#d4d4d4',
+          borderRight: '1px solid #3a3d41',
         },
       },
     },
     MuiAppBar: {
       styleOverrides: {
         root: {
-          backgroundColor: '#18191A',
-          color: '#90caf9',
+          backgroundColor: '#23272f',
+          color: '#d4d4d4',
           boxShadow: '0 2px 8px rgba(0,0,0,0.24)',
         },
       },
@@ -284,8 +298,8 @@ export const darkTheme = createTheme({
       styleOverrides: {
         root: {
           '&:hover': {
-            backgroundColor: '#23272F',
-            opacity: 0.85,
+            backgroundColor: '#23272f',
+            opacity: 0.95,
           },
         },
       },
@@ -293,7 +307,7 @@ export const darkTheme = createTheme({
     MuiListItemIcon: {
       styleOverrides: {
         root: {
-          color: '#90caf9',
+          color: '#d4d4d4',
         },
       },
     },
@@ -301,6 +315,17 @@ export const darkTheme = createTheme({
       styleOverrides: {
         primary: {
           fontWeight: 500,
+          color: '#d4d4d4',
+        },
+        secondary: {
+          color: '#a0a0a0',
+        },
+      },
+    },
+    MuiDivider: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#3a3d41',
         },
       },
     },
@@ -310,29 +335,62 @@ export const darkTheme = createTheme({
   },
   shadows: [
     'none',
-    '0px 2px 1px -1px rgba(0,0,0,0.1),0px 1px 1px 0px rgba(0,0,0,0.07),0px 1px 3px 0px rgba(0,0,0,0.06)',
-    '0px 3px 1px -2px rgba(0,0,0,0.1),0px 2px 2px 0px rgba(0,0,0,0.07),0px 1px 5px 0px rgba(0,0,0,0.06)',
-    '0px 3px 3px -2px rgba(0,0,0,0.1),0px 3px 4px 0px rgba(0,0,0,0.07),0px 1px 8px 0px rgba(0,0,0,0.06)',
-    '0px 2px 4px -1px rgba(0,0,0,0.1),0px 4px 5px 0px rgba(0,0,0,0.07),0px 1px 10px 0px rgba(0,0,0,0.06)',
-    '0px 3px 5px -1px rgba(0,0,0,0.1),0px 5px 8px 0px rgba(0,0,0,0.07),0px 1px 14px 0px rgba(0,0,0,0.06)',
-    '0px 3px 5px -1px rgba(0,0,0,0.1),0px 6px 10px 0px rgba(0,0,0,0.07),0px 1px 18px 0px rgba(0,0,0,0.06)',
-    '0px 4px 5px -2px rgba(0,0,0,0.1),0px 7px 10px 1px rgba(0,0,0,0.07),0px 2px 16px 1px rgba(0,0,0,0.06)',
-    '0px 5px 5px -3px rgba(0,0,0,0.1),0px 8px 10px 1px rgba(0,0,0,0.07),0px 3px 14px 2px rgba(0,0,0,0.06)',
-    '0px 5px 6px -3px rgba(0,0,0,0.1),0px 9px 12px 1px rgba(0,0,0,0.07),0px 3px 16px 2px rgba(0,0,0,0.06)',
-    '0px 6px 6px -3px rgba(0,0,0,0.1),0px 10px 14px 1px rgba(0,0,0,0.07),0px 4px 18px 3px rgba(0,0,0,0.06)',
-    '0px 6px 7px -4px rgba(0,0,0,0.1),0px 11px 15px 1px rgba(0,0,0,0.07),0px 4px 20px 3px rgba(0,0,0,0.06)',
-    '0px 7px 8px -4px rgba(0,0,0,0.1),0px 12px 17px 2px rgba(0,0,0,0.07),0px 5px 22px 4px rgba(0,0,0,0.06)',
-    '0px 7px 8px -4px rgba(0,0,0,0.1),0px 13px 19px 2px rgba(0,0,0,0.07),0px 5px 24px 4px rgba(0,0,0,0.06)',
-    '0px 7px 9px -4px rgba(0,0,0,0.1),0px 14px 21px 2px rgba(0,0,0,0.07),0px 5px 26px 4px rgba(0,0,0,0.06)',
-    '0px 8px 9px -5px rgba(0,0,0,0.1),0px 15px 22px 2px rgba(0,0,0,0.07),0px 6px 28px 5px rgba(0,0,0,0.06)',
-    '0px 8px 10px -5px rgba(0,0,0,0.1),0px 16px 24px 2px rgba(0,0,0,0.07),0px 6px 30px 5px rgba(0,0,0,0.06)',
-    '0px 8px 11px -5px rgba(0,0,0,0.1),0px 17px 26px 2px rgba(0,0,0,0.07),0px 6px 32px 5px rgba(0,0,0,0.06)',
-    '0px 9px 11px -5px rgba(0,0,0,0.1),0px 18px 28px 2px rgba(0,0,0,0.07),0px 7px 34px 6px rgba(0,0,0,0.06)',
-    '0px 9px 12px -6px rgba(0,0,0,0.1),0px 19px 29px 2px rgba(0,0,0,0.07),0px 7px 36px 6px rgba(0,0,0,0.06)',
-    '0px 10px 13px -6px rgba(0,0,0,0.1),0px 20px 31px 3px rgba(0,0,0,0.07),0px 8px 38px 7px rgba(0,0,0,0.06)',
-    '0px 10px 13px -6px rgba(0,0,0,0.1),0px 21px 33px 3px rgba(0,0,0,0.07),0px 8px 40px 7px rgba(0,0,0,0.06)',
-    '0px 10px 14px -6px rgba(0,0,0,0.1),0px 22px 35px 3px rgba(0,0,0,0.07),0px 8px 42px 7px rgba(0,0,0,0.06)',
-    '0px 11px 14px -7px rgba(0,0,0,0.1),0px 23px 36px 3px rgba(0,0,0,0.07),0px 9px 44px 8px rgba(0,0,0,0.06)',
-    '0px 11px 15px -7px rgba(0,0,0,0.1),0px 24px 38px 3px rgba(0,0,0,0.07),0px 9px 46px 8px rgba(0,0,0,0.06)',
+    '0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12)',
+    '0px 3px 1px -2px rgba(0,0,0,0.2),0px 2px 2px 0px rgba(0,0,0,0.14),0px 1px 5px 0px rgba(0,0,0,0.12)',
+    '0px 3px 3px -2px rgba(0,0,0,0.2),0px 3px 4px 0px rgba(0,0,0,0.14),0px 1px 8px 0px rgba(0,0,0,0.12)',
+    '0px 2px 4px -1px rgba(0,0,0,0.2),0px 4px 5px 0px rgba(0,0,0,0.14),0px 1px 10px 0px rgba(0,0,0,0.12)',
+    '0px 3px 5px -1px rgba(0,0,0,0.2),0px 5px 8px 0px rgba(0,0,0,0.14),0px 1px 14px 0px rgba(0,0,0,0.12)',
+    '0px 3px 5px -1px rgba(0,0,0,0.2),0px 6px 10px 0px rgba(0,0,0,0.14),0px 1px 18px 0px rgba(0,0,0,0.12)',
+    '0px 4px 5px -2px rgba(0,0,0,0.2),0px 7px 10px 1px rgba(0,0,0,0.14),0px 2px 16px 1px rgba(0,0,0,0.12)',
+    '0px 5px 5px -3px rgba(0,0,0,0.2),0px 8px 10px 1px rgba(0,0,0,0.14),0px 3px 14px 2px rgba(0,0,0,0.12)',
+    '0px 5px 6px -3px rgba(0,0,0,0.2),0px 9px 12px 1px rgba(0,0,0,0.14),0px 3px 16px 2px rgba(0,0,0,0.12)',
+    '0px 6px 6px -3px rgba(0,0,0,0.2),0px 10px 14px 1px rgba(0,0,0,0.14),0px 4px 18px 3px rgba(0,0,0,0.12)',
+    '0px 6px 7px -4px rgba(0,0,0,0.2),0px 11px 15px 1px rgba(0,0,0,0.14),0px 4px 20px 3px rgba(0,0,0,0.12)',
+    '0px 7px 8px -4px rgba(0,0,0,0.2),0px 12px 17px 2px rgba(0,0,0,0.14),0px 5px 22px 4px rgba(0,0,0,0.12)',
+    '0px 7px 8px -4px rgba(0,0,0,0.2),0px 13px 19px 2px rgba(0,0,0,0.14),0px 5px 24px 4px rgba(0,0,0,0.12)',
+    '0px 7px 9px -4px rgba(0,0,0,0.2),0px 14px 21px 2px rgba(0,0,0,0.14),0px 5px 26px 4px rgba(0,0,0,0.12)',
+    '0px 8px 9px -5px rgba(0,0,0,0.2),0px 15px 22px 2px rgba(0,0,0,0.14),0px 6px 28px 5px rgba(0,0,0,0.12)',
+    '0px 8px 10px -5px rgba(0,0,0,0.2),0px 16px 24px 2px rgba(0,0,0,0.14),0px 6px 30px 5px rgba(0,0,0,0.12)',
+    '0px 8px 11px -5px rgba(0,0,0,0.2),0px 17px 26px 2px rgba(0,0,0,0.14),0px 6px 32px 5px rgba(0,0,0,0.12)',
+    '0px 9px 11px -5px rgba(0,0,0,0.2),0px 18px 28px 2px rgba(0,0,0,0.14),0px 7px 34px 6px rgba(0,0,0,0.12)',
+    '0px 9px 12px -6px rgba(0,0,0,0.2),0px 19px 29px 2px rgba(0,0,0,0.14),0px 7px 36px 6px rgba(0,0,0,0.12)',
+    '0px 10px 13px -6px rgba(0,0,0,0.2),0px 20px 31px 3px rgba(0,0,0,0.14),0px 8px 38px 7px rgba(0,0,0,0.12)',
+    '0px 10px 13px -6px rgba(0,0,0,0.2),0px 21px 33px 3px rgba(0,0,0,0.14),0px 8px 40px 7px rgba(0,0,0,0.12)',
+    '0px 10px 14px -6px rgba(0,0,0,0.2),0px 22px 35px 3px rgba(0,0,0,0.14),0px 8px 42px 7px rgba(0,0,0,0.12)',
+    '0px 11px 14px -7px rgba(0,0,0,0.2),0px 23px 36px 3px rgba(0,0,0,0.14),0px 9px 44px 8px rgba(0,0,0,0.12)',
+    '0px 11px 15px -7px rgba(0,0,0,0.2),0px 24px 38px 3px rgba(0,0,0,0.14),0px 9px 46px 8px rgba(0,0,0,0.12)',
   ],
+});
+
+// Add Gray theme
+export const grayTheme = createTheme({
+  palette: {
+    mode: 'light',
+    primary: { main: '#9E9E9E', light: '#BDBDBD', dark: '#616161' },
+    secondary: { main: '#757575', light: '#9E9E9E', dark: '#424242' },
+    background: { default: '#F5F5F5', paper: '#E0E0E0' },
+    text: { primary: '#212121', secondary: '#424242' },
+  },
+});
+
+// Add Tile theme (blue & red complementary)
+export const tileTheme = createTheme({
+  palette: {
+    mode: 'light',
+    primary: { main: '#4285F4', light: '#82B1FF', dark: '#0053C7' },
+    secondary: { main: '#DB4437', light: '#FF7665', dark: '#A52714' },
+    background: { default: '#FFFFFF', paper: '#F1F3F4' },
+    text: { primary: '#202124', secondary: '#5F6368' },
+  },
+});
+
+// Add Logo theme (based on #0088FE & complementary accent)
+export const logoTheme = createTheme({
+  palette: {
+    mode: 'light',
+    primary: { main: '#0088FE', light: '#66B2FF', dark: '#0053A5' },
+    secondary: { main: '#FF9C00', light: '#FFBC4F', dark: '#B27C00' },
+    background: { default: '#FFFFFF', paper: '#F0F0F0' },
+    text: { primary: '#212121', secondary: '#555555' },
+  },
 });

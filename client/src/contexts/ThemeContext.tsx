@@ -1,86 +1,45 @@
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
-import { ThemeProvider as MuiThemeProvider, createTheme, useMediaQuery } from '@mui/material';
-import { CHART_COLORS } from '../pages/EnergyAudit/components/Analytics/constants';
+import React, { createContext, useContext, useMemo, useState, useEffect } from 'react';
+import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
+import { lightTheme, darkTheme, grayTheme, tileTheme, logoTheme } from '../theme';
 
-interface ThemeSettings {
-  mode: 'light' | 'dark';
-  primaryColor: string;
-  secondaryColor: string;
-  fontSize: number;
-}
+const ThemeContext = createContext({
+  mode: 'default',
+  setMode: (mode: string) => {},
+});
 
-interface ThemeContextType {
-  themeSettings: ThemeSettings;
-  isMobile: boolean;
-  updateThemeSettings: (settings: Partial<ThemeSettings>) => void;
-  theme: ReturnType<typeof createTheme>;
-  isDarkMode: boolean;
-  toggleTheme: () => void;
-}
-
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+export const useThemeMode = () => useContext(ThemeContext);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
-  
-  const [themeSettings, setThemeSettings] = useState<ThemeSettings>({
-    mode: prefersDarkMode ? 'dark' : 'light',
-    primaryColor: CHART_COLORS[0],
-    secondaryColor: CHART_COLORS[1],
-    fontSize: 1,
-  });
+  const [mode, setMode] = useState(() => localStorage.getItem('themeMode') || 'default');
 
-  const isDarkMode = themeSettings.mode === 'dark';
-
-  const toggleTheme = useCallback(() => {
-    setThemeSettings(prev => ({
-      ...prev,
-      mode: prev.mode === 'light' ? 'dark' : 'light'
-    }));
-  }, []);
-
-  const updateThemeSettings = useCallback((newSettings: Partial<ThemeSettings>) => {
-    setThemeSettings(prev => ({
-      ...prev,
-      ...newSettings,
-    }));
-  }, []);
-
-  const theme = useMemo(() => createTheme({
-    palette: {
-      mode: themeSettings.mode,
-      primary: { main: themeSettings.primaryColor },
-      secondary: { main: themeSettings.secondaryColor }
-    },
-    typography: {
-      fontSize: 14 * themeSettings.fontSize
+  // Use the selected theme based on mode
+  const activeTheme = useMemo(() => {
+    switch (mode) {
+      case 'light':
+        return lightTheme;
+      case 'dark':
+        return darkTheme;
+      case 'gray':
+        return grayTheme;
+      case 'tile':
+        return tileTheme;
+      case 'logo':
+        return logoTheme;
+      default:
+        return lightTheme;
     }
-  }), [themeSettings]);
+  }, [mode]);
 
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const handleSetMode = (newMode: string) => {
+    setMode(newMode);
+    localStorage.setItem('themeMode', newMode);
+  };
 
-  const value = useMemo(() => ({
-    themeSettings,
-    isMobile,
-    updateThemeSettings,
-    theme,
-    isDarkMode,
-    toggleTheme,
-  }), [themeSettings, isMobile, updateThemeSettings, theme, isDarkMode, toggleTheme]);
+  // Removed manual background effect; CssBaseline will apply the theme's background automatically
 
   return (
-    <ThemeContext.Provider value={value}>
-      <MuiThemeProvider theme={theme}>
-        {children}
-      </MuiThemeProvider>
+    <ThemeContext.Provider value={{ mode, setMode: handleSetMode }}>
+      <MuiThemeProvider theme={activeTheme}>{children}</MuiThemeProvider>
     </ThemeContext.Provider>
   );
-};
-
-export const useTheme = () => {
-  const context = useContext(ThemeContext);
-  if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
-  return context;
 }; 

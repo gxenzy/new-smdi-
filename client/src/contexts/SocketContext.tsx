@@ -7,7 +7,8 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const socketRef = useRef<Socket | null>(null);
 
   if (!socketRef.current) {
-    socketRef.current = io('http://localhost:5001');
+    const wsUrl = process.env.REACT_APP_WS_URL || 'http://localhost:8000';
+    socketRef.current = io(wsUrl);
   }
 
   useEffect(() => {

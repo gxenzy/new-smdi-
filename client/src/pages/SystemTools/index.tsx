@@ -25,6 +25,7 @@ import {
   Refresh as SyncIcon,
   Check as CheckIcon,
 } from '@mui/icons-material';
+import { glassCardSx } from '../../theme/glassCardSx';
 
 interface ToolStatus {
   id: string;
@@ -108,7 +109,7 @@ const SystemTools: React.FC = () => {
       color?: 'primary' | 'secondary' | 'error';
     }>
   ) => (
-    <Card>
+    <Card sx={glassCardSx({ blur: 14, accent: '#263238' })}>
       <CardContent>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
           <Box sx={{ mr: 2 }}>{icon}</Box>
@@ -237,7 +238,7 @@ const SystemTools: React.FC = () => {
       </Grid>
 
       {/* System Status */}
-      <Card sx={{ mt: 3 }}>
+      <Card sx={glassCardSx({ blur: 14, accent: '#263238' })}>
         <CardContent>
           <Typography variant="h6" gutterBottom>
             System Status

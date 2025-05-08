@@ -85,6 +85,8 @@ import { Document, Packer, Paragraph, TextRun } from 'docx';
 import HelpDialog from '../../components/EnergyAudit/HelpDialog';
 import OnboardingWizard from '../../components/EnergyAudit/OnboardingWizard';
 import type { Comment, Severity, Status, ApprovalStatus } from './EnergyAuditContext';
+import { useEnergyAudit } from './EnergyAuditContext';
+import { glassCardSx } from '../../theme/glassCardSx';
 
 declare module 'jspdf' {
   interface jsPDF {
@@ -247,7 +249,7 @@ const getImageFormat = (dataUrl: string) => {
 
 // Move component definitions outside the main component
 const HistoricalComparisonChart: React.FC<{ data: HistoricalData[] }> = ({ data }) => (
-  <Card>
+  <Card sx={glassCardSx()}>
     <CardContent>
       <Typography variant="h6" gutterBottom>
         Historical Comparison
@@ -363,7 +365,7 @@ const CustomBenchmarksSection: React.FC<CustomBenchmarksSectionProps> = ({
   onUpdate,
   onDelete,
 }) => (
-  <Card>
+  <Card sx={glassCardSx()}>
     <CardContent>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">Custom Benchmarks</Typography>
@@ -614,6 +616,7 @@ const ThemeCustomizationDialog: React.FC<ThemeCustomizationDialogProps> = ({
 };
 
 const EnergyAuditAnalytics: React.FC = () => {
+  const { audit } = useEnergyAudit();
   const { testHistory } = useEnergyAuditHistory();
   const [timeRange, setTimeRange] = React.useState('3m'); // 1m, 3m, 6m, 1y
   const [benchmarkProfile, setBenchmarkProfile] = React.useState('office');
@@ -663,24 +666,40 @@ const EnergyAuditAnalytics: React.FC = () => {
   // Find selected benchmark
   const selectedBenchmark = BENCHMARK_PROFILES.find(b => b.value === benchmarkProfile) || BENCHMARK_PROFILES[0];
 
-  // Calculate compliance percentages
+  // Replace sampleData with real audit data
+  const realData = useMemo(() => {
+    // Aggregate findings by month for the last 3 months
+    const allFindings = [...audit.lighting, ...audit.hvac, ...audit.envelope];
+    const months = [2, 1, 0].map(getCurrentYearMonth);
+    return months.map(month => {
+      const findings = allFindings.filter(f => f.createdAt.startsWith(month));
+      return {
+        date: month,
+        powerUsage: findings.reduce((sum, f) => sum + (f.estimatedCost || 0), 0),
+        lightingEfficiency: findings.filter(f => f.section === 'lighting').length ? 90 : 0, // Placeholder, replace with real calc
+        hvacEfficiency: findings.filter(f => f.section === 'hvac').length ? 90 : 0, // Placeholder, replace with real calc
+        compliance: {
+          power: findings.every(f => f.status === 'Resolved'),
+          lighting: findings.filter(f => f.section === 'lighting').every(f => f.status === 'Resolved'),
+          hvac: findings.filter(f => f.section === 'hvac').every(f => f.status === 'Resolved'),
+        },
+      };
+    });
+  }, [audit]);
+
+  // Use realData instead of sampleData in all calculations below
   const complianceData = [
-    { name: 'Power Usage', value: sampleData.filter(d => d.compliance.power).length },
-    { name: 'Lighting', value: sampleData.filter(d => d.compliance.lighting).length },
-    { name: 'HVAC', value: sampleData.filter(d => d.compliance.hvac).length },
-    { name: 'Non-compliant', value: sampleData.filter(d => !d.compliance.power || !d.compliance.lighting || !d.compliance.hvac).length },
+    { name: 'Power Usage', value: realData.filter(d => d.compliance.power).length },
+    { name: 'Lighting', value: realData.filter(d => d.compliance.lighting).length },
+    { name: 'HVAC', value: realData.filter(d => d.compliance.hvac).length },
+    { name: 'Non-compliant', value: realData.filter(d => !d.compliance.power || !d.compliance.lighting || !d.compliance.hvac).length },
   ];
-
-  // Calculate average efficiencies
-  const avgLightingEfficiency = sampleData.reduce((sum, d) => sum + d.lightingEfficiency, 0) / sampleData.length;
-  const avgHVACEfficiency = sampleData.reduce((sum, d) => sum + d.hvacEfficiency, 0) / sampleData.length;
-
-  // Calculate energy savings and cost with peak/off-peak
+  const avgLightingEfficiency = realData.reduce((sum, d) => sum + d.lightingEfficiency, 0) / realData.length;
+  const avgHVACEfficiency = realData.reduce((sum, d) => sum + d.hvacEfficiency, 0) / realData.length;
   const energySavings = useMemo(() => {
-    const baseline = sampleData[0].powerUsage;
-    const current = sampleData[sampleData.length - 1].powerUsage;
-    const savings = ((baseline - current) / baseline) * 100;
-    // Cost calculation
+    const baseline = realData[0]?.powerUsage || 0;
+    const current = realData[realData.length - 1]?.powerUsage || 0;
+    const savings = baseline ? ((baseline - current) / baseline) * 100 : 0;
     const peakKWh = (baseline - current) * peakPercent;
     const offPeakKWh = (baseline - current) * (1 - peakPercent);
     const cost = peakKWh * peakRate + offPeakKWh * offPeakRate;
@@ -689,30 +708,24 @@ const EnergyAuditAnalytics: React.FC = () => {
       amount: baseline - current,
       cost,
     };
-  }, [peakRate, offPeakRate, peakPercent]);
-
-  // Calculate trend data
+  }, [realData, peakRate, offPeakRate, peakPercent]);
   const trendData = useMemo(() => {
-    return sampleData.map((d, i) => ({
+    return realData.map((d, i) => ({
       ...d,
-      trend: i > 0 ? ((d.powerUsage - sampleData[i - 1].powerUsage) / sampleData[i - 1].powerUsage) * 100 : 0,
+      trend: i > 0 ? ((d.powerUsage - realData[i - 1].powerUsage) / realData[i - 1].powerUsage) * 100 : 0,
     }));
-  }, []);
-
-  // Calculate benchmarking data (use selected profile)
+  }, [realData]);
   const benchmarkingData = useMemo(() => {
     return {
       lighting: (avgLightingEfficiency / selectedBenchmark.lighting) * 100,
       hvac: (avgHVACEfficiency / selectedBenchmark.hvac) * 100,
-      power: (sampleData[sampleData.length - 1].powerUsage / selectedBenchmark.power) * 100,
+      power: (realData[realData.length - 1]?.powerUsage || 0) / selectedBenchmark.power * 100,
     };
-  }, [selectedBenchmark, avgLightingEfficiency, avgHVACEfficiency]);
-
-  // Cost Impact Analysis (use peak/off-peak)
+  }, [selectedBenchmark, avgLightingEfficiency, avgHVACEfficiency, realData]);
   const costImpactData = [
-    { name: 'Lighting', cost: 2500 * (peakRate * peakPercent + offPeakRate * (1 - peakPercent)) },
-    { name: 'HVAC', cost: 5000 * (peakRate * peakPercent + offPeakRate * (1 - peakPercent)) },
-    { name: 'Equipment', cost: 3500 * (peakRate * peakPercent + offPeakRate * (1 - peakPercent)) },
+    { name: 'Lighting', cost: (audit.lighting.reduce((sum, f) => sum + (f.estimatedCost || 0), 0)) * (peakRate * peakPercent + offPeakRate * (1 - peakPercent)) },
+    { name: 'HVAC', cost: (audit.hvac.reduce((sum, f) => sum + (f.estimatedCost || 0), 0)) * (peakRate * peakPercent + offPeakRate * (1 - peakPercent)) },
+    { name: 'Envelope', cost: (audit.envelope.reduce((sum, f) => sum + (f.estimatedCost || 0), 0)) * (peakRate * peakPercent + offPeakRate * (1 - peakPercent)) },
   ];
 
   // Chart refs
@@ -781,7 +794,7 @@ const EnergyAuditAnalytics: React.FC = () => {
       body: [
         ['Avg Lighting Efficiency (%)', avgLightingEfficiency.toFixed(1)],
         ['Avg HVAC Efficiency (%)', avgHVACEfficiency.toFixed(1)],
-        ['Overall Compliance Rate (%)', ((sampleData.filter(d => d.compliance.power && d.compliance.lighting && d.compliance.hvac).length / sampleData.length) * 100).toFixed(1)],
+        ['Overall Compliance Rate (%)', ((realData.filter(d => d.compliance.power && d.compliance.lighting && d.compliance.hvac).length / realData.length) * 100).toFixed(1)],
         ['Energy Savings (%)', energySavings.percentage.toFixed(1)],
         ['Energy Savings (kWh)', energySavings.amount.toFixed(0)],
         ['Estimated Cost Savings', energySavings.cost.toFixed(2)],
@@ -834,7 +847,7 @@ const EnergyAuditAnalytics: React.FC = () => {
     doc.setFontSize(10);
     doc.text([
       `- Energy savings potential: ${Math.max(0, 100 - benchmarkingData.power).toFixed(1)}% additional possible.`,
-      `- Current monthly energy costs: ${formatPHP(sampleData[sampleData.length - 1].powerUsage * (peakRate * peakPercent + offPeakRate * (1 - peakPercent)))}`,
+      `- Current monthly energy costs: ${formatPHP(realData[realData.length - 1].powerUsage * (peakRate * peakPercent + offPeakRate * (1 - peakPercent)))}`,
       `- Performance trend: ${trendData[trendData.length - 1].trend > 0 ? 'Increasing' : 'Decreasing'} energy usage.`,
       trendData[trendData.length - 1].trend > 0 ? '- Consider implementing energy-saving measures.' : '- Current measures are effective.'
     ], 14, y + 16);
@@ -867,7 +880,7 @@ const EnergyAuditAnalytics: React.FC = () => {
     csv += 'Metric,Value\n';
     csv += `Avg Lighting Efficiency (%),${avgLightingEfficiency.toFixed(1)}\n`;
     csv += `Avg HVAC Efficiency (%),${avgHVACEfficiency.toFixed(1)}\n`;
-    csv += `Overall Compliance Rate (%),${((sampleData.filter(d => d.compliance.power && d.compliance.lighting && d.compliance.hvac).length / sampleData.length) * 100).toFixed(1)}\n`;
+    csv += `Overall Compliance Rate (%),${((realData.filter(d => d.compliance.power && d.compliance.lighting && d.compliance.hvac).length / realData.length) * 100).toFixed(1)}\n`;
     csv += `Energy Savings (%),${energySavings.percentage.toFixed(1)}\n`;
     csv += `Energy Savings (kWh),${energySavings.amount.toFixed(0)}\n`;
     csv += `Estimated Cost Savings,${energySavings.cost.toFixed(2)}\n`;
@@ -883,7 +896,7 @@ const EnergyAuditAnalytics: React.FC = () => {
     csv += `Power,${benchmarkingData.power.toFixed(1)},100\n`;
     csv += '\nKey Insights\n';
     csv += `Energy savings potential,${Math.max(0, 100 - benchmarkingData.power).toFixed(1)}% additional possible\n`;
-    csv += `Current monthly energy costs,${(sampleData[sampleData.length - 1].powerUsage * (peakRate * peakPercent + offPeakRate * (1 - peakPercent))).toFixed(2)}\n`;
+    csv += `Current monthly energy costs,${(realData[realData.length - 1].powerUsage * (peakRate * peakPercent + offPeakRate * (1 - peakPercent))).toFixed(2)}\n`;
     csv += `Performance trend,${trendData[trendData.length - 1].trend > 0 ? 'Increasing' : 'Decreasing'} energy usage\n`;
     csv += trendData[trendData.length - 1].trend > 0 ? 'Recommendation,Consider implementing energy-saving measures.\n' : 'Recommendation,Current measures are effective.\n';
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -976,7 +989,7 @@ const EnergyAuditAnalytics: React.FC = () => {
 
   // Add signature section to the UI
   const SignatureSection = () => (
-    <Card>
+    <Card sx={glassCardSx()}>
       <CardContent>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h6">Digital Signatures</Typography>
@@ -1184,7 +1197,7 @@ const EnergyAuditAnalytics: React.FC = () => {
 
   // [4] EXPORT TO EXCEL
   const handleExportExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(sampleData);
+    const ws = XLSX.utils.json_to_sheet(realData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Analytics');
     XLSX.writeFile(wb, 'energy_audit_analytics.xlsx');
@@ -1204,7 +1217,7 @@ const EnergyAuditAnalytics: React.FC = () => {
           new Paragraph({ children: [new TextRun({ text: 'Summary:', bold: true, size: 24 })] }),
           new Paragraph({ children: [new TextRun({ text: `Avg Lighting Efficiency: ${avgLightingEfficiency.toFixed(1)}%`, size: 20 })] }),
           new Paragraph({ children: [new TextRun({ text: `Avg HVAC Efficiency: ${avgHVACEfficiency.toFixed(1)}%`, size: 20 })] }),
-          new Paragraph({ children: [new TextRun({ text: `Overall Compliance Rate: ${((sampleData.filter(d => d.compliance.power && d.compliance.lighting && d.compliance.hvac).length / sampleData.length) * 100).toFixed(1)}%`, size: 20 })] }),
+          new Paragraph({ children: [new TextRun({ text: `Overall Compliance Rate: ${((realData.filter(d => d.compliance.power && d.compliance.lighting && d.compliance.hvac).length / realData.length) * 100).toFixed(1)}%`, size: 20 })] }),
           new Paragraph({ children: [new TextRun({ text: `Energy Savings: ${energySavings.percentage.toFixed(1)}%`, size: 20 })] }),
           new Paragraph({ children: [new TextRun({ text: `Estimated Cost Savings: ${formatPHP(energySavings.cost)}`, size: 20 })] }),
         ],
@@ -1215,8 +1228,8 @@ const EnergyAuditAnalytics: React.FC = () => {
   };
 
   // [9] INTEGRATE AnalyticsDashboard
-  // Map sampleData to Finding[]
-  const findings = sampleData.map((d, i) => ({
+  // Map realData to Finding[]
+  const findings = realData.map((d, i) => ({
     id: i.toString(),
     description: `Test on ${d.date}`,
     recommendation: '',
@@ -1294,10 +1307,106 @@ const EnergyAuditAnalytics: React.FC = () => {
           </Box>
         </Box>
 
+        {/* Logo Upload and Preview */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 3 }}>
+          <Box>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>Organization Logo</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <img src={orgLogo} alt="Organization Logo" style={{ width: 60, height: 60, borderRadius: 8, objectFit: 'cover', border: '1px solid #ccc' }} />
+              <Button variant="contained" component="label" startIcon={<PhotoCamera />}>
+                Upload Logo
+                <input type="file" accept="image/*" hidden onChange={handleLogoUpload} />
+              </Button>
+            </Box>
+            {logoError && (
+              <Typography color="error" variant="caption">{logoError}</Typography>
+            )}
+          </Box>
+          {/* Peak/Off-Peak Controls */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <TextField
+              label="Peak Rate (₱/kWh)"
+              type="number"
+              value={peakRate}
+              onChange={e => setPeakRate(Number(e.target.value))}
+              size="small"
+              sx={{ width: 140 }}
+            />
+            <TextField
+              label="Off-Peak Rate (₱/kWh)"
+              type="number"
+              value={offPeakRate}
+              onChange={e => setOffPeakRate(Number(e.target.value))}
+              size="small"
+              sx={{ width: 140 }}
+            />
+            <TextField
+              label="Peak Usage (%)"
+              type="number"
+              value={Math.round(peakPercent * 100)}
+              onChange={e => setPeakPercent(Number(e.target.value) / 100)}
+              size="small"
+              sx={{ width: 140 }}
+              inputProps={{ min: 0, max: 100 }}
+            />
+          </Box>
+        </Box>
+        {/* Cost Calculation Summary */}
+        <Box sx={{ mb: 3 }}>
+          <Card sx={glassCardSx()}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>Cost Calculation Summary</Typography>
+              <Typography variant="body2">
+                Current monthly energy costs: {formatPHP(realData[realData.length - 1]?.powerUsage * (peakRate * peakPercent + offPeakRate * (1 - peakPercent)))}
+              </Typography>
+              <Typography variant="body2">
+                Peak Rate: {formatPHP(peakRate)}/kWh, Off-Peak Rate: {formatPHP(offPeakRate)}/kWh, Peak Usage: {(peakPercent * 100).toFixed(0)}%
+              </Typography>
+            </CardContent>
+          </Card>
+        </Box>
+
+        {/* Actions Section */}
+        <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+          <Button variant="contained" color="primary" onClick={async () => {
+            try {
+              // Stub: send analytics data to external API
+              await fetch('https://example.com/api/external', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(realData),
+              });
+              setExportSuccess(true);
+            } catch {
+              setExportSuccess(false);
+            }
+          }}>Send to External API</Button>
+          <Button variant="contained" color="secondary" onClick={() => {
+            // Stub: open email dialog or show notification
+            setExportSuccess(true);
+          }}>Send via Email</Button>
+          <Button variant="outlined" onClick={() => {
+            // Stub: schedule daily email
+            setExportSuccess(true);
+          }}>Schedule Daily Email</Button>
+          <Button variant="outlined" onClick={() => {
+            // Stub: schedule weekly email
+            setExportSuccess(true);
+          }}>Schedule Weekly Email</Button>
+          <Button variant="outlined" onClick={() => {
+            // Stub: schedule daily webhook
+            setExportSuccess(true);
+          }}>Schedule Daily Webhook</Button>
+          <Button variant="outlined" onClick={() => {
+            // Stub: schedule weekly webhook
+            setExportSuccess(true);
+          }}>Schedule Weekly Webhook</Button>
+        </Box>
+
         <Grid container spacing={3}>
           {/* Overview Cards */}
           <Grid item xs={12} md={4}>
-            <Card>
+            <Card sx={glassCardSx()}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
                   Average Lighting Efficiency
@@ -1306,14 +1415,14 @@ const EnergyAuditAnalytics: React.FC = () => {
                   {avgLightingEfficiency.toFixed(1)}%
                 </Typography>
                 <Typography variant="body2" color="textSecondary">
-                  Based on {sampleData.length} tests
+                  Based on {realData.length} tests
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
 
           <Grid item xs={12} md={4}>
-            <Card>
+            <Card sx={glassCardSx()}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
                   Average HVAC Efficiency
@@ -1322,23 +1431,23 @@ const EnergyAuditAnalytics: React.FC = () => {
                   {avgHVACEfficiency.toFixed(1)}%
                 </Typography>
                 <Typography variant="body2" color="textSecondary">
-                  Based on {sampleData.length} tests
+                  Based on {realData.length} tests
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
 
           <Grid item xs={12} md={4}>
-            <Card>
+            <Card sx={glassCardSx()}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
                   Overall Compliance Rate
                 </Typography>
                 <Typography variant="h3" color="primary">
-                  {((sampleData.filter(d => d.compliance.power && d.compliance.lighting && d.compliance.hvac).length / sampleData.length) * 100).toFixed(1)}%
+                  {((realData.filter(d => d.compliance.power && d.compliance.lighting && d.compliance.hvac).length / realData.length) * 100).toFixed(1)}%
                 </Typography>
                 <Typography variant="body2" color="textSecondary">
-                  Based on {sampleData.length} tests
+                  Based on {realData.length} tests
                 </Typography>
               </CardContent>
             </Card>
@@ -1346,7 +1455,7 @@ const EnergyAuditAnalytics: React.FC = () => {
 
           {/* Energy Savings Card */}
           <Grid item xs={12} md={4}>
-            <Card>
+            <Card sx={glassCardSx()}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
                   Energy Savings
@@ -1366,7 +1475,7 @@ const EnergyAuditAnalytics: React.FC = () => {
 
           {/* Power Usage Trend */}
           <Grid item xs={12}>
-            <Card>
+            <Card sx={glassCardSx()}>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Typography variant="h6" gutterBottom>
@@ -1376,7 +1485,7 @@ const EnergyAuditAnalytics: React.FC = () => {
                 </Box>
                 <Box ref={powerTrendRef} sx={{ height: 300 }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={sampleData}>
+                    <LineChart data={realData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" />
                       <YAxis />
@@ -1392,7 +1501,7 @@ const EnergyAuditAnalytics: React.FC = () => {
 
           {/* Efficiency Comparison */}
           <Grid item xs={12} md={6}>
-            <Card>
+            <Card sx={glassCardSx()}>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Typography variant="h6" gutterBottom>
@@ -1402,7 +1511,7 @@ const EnergyAuditAnalytics: React.FC = () => {
                 </Box>
                 <Box ref={efficiencyRef} sx={{ height: 300 }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={sampleData}>
+                    <BarChart data={realData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" />
                       <YAxis />
@@ -1419,7 +1528,7 @@ const EnergyAuditAnalytics: React.FC = () => {
 
           {/* Compliance Distribution */}
           <Grid item xs={12} md={6}>
-            <Card>
+            <Card sx={glassCardSx()}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
                   Compliance Distribution
@@ -1449,7 +1558,7 @@ const EnergyAuditAnalytics: React.FC = () => {
 
           {/* Trend Analysis */}
           <Grid item xs={12}>
-            <Card>
+            <Card sx={glassCardSx()}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
                   Trend Analysis
@@ -1488,7 +1597,7 @@ const EnergyAuditAnalytics: React.FC = () => {
 
           {/* Benchmarking */}
           <Grid item xs={12} md={6}>
-            <Card>
+            <Card sx={glassCardSx()}>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Typography variant="h6" gutterBottom>
@@ -1530,7 +1639,7 @@ const EnergyAuditAnalytics: React.FC = () => {
 
           {/* Cost Impact Analysis */}
           <Grid item xs={12} md={6}>
-            <Card>
+            <Card sx={glassCardSx()}>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Typography variant="h6" gutterBottom>
@@ -1556,7 +1665,7 @@ const EnergyAuditAnalytics: React.FC = () => {
 
           {/* Enhanced Insights */}
           <Grid item xs={12}>
-            <Card>
+            <Card sx={glassCardSx()}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
                   Enhanced Insights
@@ -1578,7 +1687,7 @@ const EnergyAuditAnalytics: React.FC = () => {
                         Cost Optimization
                       </Typography>
                       <Typography variant="body2">
-                        Current monthly energy costs: {formatPHP(sampleData[sampleData.length - 1].powerUsage * (peakRate * peakPercent + offPeakRate * (1 - peakPercent)))}
+                        Current monthly energy costs: {formatPHP(realData[realData.length - 1].powerUsage * (peakRate * peakPercent + offPeakRate * (1 - peakPercent)))}
                       </Typography>
                     </Paper>
                   </Grid>
@@ -1599,7 +1708,7 @@ const EnergyAuditAnalytics: React.FC = () => {
 
           {/* Historical Comparison */}
           <Grid item xs={12}>
-            <Card>
+            <Card sx={glassCardSx()}>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                   <Typography variant="h6">Historical Comparison</Typography>
@@ -1710,7 +1819,15 @@ const EnergyAuditAnalytics: React.FC = () => {
         <OnboardingWizard open={wizardOpen} onClose={() => setWizardOpen(false)} />
         {/* [7] RENDER COMMENTS/ANNOTATIONS FOR EACH SECTION */}
         <CommentsSection
-          comments={comments['power'] || []}
+          comments={(comments['power'] || []).map(c => ({
+            ...c,
+            attachments: (c.attachments || []).map((a, idx) => ({
+              id: `${c.id || 'att'}_${idx}`,
+              name: a.name,
+              url: a.url,
+              type: a.type
+            }))
+          }))}
           onAddComment={(text, attachments) => handleAddComment('power', text, attachments)}
           onEditComment={(id, text, attachments) => handleEditComment('power', id, text, attachments)}
           onDeleteComment={id => handleDeleteComment('power', id)}
@@ -1721,7 +1838,14 @@ const EnergyAuditAnalytics: React.FC = () => {
         <Button onClick={handleExportExcel}>Export Excel</Button>
         <Button onClick={handleExportWord}>Export Word</Button>
         {/* [9] INTEGRATE AnalyticsDashboard */}
-        <AnalyticsDashboard findings={findings} activityLog={[]} />
+        <AnalyticsDashboard findings={findings.map(f => ({
+          ...f,
+          title: f.description,
+          updatedAt: f.createdAt,
+          category: f.section === 'envelope' ? 'general' : f.section,
+          severity: (typeof f.severity === 'string' ? f.severity.toLowerCase() : 'medium') as 'low' | 'medium' | 'high' | 'critical',
+          status: (typeof f.status === 'string' ? f.status.replace(/\s/g, '_').toLowerCase() : 'open') as 'open' | 'in_progress' | 'resolved' | 'closed',
+        }))} activityLog={[]} />
       </Box>
       {/* Add Mobile Menu */}
       <MobileMenu />

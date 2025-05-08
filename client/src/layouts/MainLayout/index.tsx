@@ -34,8 +34,9 @@ import Sidebar from './Sidebar';
 import NotificationsMenu from './NotificationsMenu';
 import { styled } from '@mui/material/styles';
 import { useNotificationContext } from '../../contexts/NotificationContext';
-import { useTheme as useThemeContext } from '../../contexts/ThemeContext';
 import NotificationListener from '../../components/NotificationListener';
+import ThemeSwitcher from '../../components/ThemeSwitcher';
+import { useThemeMode } from '../../contexts/ThemeContext';
 
 const drawerWidth = 240;
 
@@ -68,8 +69,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState<typeof notifications[0] | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const { isDarkMode, toggleTheme } = useThemeContext();
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const { mode } = useThemeMode();
 
   const sidebarWidth = sidebarCollapsed ? 64 : drawerWidth;
 
@@ -133,7 +134,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   };
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', overflowX: 'hidden' }}>
+    <Box
+      sx={{
+        display: 'flex',
+        minHeight: '100vh',
+        overflowX: 'hidden',
+        ...(mode === 'gradient' && {
+          background: 'linear-gradient(135deg, #456789 0%, #3bb54a 100%)',
+        }),
+      }}
+    >
       <CssBaseline />
       <NotificationListener />
       <AppBar
@@ -142,9 +152,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           width: { sm: `calc(100% - ${sidebarWidth}px)` },
           ml: { sm: `${sidebarWidth}px` },
           zIndex: (theme) => theme.zIndex.drawer + 1,
-          bgcolor: (theme) => theme.palette.mode === 'dark' ? theme.palette.background.paper : theme.palette.background.default,
+          bgcolor: 'rgba(255,255,255,0.7)',
+          color: '#222',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+          borderBottom: '1px solid rgba(0,0,0,0.06)',
           transition: 'width 0.3s, margin-left 0.3s',
-          boxShadow: 1,
         }}
       >
         <Toolbar>
@@ -169,7 +183,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             sx={{ 
               flexGrow: 1,
               fontSize: { xs: '1rem', sm: '1.25rem' },
-              color: theme.palette.mode === 'light' ? '#222' : 'inherit',
+              color: '#222',
               fontWeight: 700
             }}
           >
@@ -177,13 +191,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <IconButton 
-              sx={{ color: theme.palette.mode === 'light' ? '#222' : 'inherit', display: { xs: 'none', sm: 'flex' } }}
-              onClick={toggleTheme}
-            >
-              {isDarkMode ? <Brightness7 /> : <Brightness4 />}
-            </IconButton>
-            <IconButton 
-              sx={{ color: theme.palette.mode === 'light' ? '#222' : 'inherit', '& .MuiBadge-badge': { right: -3, top: 3 } }}
+              sx={{ color: '#222', display: { xs: 'none', sm: 'flex' } }}
               onClick={handleNotificationsOpen}
               aria-label="notifications"
             >
@@ -192,13 +200,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </Badge>
             </IconButton>
             <IconButton 
-              sx={{ color: theme.palette.mode === 'light' ? '#222' : 'inherit', display: { xs: 'none', sm: 'flex' }, '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)' } }}
+              sx={{ color: '#222', display: { xs: 'none', sm: 'flex' }, '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)' } }}
               onClick={handleProfileMenuOpen}
               aria-label="profile"
             >
               <AccountCircle />
             </IconButton>
           </Box>
+          <Box sx={{ flexGrow: 1 }} />
+          <ThemeSwitcher />
         </Toolbar>
       </AppBar>
 

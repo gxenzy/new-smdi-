@@ -12,6 +12,8 @@
     "setup": "node setup.js"
   },
   "devDependencies": {
+    "@types/papaparse": "^5.3.16",
+    "@types/xlsx": "^0.0.35",
     "concurrently": "^8.0.1"
   },
   "dependencies": {
@@ -19,7 +21,15 @@
     "axios": "^1.9.0",
     "bcryptjs": "^3.0.2",
     "docx": "^9.5.0",
+    "file-saver": "^2.0.5",
     "form-data": "^4.0.2",
-    "react-signature-canvas": "^1.1.0-alpha.2"
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
+    "papaparse": "^5.5.2",
+    "react-signature-canvas": "^1.1.0-alpha.2",
+    "react-window": "^1.8.11",
+    "recharts": "^2.15.3",
+    "ws": "^8.18.2",
+    "xlsx": "^0.18.5"
   }
 }

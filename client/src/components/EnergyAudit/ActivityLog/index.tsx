@@ -64,9 +64,14 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activityLog }) => {
     return matchesUser && matchesAction && matchesDate;
   });
 
+  // Deduplicate log entries: unique by action, user, details, and timestamp
+  const dedupedLog = filteredLog.filter((log, idx, arr) =>
+    arr.findIndex(l => l.action === log.action && l.user === log.user && l.details === log.details && l.timestamp === log.timestamp) === idx
+  );
+
   const handleExportCSV = () => {
     const header = 'Action,User,Details,Timestamp\n';
-    const rows = filteredLog.map(log =>
+    const rows = dedupedLog.map(log =>
       [log.action, log.user, log.details || '', log.timestamp].map(field => `"${String(field).replace(/"/g, '""')}"`).join(',')
     );
     const csv = header + rows.join('\n');
@@ -76,9 +81,6 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activityLog }) => {
 
   return (
     <Box>
-      <Typography variant="subtitle2" gutterBottom>
-        Activity Log
-      </Typography>
       <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
         <FormControl size="small" sx={{ minWidth: 120 }}>
           <InputLabel>User</InputLabel>
@@ -118,9 +120,9 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activityLog }) => {
           Export CSV
         </Button>
       </Box>
-      {filteredLog && filteredLog.length > 0 ? (
+      {dedupedLog && dedupedLog.length > 0 ? (
         <List dense>
-          {filteredLog.map((log, index) => (
+          {dedupedLog.map((log, index) => (
             <React.Fragment key={log.id}>
               <ListItem>
                 <ListItemText
@@ -137,7 +139,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activityLog }) => {
                   }
                 />
               </ListItem>
-              {index < filteredLog.length - 1 && <Divider variant="inset" component="li" />}
+              {index < dedupedLog.length - 1 && <Divider variant="inset" component="li" />}
             </React.Fragment>
           ))}
         </List>

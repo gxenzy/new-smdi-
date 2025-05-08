@@ -39,7 +39,8 @@ import { useAppDispatch } from '../../store';
 import { updateUser } from '../../store/slices/authSlice';
 import { useUserContext } from '../../contexts/UserContext';
 import { NotificationType } from '../../types';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '@mui/material/styles';
+import { useThemeMode } from '../../contexts/ThemeContext';
 
 const Settings: React.FC = () => {
   const { currentUser } = useAuthContext();
@@ -47,7 +48,8 @@ const Settings: React.FC = () => {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const { setNotificationPreferences } = useUserContext();
-  const { theme, toggleTheme } = useTheme();
+  const theme = useTheme();
+  const { mode, setMode } = useThemeMode();
   
   const [settings, setSettings] = useState({
     emailNotifications: false,
@@ -57,8 +59,9 @@ const Settings: React.FC = () => {
   });
 
   // Notification Preferences State
-  const [notifEnabled, setNotifEnabled] = useState(currentUser.notificationPreferences?.enabled ?? true);
-  const [notifTypes, setNotifTypes] = useState<NotificationType[]>(currentUser.notificationPreferences?.types ?? [NotificationType.Info, NotificationType.Success, NotificationType.Warning, NotificationType.Error]);
+  const notifPrefs = currentUser.notificationPreferences || { enabled: true, types: [NotificationType.Info, NotificationType.Success, NotificationType.Warning, NotificationType.Error] };
+  const [notifEnabled, setNotifEnabled] = useState(notifPrefs.enabled);
+  const [notifTypes, setNotifTypes] = useState<NotificationType[]>(notifPrefs.types);
 
   const handleSettingChange = (setting: string, value: any) => {
     setSettings(prev => ({
@@ -145,15 +148,22 @@ const Settings: React.FC = () => {
                     <DarkModeIcon />
                   </ListItemIcon>
                   <ListItemText
-                    primary="Dark Mode"
-                    secondary="Use dark theme across the application"
+                    primary="Theme"
+                    secondary="Select a color theme"
                   />
                   <ListItemSecondaryAction>
-                    <Switch
-                      edge="end"
-                      checked={theme === 'dark'}
-                      onChange={toggleTheme}
-                    />
+                    <Select
+                      value={mode}
+                      onChange={(e) => setMode(e.target.value as string)}
+                      size="small"
+                      sx={{ minWidth: 120 }}
+                    >
+                      <MenuItem value="light">Light</MenuItem>
+                      <MenuItem value="dark">Dark</MenuItem>
+                      <MenuItem value="gray">Gray</MenuItem>
+                      <MenuItem value="tile">Tile</MenuItem>
+                      <MenuItem value="logo">Logo</MenuItem>
+                    </Select>
                   </ListItemSecondaryAction>
                 </ListItem>
                 <ListItem>
