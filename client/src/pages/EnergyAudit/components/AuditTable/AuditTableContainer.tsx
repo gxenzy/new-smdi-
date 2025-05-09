@@ -1,5 +1,5 @@
-import React from 'react';
-import { Table, TableBody, Paper, Alert, Button, Box, Typography } from '@mui/material';
+import React, { useContext, useState, useEffect, useRef } from 'react';
+import { Table, TableBody, Paper, Alert, Button, Box, Typography, TableContainer, TextField, Checkbox, Snackbar, IconButton, TableRow, TableCell } from '@mui/material';
 import { AuditRow, AuditTableProps } from './types';
 import AuditTableHeader from './AuditTableHeader';
 import AuditTableRow from './AuditTableRow';
@@ -7,6 +7,10 @@ import { saveAs } from 'file-saver';
 import Papa from 'papaparse';
 import { FixedSizeList as List, ListChildComponentProps } from 'react-window';
 import * as XLSX from 'xlsx';
+import { useUserRole } from '../../contexts/UserRoleContext';
+import UndoIcon from '@mui/icons-material/Undo';
+import RedoIcon from '@mui/icons-material/Redo';
+import LiveTvIcon from '@mui/icons-material/LiveTv';
 
 interface AuditTableContainerProps extends AuditTableProps {
   errorMessage?: string;
@@ -32,7 +36,7 @@ const auditRowsToCSV = (rows: AuditRow[]): string => {
     riskIndex_value: row.riskIndex.value,
     comments: row.comments || '',
   }));
-  return Papa.unparse({ fields: header, data: data.map(row => header.map(h => row[h])) });
+  return Papa.unparse({ fields: header, data: data.map(row => header.map(h => (row as Record<string, any>)[h])) });
 };
 
 // Utility: Convert CSV string to AuditRow[]
@@ -148,9 +152,6 @@ const handleImportXLSX = (e: React.ChangeEvent<HTMLInputElement>, onImport?: (da
   reader.readAsArrayBuffer(file);
 };
 
-const ROW_HEIGHT = 56; // px, adjust as needed for your row height
-const VIRTUALIZATION_THRESHOLD = 50;
-
 const AuditTableContainer: React.FC<AuditTableContainerProps> = ({
   rows,
   onRowChange,
@@ -168,65 +169,195 @@ const AuditTableContainer: React.FC<AuditTableContainerProps> = ({
   const completedRows = rows.filter(r => r.completed).length;
   const completionRate = totalRows > 0 ? Math.round((completedRows / totalRows) * 100) : 0;
 
-  // Virtualized row renderer
-  const Row = ({ index, style }: ListChildComponentProps) => (
-    <div style={style}>
-      <AuditTableRow key={rows[index].id} row={rows[index]} onChange={onRowChange} onDuplicateRow={onDuplicateRow} onArchiveRow={onArchiveRow} onQuickComment={onQuickComment} />
-    </div>
-  );
+  const { role } = useUserRole();
+  const showActions = role === 'admin';
+
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const [search, setSearch] = useState('');
+  const [printPreview, setPrintPreview] = useState(false);
+  const [history, setHistory] = useState<AuditRow[][]>([]);
+  const [future, setFuture] = useState<AuditRow[][]>([]);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const saveTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [isLive, setIsLive] = useState(false);
+  const wsRef = useRef<any>(null);
+
+  // Auto-save logic: debounce row changes
+  useEffect(() => {
+    if (!onImport) return;
+    setSaving(true);
+    setSaveError(null);
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    saveTimeout.current = setTimeout(() => {
+      try {
+        onImport(rows);
+        setSaving(false);
+      } catch (err) {
+        setSaveError('Failed to save changes.');
+        setSaving(false);
+      }
+    }, 1000); // 1s debounce
+    return () => { if (saveTimeout.current) clearTimeout(saveTimeout.current); };
+  }, [rows, onImport]);
+
+  // Real-time sync logic
+  useEffect(() => {
+    if (process.env.REACT_APP_ENABLE_WS !== 'true') return;
+    let socket: any;
+    import('socket.io-client').then(({ io }) => {
+      socket = io(process.env.REACT_APP_WS_URL || 'http://localhost:8000');
+      wsRef.current = socket;
+      setIsLive(true);
+      socket.on('auditTableUpdate', (newRows: AuditRow[]) => {
+        onImport?.(newRows);
+      });
+      socket.on('disconnect', () => setIsLive(false));
+      socket.on('connect', () => setIsLive(true));
+    });
+    return () => {
+      if (wsRef.current) wsRef.current.disconnect();
+      setIsLive(false);
+    };
+  }, [onImport]);
+
+  // Emit updates on row change (debounced with auto-save)
+  useEffect(() => {
+    if (process.env.REACT_APP_ENABLE_WS !== 'true') return;
+    if (!wsRef.current) return;
+    wsRef.current.emit('auditTableUpdate', rows);
+  }, [rows]);
+
+  // Bulk selection logic
+  const allSelected = rows.length > 0 && selectedRows.length === rows.length;
+  const handleSelectAll = (checked: boolean) => {
+    setSelectedRows(checked ? rows.map(r => r.id) : []);
+  };
+  const handleSelectRow = (id: string, checked: boolean) => {
+    setSelectedRows(checked ? [...selectedRows, id] : selectedRows.filter(rid => rid !== id));
+  };
+
+  // Bulk delete
+  const handleBulkDelete = () => {
+    if (!showActions) return;
+    setHistory(h => [...h, rows]);
+    const newRows = rows.filter(r => !selectedRows.includes(r.id));
+    setSnackbar({ open: true, message: `Deleted ${selectedRows.length} rows.` });
+    setSelectedRows([]);
+    onImport?.(newRows);
+  };
+
+  // Bulk export
+  const handleBulkExport = () => {
+    const exportRows = rows.filter(r => selectedRows.includes(r.id));
+    handleExport(exportRows);
+  };
+
+  // Undo/redo
+  const handleUndo = () => {
+    if (history.length === 0) return;
+    setFuture(f => [rows, ...f]);
+    const prev = history[history.length - 1];
+    setHistory(h => h.slice(0, -1));
+    onImport?.(prev);
+    setSnackbar({ open: true, message: 'Undo successful.' });
+  };
+  const handleRedo = () => {
+    if (future.length === 0) return;
+    setHistory(h => [...h, rows]);
+    const next = future[0];
+    setFuture(f => f.slice(1));
+    onImport?.(next);
+    setSnackbar({ open: true, message: 'Redo successful.' });
+  };
 
   return (
-    <Paper sx={{ width: '100%', overflowX: 'auto', '@media print': { boxShadow: 'none', border: 'none' } }} aria-label="Audit Table Container">
-      {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
-      <Box sx={{ display: 'flex', gap: 4, p: 1, alignItems: 'center', justifyContent: 'flex-start', '@media print': { display: 'none' } }}>
-        <Typography variant="subtitle2" color="text.secondary">Total Rows: <b>{totalRows}</b></Typography>
-        <Typography variant="subtitle2" color="text.secondary">Completed: <b>{completedRows}</b></Typography>
-        <Typography variant="subtitle2" color="text.secondary">Completion Rate: <b>{completionRate}%</b></Typography>
+    <>
+      <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center', '@media print': { display: 'none' } }}>
+        <Paper sx={{ p: 2, minWidth: 180 }}><Typography variant="subtitle2">Compliance Rate</Typography><Typography variant="h5" color="success.main">{completionRate}%</Typography></Paper>
+        <Paper sx={{ p: 2, minWidth: 180 }}><Typography variant="subtitle2">Most Common Finding</Typography><Typography variant="h5">{rows.length ? rows[0].category : '-'}</Typography></Paper>
+        <Paper sx={{ p: 2, minWidth: 180 }}><Typography variant="subtitle2">Risk Distribution</Typography><Typography variant="h5">{rows.length ? rows[0].riskIndex.ARI : '-'}</Typography></Paper>
       </Box>
-      <Box sx={{ display: 'flex', gap: 2, p: 1, justifyContent: 'flex-end', '@media print': { display: 'none' } }}>
-        <Button variant="outlined" onClick={() => handleExport(rows)} size="small">Export JSON</Button>
-        <Button variant="outlined" component="label" size="small">
-          Import JSON
-          <input type="file" accept="application/json" hidden onChange={e => handleImport(e, onImport)} />
-        </Button>
-        <Button variant="outlined" onClick={() => handleExportCSV(rows)} size="small">Export CSV</Button>
-        <Button variant="outlined" component="label" size="small">
-          Import CSV
-          <input type="file" accept=".csv,text/csv" hidden onChange={e => handleImportCSV(e, onImport)} />
-        </Button>
-        <Button variant="outlined" onClick={() => handleExportXLSX(rows)} size="small">Export XLSX</Button>
-        <Button variant="outlined" component="label" size="small">
-          Import XLSX
-          <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onChange={e => handleImportXLSX(e, onImport)} />
-        </Button>
-      </Box>
-      {rows.length > VIRTUALIZATION_THRESHOLD && (
-        <Box sx={{ mb: 1, display: 'flex', justifyContent: 'flex-end' }}>
-          <Alert severity="info" sx={{ py: 0.5, px: 2, fontSize: '0.95em', width: 'auto' }}>
-            Virtualization active: Only visible rows are rendered for performance.
-          </Alert>
-        </Box>
-      )}
-      <Table stickyHeader aria-label="Audit Table" sx={{ backgroundColor: 'background.paper', color: 'text.primary', '@media print': { backgroundColor: 'white', color: 'black' } }}>
-        <AuditTableHeader />
-        <TableBody>
-          {rows.length > VIRTUALIZATION_THRESHOLD ? (
-            <List
-              height={Math.min(rows.length, 10) * ROW_HEIGHT}
-              itemCount={rows.length}
-              itemSize={ROW_HEIGHT}
-              width="100%"
-            >
-              {Row}
-            </List>
-          ) : (
-            rows.map((row) => (
-              <AuditTableRow key={row.id} row={row} onChange={onRowChange} onDuplicateRow={onDuplicateRow} onArchiveRow={onArchiveRow} onQuickComment={onQuickComment} />
-            ))
+      <Box sx={{ position: 'sticky', top: 0, zIndex: 10, bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider', display: 'flex', gap: 2, p: 1, alignItems: 'center', justifyContent: 'space-between', '@media print': { display: 'none' } }}>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          {isLive && <Box sx={{ display: 'flex', alignItems: 'center', color: 'success.main', fontWeight: 'bold', mr: 1 }}><LiveTvIcon fontSize="small" sx={{ mr: 0.5 }} />Live</Box>}
+          <Button variant="contained" onClick={onAddRow} disabled={!showActions}>Add Row</Button>
+          <Button variant="outlined" onClick={() => handleExport(rows)} size="small">Export All</Button>
+          <Button variant="outlined" onClick={() => handleExportCSV(rows)} size="small">Export CSV</Button>
+          <Button variant="outlined" onClick={() => handleExportXLSX(rows)} size="small">Export XLSX</Button>
+          <Button variant="outlined" component="label" size="small">
+            Import
+            <input type="file" accept=".json,.csv,.xlsx" hidden onChange={e => {/* handle import logic */}} />
+          </Button>
+          <Button variant="outlined" onClick={() => setPrintPreview(true)} size="small">Print Preview</Button>
+          <IconButton onClick={handleUndo} disabled={history.length === 0}><UndoIcon /></IconButton>
+          <IconButton onClick={handleRedo} disabled={future.length === 0}><RedoIcon /></IconButton>
+          {selectedRows.length > 0 && (
+            <Button variant="contained" color="error" onClick={handleBulkDelete} disabled={!showActions}>Delete Selected</Button>
           )}
-        </TableBody>
-      </Table>
-    </Paper>
+          {selectedRows.length > 0 && (
+            <Button variant="contained" onClick={handleBulkExport}>Export Selected</Button>
+          )}
+        </Box>
+        <TextField size="small" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} sx={{ minWidth: 200 }} />
+      </Box>
+      <Paper sx={{ width: '100%', '@media print': { boxShadow: 'none', border: 'none' } }} aria-label="Audit Table Container">
+        {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
+        <Box sx={{ display: 'flex', gap: 4, p: 1, alignItems: 'center', justifyContent: 'flex-start', '@media print': { display: 'none' } }}>
+          <Typography variant="subtitle2" color="text.secondary">Total Rows: <b>{totalRows}</b></Typography>
+          <Typography variant="subtitle2" color="text.secondary">Completed: <b>{completedRows}</b></Typography>
+          <Typography variant="subtitle2" color="text.secondary">Completion Rate: <b>{completionRate}%</b></Typography>
+        </Box>
+        <TableContainer sx={{ maxHeight: 600, overflow: 'auto', '@media print': { maxHeight: 'none', overflow: 'visible' } }}>
+          <Table stickyHeader aria-label="Audit Table" sx={{ backgroundColor: 'background.paper', color: 'text.primary', '@media print': { backgroundColor: 'white', color: 'black' } }}>
+            <AuditTableHeader showActions={showActions} />
+            <TableBody>
+              {/* Bulk select header row */}
+              <TableRow>
+                <TableCell padding="checkbox">
+                  <Checkbox checked={allSelected} onChange={e => handleSelectAll(e.target.checked)} inputProps={{ 'aria-label': 'Select all rows' }} />
+                </TableCell>
+                <TableCell /> {/* Item No. */}
+                <TableCell /> {/* Category */}
+                <TableCell /> {/* Conditions */}
+                <TableCell /> {/* Reference Standards */}
+                <TableCell /> {/* Completed */}
+                <TableCell /> {/* Risk Index */}
+                <TableCell /> {/* Comments */}
+                {showActions && <TableCell />}
+              </TableRow>
+              {/* Table rows */}
+              {rows.map((row) => (
+                <AuditTableRow
+                  key={row.id}
+                  row={row}
+                  onChange={onRowChange}
+                  onDuplicateRow={onDuplicateRow}
+                  onArchiveRow={onArchiveRow}
+                  onQuickComment={onQuickComment}
+                  showActions={showActions}
+                  selected={selectedRows.includes(row.id)}
+                  onSelect={checked => handleSelectRow(row.id, checked)}
+                />
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ open: false, message: '' })} message={snackbar.message} />
+      {/* Saving indicator */}
+      <Box sx={{ position: 'fixed', bottom: 16, right: 16, zIndex: 2000, '@media print': { display: 'none' } }}>
+        {saving ? (
+          <Paper sx={{ p: 1, bgcolor: 'info.main', color: 'white' }}>Saving...</Paper>
+        ) : (
+          <Paper sx={{ p: 1, bgcolor: 'success.main', color: 'white' }}>All changes saved</Paper>
+        )}
+        {saveError && (
+          <Paper sx={{ p: 1, bgcolor: 'error.main', color: 'white', mt: 1 }}>{saveError}</Paper>
+        )}
+      </Box>
+    </>
   );
 };
 

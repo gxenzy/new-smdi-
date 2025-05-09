@@ -3,13 +3,14 @@
  * These roles are used for permission checks and access control.
  */
 export enum UserRole {
-  ADMIN = 'ADMIN',           // Full system access
-  AUDITOR = 'AUDITOR',       // Can perform energy audits
-  MANAGER = 'MANAGER',       // Can approve and manage audits
-  REVIEWER = 'REVIEWER',     // Can review but not modify audits
-  VIEWER = 'VIEWER',         // Read-only access
-  STAFF = 'STAFF',          // General staff access
-  MODERATOR = 'MODERATOR'   // Content moderation access
+  ADMIN = 'admin',
+  USER = 'user',
+  AUDITOR = 'auditor',
+  MANAGER = 'manager',
+  REVIEWER = 'reviewer',
+  VIEWER = 'viewer',
+  STAFF = 'staff',
+  MODERATOR = 'moderator'
 }
 
 export const enum NotificationType {
@@ -48,6 +49,7 @@ export interface User {
   updatedAt: string;
   permissions?: string[];
   notificationPreferences?: NotificationPreferences;
+  team?: string;
 }
 
 export interface UserPreferences {
@@ -123,5 +125,10 @@ export interface Comment {
 export type Severity = 'Low' | 'Medium' | 'High' | 'Critical';
 export type Status = 'Open' | 'In Progress' | 'Resolved';
 export type ApprovalStatus = 'Pending' | 'Approved' | 'Rejected';
+
+export interface UserWithId extends User {
+  _id: string;
+  profileImage?: string;
+}
 
 export * from './energy-audit'; 

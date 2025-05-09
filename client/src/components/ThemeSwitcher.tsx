@@ -5,12 +5,15 @@ import { FormControl, Select, MenuItem, InputLabel } from '@mui/material';
 const ThemeSwitcher: React.FC = () => {
   const { mode, setMode } = useThemeMode();
 
+  const allowedModes = ['light', 'dark', 'gradient'];
+  const safeMode = allowedModes.includes(mode) ? mode : '';
+
   return (
     <FormControl size="small" sx={{ minWidth: 120 }}>
       <InputLabel id="theme-select-label">Theme</InputLabel>
       <Select
         labelId="theme-select-label"
-        value={mode}
+        value={safeMode}
         label="Theme"
         onChange={e => setMode(e.target.value)}
       >

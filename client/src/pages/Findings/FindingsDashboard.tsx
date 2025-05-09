@@ -20,6 +20,7 @@ interface Finding {
   createdBy?: string;
   createdAt?: string;
   updatedAt?: string;
+  [key: string]: any;  // Add index signature
 }
 
 const typeOptions = ['Safety', 'Efficiency', 'Compliance', 'Other'];
@@ -44,7 +45,7 @@ const FindingsDashboard: React.FC = () => {
   const fetchFindings = () => {
     setLoading(true);
     setError(null);
-    fetch('/api/findings')
+    fetch('/findings')
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch findings');
         return res.json();
@@ -78,7 +79,7 @@ const FindingsDashboard: React.FC = () => {
   // Create
   const handleCreate = () => {
     setCreating(true);
-    fetch('/api/findings', {
+    fetch('/findings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(createFinding),
@@ -104,7 +105,7 @@ const FindingsDashboard: React.FC = () => {
   const handleEdit = () => {
     if (!editFinding) return;
     setEditLoading(true);
-    fetch(`/api/findings/${editFinding._id}`, {
+    fetch(`/findings/${editFinding._id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(editFields),
@@ -125,7 +126,7 @@ const FindingsDashboard: React.FC = () => {
   // Delete
   const handleDelete = (finding: Finding) => {
     setDeleteLoading(finding._id || '');
-    fetch(`/api/findings/${finding._id}`, { method: 'DELETE' })
+    fetch(`/findings/${finding._id}`, { method: 'DELETE' })
       .then(res => {
         if (!res.ok) throw new Error('Failed to delete finding');
         return res.json();
@@ -206,7 +207,7 @@ const FindingsDashboard: React.FC = () => {
     setCreating(true);
     Promise.all(
       multiFindings.filter(f => f.title && f.auditId).map(finding =>
-        fetch('/api/findings', {
+        fetch('/findings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(finding),

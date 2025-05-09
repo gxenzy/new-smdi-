@@ -163,7 +163,7 @@ const Dashboard: React.FC = () => {
   const fetchFindings = () => {
     setLoading(true);
     setError(null);
-    fetch(`${process.env.REACT_APP_API_URL}/api/findings`, {
+    fetch(`${process.env.REACT_APP_API_URL}/findings`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -227,12 +227,12 @@ const Dashboard: React.FC = () => {
       const headers = { Authorization: `Bearer ${token}` };
       // Fetch all dashboard data in parallel
       const [energyRes, usersRes, auditsRes, alertsRes, trendRes, activityRes] = await Promise.all([
-        fetch(`${process.env.REACT_APP_API_URL}/api/dashboard/energy-usage/total`, { headers }),
-        fetch(`${process.env.REACT_APP_API_URL}/api/dashboard/users/active`, { headers }),
-        fetch(`${process.env.REACT_APP_API_URL}/api/dashboard/audits/completed`, { headers }),
-        fetch(`${process.env.REACT_APP_API_URL}/api/dashboard/alerts/count`, { headers }),
-        fetch(`${process.env.REACT_APP_API_URL}/api/dashboard/energy-usage/trend`, { headers }),
-        fetch(`${process.env.REACT_APP_API_URL}/api/dashboard/activity/recent`, { headers }),
+        fetch(`${process.env.REACT_APP_API_URL}/dashboard/energy-usage/total`, { headers }),
+        fetch(`${process.env.REACT_APP_API_URL}/dashboard/users/active`, { headers }),
+        fetch(`${process.env.REACT_APP_API_URL}/dashboard/audits/completed`, { headers }),
+        fetch(`${process.env.REACT_APP_API_URL}/dashboard/alerts/count`, { headers }),
+        fetch(`${process.env.REACT_APP_API_URL}/dashboard/energy-usage/trend`, { headers }),
+        fetch(`${process.env.REACT_APP_API_URL}/dashboard/activity/recent`, { headers }),
       ]);
 
       // Check for errors in responses

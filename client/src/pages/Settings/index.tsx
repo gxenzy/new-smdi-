@@ -59,7 +59,8 @@ const Settings: React.FC = () => {
   });
 
   // Notification Preferences State
-  const notifPrefs = currentUser.notificationPreferences || { enabled: true, types: [NotificationType.Info, NotificationType.Success, NotificationType.Warning, NotificationType.Error] };
+  const defaultNotifPrefs = { enabled: true, types: [NotificationType.Info, NotificationType.Success, NotificationType.Warning, NotificationType.Error] };
+  const notifPrefs = currentUser?.notificationPreferences || defaultNotifPrefs;
   const [notifEnabled, setNotifEnabled] = useState(notifPrefs.enabled);
   const [notifTypes, setNotifTypes] = useState<NotificationType[]>(notifPrefs.types);
 

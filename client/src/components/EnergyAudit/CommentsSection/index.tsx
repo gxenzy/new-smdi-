@@ -53,7 +53,7 @@ function renderWithMentionsAndMarkdown(text: string, users: User[] = []) {
     text({ children }: any) {
       // children is a string
       const parts = String(children).split(mentionRegex);
-      return parts.map((part, i) => {
+      return <React.Fragment>{parts.map((part, i) => {
         if (i % 2 === 1) {
           // This is a username
           const user = users.find(u => u.name.toLowerCase() === part.toLowerCase());
@@ -69,7 +69,7 @@ function renderWithMentionsAndMarkdown(text: string, users: User[] = []) {
           }
         }
         return <span key={i}>{part}</span>;
-      });
+      })}</React.Fragment>;
     },
     a({ href, children }: any) {
       return <MuiLink href={href} target="_blank" rel="noopener noreferrer">{children}</MuiLink>;
@@ -141,7 +141,8 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (newComment.trim()) {
-      onAddComment(newComment, attachments);
+      const attachmentsWithId = attachments.map(att => ({ ...att, id: att.url || att.name + Date.now() }));
+      onAddComment(newComment, attachmentsWithId);
       setNewComment('');
       setAttachments([]);
     }
@@ -155,7 +156,8 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
 
   const handleSaveEdit = (id: string) => {
     if (editText.trim()) {
-      onEditComment(id, editText, editAttachments);
+      const editAttachmentsWithId = editAttachments.map(att => ({ ...att, id: att.url || att.name + Date.now() }));
+      onEditComment(id, editText, editAttachmentsWithId);
       setEditingId(null);
       setEditText('');
       setEditAttachments([]);

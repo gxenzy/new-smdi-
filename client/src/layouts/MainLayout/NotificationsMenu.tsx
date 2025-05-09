@@ -20,7 +20,7 @@ import {
   Notifications as NotificationsIcon,
 } from '@mui/icons-material';
 import { useNotificationContext } from '../../contexts/NotificationContext';
-import { Notification } from '../../types';
+import type { Notification, NotificationType } from '../../types';
 
 interface NotificationsMenuProps {
   anchorEl: null | HTMLElement;

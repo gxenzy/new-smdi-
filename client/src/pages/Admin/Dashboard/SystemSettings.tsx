@@ -18,8 +18,10 @@ import {
   CardContent
 } from '@mui/material';
 import { Save as SaveIcon } from '@mui/icons-material';
-import { SystemSettings, UserRole } from '../../../types';
+import type { SystemSettings } from '../../../types';
+import { UserRole } from '../../../types';
 import * as adminService from '../../../services/adminService';
+import { SelectChangeEvent } from '@mui/material';
 
 const SystemSettings: React.FC = () => {
   const [settings, setSettings] = useState<SystemSettings>({
@@ -78,6 +80,14 @@ const SystemSettings: React.FC = () => {
         ...prev.passwordPolicy,
         [name]: type === 'checkbox' ? checked : parseInt(value)
       }
+    }));
+  };
+
+  const handleRoleChange = (event: SelectChangeEvent<UserRole>) => {
+    const { value } = event.target;
+    setSettings(prev => ({
+      ...prev,
+      defaultRole: value as UserRole
     }));
   };
 
@@ -156,10 +166,18 @@ const SystemSettings: React.FC = () => {
                   <Select
                     name="defaultRole"
                     value={settings.defaultRole}
-                    onChange={handleInputChange}
+                    onChange={handleRoleChange}
                     label="Default Role"
                   >
-                    {Object.values(UserRole).map((role) => (
+                    {[
+                      UserRole.ADMIN,
+                      UserRole.MANAGER,
+                      UserRole.AUDITOR,
+                      UserRole.REVIEWER,
+                      UserRole.VIEWER,
+                      UserRole.STAFF,
+                      UserRole.MODERATOR
+                    ].map((role) => (
                       <MenuItem key={role} value={role}>
                         {role}
                       </MenuItem>

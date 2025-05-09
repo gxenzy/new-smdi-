@@ -59,6 +59,7 @@ import EnergyAuditAnalytics from './EnergyAuditAnalytics';
 import { ValidationSummary, StandardComparison, ComplianceHistory, HelpDialog } from './components/EnergyAuditComponents';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import { visuallyHidden } from '@mui/utils';
+import { FallbackProps } from 'react-error-boundary';
 
 interface TestCase {
   id: string;
@@ -91,7 +92,8 @@ const STANDARD_OPTIONS = [
   { label: 'Manual', value: 'manual' },
 ];
 
-const STANDARD_DESCRIPTIONS = {
+// Update STANDARD_DESCRIPTIONS and DEFAULT_STANDARDS to have index signatures
+const STANDARD_DESCRIPTIONS: Record<string, string> = {
   ashrae2019: 'ASHRAE 90.1-2019 Energy Standard for Buildings Except Low-Rise Residential Buildings',
   ashrae2022: 'ASHRAE 90.1-2022 Energy Standard for Buildings Except Low-Rise Residential Buildings',
   emh2023: 'Energy Management Handbook 2023 Edition - Comprehensive guide for energy efficiency',
@@ -99,7 +101,7 @@ const STANDARD_DESCRIPTIONS = {
   manual: 'Custom values based on facility requirements and local regulations'
 };
 
-const DEFAULT_STANDARDS = {
+const DEFAULT_STANDARDS: Record<string, any> = {
   ashrae2019: {
     power: { facilityLimit: 12000, peakLimit: 9000, pfTarget: 0.95 },
     lighting: { lpd: 10, requiredLux: 500, requiredCRI: 80 },
@@ -128,7 +130,7 @@ const DEFAULT_STANDARDS = {
 };
 
 // Add validation ranges for manual inputs
-const VALIDATION_RANGES = {
+const VALIDATION_RANGES: Record<string, any> = {
   power: {
     facilityLimit: { min: 5000, max: 20000 },
     peakLimit: { min: 3000, max: 15000 },
@@ -147,7 +149,7 @@ const VALIDATION_RANGES = {
 };
 
 // Add error messages for validation
-const ERROR_MESSAGES = {
+const ERROR_MESSAGES: Record<string, any> = {
   power: {
     facilityLimit: 'Facility limit must be between 5,000W and 20,000W',
     peakLimit: 'Peak limit must be between 3,000W and 15,000W',
@@ -192,16 +194,16 @@ const LoadingFallback = () => (
   </Box>
 );
 
-const ErrorFallback = ({ error, resetErrorBoundary }) => (
+const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => (
   <Box sx={{ p: 3, textAlign: 'center' }}>
     <Typography color="error" variant="h6" gutterBottom>
       Something went wrong
     </Typography>
-    <Typography variant="body2" color="textSecondary" paragraph>
+    <Typography variant="body2" gutterBottom>
       {error.message}
     </Typography>
-    <Button variant="contained" onClick={resetErrorBoundary}>
-      Try Again
+    <Button onClick={resetErrorBoundary} variant="contained" color="primary">
+      Try again
     </Button>
   </Box>
 );
@@ -931,7 +933,7 @@ const EnergyAuditTesting: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
   const [customModalOpen, setCustomModalOpen] = useState(false);
-  const [editingStandard, setEditingStandard] = useState(null);
+  const [editingStandard, setEditingStandard] = useState<typeof customForm | null>(null);
   const [customForm, setCustomForm] = useState({
     name: '',
     power: { facilityLimit: '', peakLimit: '', pfTarget: '' },
@@ -939,7 +941,7 @@ const EnergyAuditTesting: React.FC = () => {
     hvac: { eer: '', tempRange: '', freshAir: '' }
   });
 
-  const openCustomModal = (standard = null) => {
+  const openCustomModal = (standard: typeof customForm | null = null) => {
     setEditingStandard(standard);
     setCustomForm(standard || {
       name: '',
@@ -950,16 +952,25 @@ const EnergyAuditTesting: React.FC = () => {
     setCustomModalOpen(true);
   };
   const closeCustomModal = () => setCustomModalOpen(false);
-  const handleCustomFormChange = (cat, field, value) => {
-    setCustomForm(f => ({
-      ...f,
-      [cat]: cat === 'name' ? value : { ...f[cat], [field]: value }
-    }));
+  const handleCustomFormChange = (cat: string, field: string | null, value: any) => {
+    setCustomForm(prev => {
+      if (cat === 'name') {
+        return { ...prev, name: value };
+      }
+      const categoryData = prev[cat as keyof typeof prev] || {};
+      return {
+        ...prev,
+        [cat]: {
+          ...categoryData,
+          [field as string]: value
+        }
+      };
+    });
   };
   const saveCustomStandard = () => {
     let updated;
     if (editingStandard) {
-      updated = customStandards.map(s => s === editingStandard ? customForm : s);
+      updated = customStandards.map((s: any) => s === editingStandard ? customForm : s);
     } else {
       updated = [...customStandards, customForm];
     }
@@ -967,13 +978,13 @@ const EnergyAuditTesting: React.FC = () => {
     localStorage.setItem('energyAudit_customStandards', JSON.stringify(updated));
     setCustomModalOpen(false);
   };
-  const deleteCustomStandard = (standard) => {
-    const updated = customStandards.filter(s => s !== standard);
+  const deleteCustomStandard = (standard: any) => {
+    const updated = customStandards.filter((s: any) => s !== standard);
     setCustomStandards(updated);
     localStorage.setItem('energyAudit_customStandards', JSON.stringify(updated));
   };
 
-  const customOptions = customStandards.map(s => ({ label: s.name, value: s.name }));
+  const customOptions = customStandards.map((s: any) => ({ label: s.name, value: s.name }));
   const STANDARD_OPTIONS_WITH_CUSTOM = [
     ...STANDARD_OPTIONS,
     ...customOptions
@@ -1880,7 +1891,7 @@ const EnergyAuditTesting: React.FC = () => {
             >
               <DialogTitle id="custom-standards-title">{editingStandard ? 'Edit Custom Standard' : 'Add Custom Standard'}</DialogTitle>
               <DialogContent>
-                <TextField label="Name" value={customForm.name} onChange={e => handleCustomFormChange('name', null, e.target.value)} fullWidth sx={{ mb: 2 }} />
+                <TextField label="Name" value={customForm.name} onChange={e => handleCustomFormChange('name', '', e.target.value)} fullWidth sx={{ mb: 2 }} />
                 <Typography variant="subtitle2">Power</Typography>
                 <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
                   <TextField label="Facility Limit (W)" value={customForm.power.facilityLimit} onChange={e => handleCustomFormChange('power', 'facilityLimit', e.target.value)} type="number" />
@@ -1906,7 +1917,7 @@ const EnergyAuditTesting: React.FC = () => {
               </DialogActions>
             </Dialog>
             <List>
-              {customStandards.map(s => (
+              {customStandards.map((s: any) => (
                 <ListItem key={s.name}>
                   <ListItemText primary={s.name} />
                   <ListItemSecondaryAction>

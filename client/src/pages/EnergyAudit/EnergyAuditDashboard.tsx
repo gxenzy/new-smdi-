@@ -42,7 +42,7 @@ const EnergyAuditDashboard: React.FC = () => {
   const fetchAudits = () => {
     setLoading(true);
     setError(null);
-    fetch('/api/energy-audit')
+    fetch('/energy-audit')
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch audits');
         return res.json();
@@ -82,7 +82,7 @@ const EnergyAuditDashboard: React.FC = () => {
   // Create
   const handleCreate = () => {
     setCreating(true);
-    fetch('/api/energy-audit', {
+    fetch('/energy-audit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -125,7 +125,7 @@ const EnergyAuditDashboard: React.FC = () => {
   const handleEdit = () => {
     if (!editAudit) return;
     setEditLoading(true);
-    fetch(`/api/energy-audit/${editAudit._id || editAudit.id}`, {
+    fetch(`/energy-audit/${editAudit._id || editAudit.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -153,7 +153,7 @@ const EnergyAuditDashboard: React.FC = () => {
   // Delete
   const handleDelete = (audit: Audit) => {
     setDeleteLoading(audit._id || audit.id || '');
-    fetch(`/api/energy-audit/${audit._id || audit.id}`, { method: 'DELETE' })
+    fetch(`/energy-audit/${audit._id || audit.id}`, { method: 'DELETE' })
       .then(res => {
         if (!res.ok) throw new Error('Failed to delete audit');
         return res.json();

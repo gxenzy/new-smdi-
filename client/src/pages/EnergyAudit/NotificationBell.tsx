@@ -36,7 +36,7 @@ const NotificationBell: React.FC = () => {
           <MenuItem key={n.id} selected={!n.read}>
             <ListItemText
               primary={n.message}
-              secondary={new Date(n.createdAt).toLocaleString()}
+              secondary={new Date(n.timestamp).toLocaleString()}
             />
           </MenuItem>
         ))}

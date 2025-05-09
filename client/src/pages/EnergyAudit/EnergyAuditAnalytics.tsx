@@ -776,18 +776,18 @@ const EnergyAuditAnalytics: React.FC = () => {
       doc.text(`Page ${pageNum} of ${totalPages}`, 105, 290, { align: 'center' });
     };
     doc.setFontSize(14);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text('Energy Audit Analytics Summary', 14, 18);
     doc.setFontSize(12);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     doc.text(`Benchmark: ${selectedBenchmark.label}`, 14, 30);
     doc.text(`Peak Rate: ${formatPHP(peakRate)}/kWh, Off-Peak Rate: ${formatPHP(offPeakRate)}/kWh`, 14, 38);
     doc.text(`Peak Usage: ${(peakPercent * 100).toFixed(0)}%`, 14, 46);
     doc.text(`Time Range: ${timeRange}`, 14, 54);
     doc.text('---', 14, 60);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text('Overview', 14, 70);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     doc.autoTable({
       startY: 75,
       head: [['Metric', 'Value']],

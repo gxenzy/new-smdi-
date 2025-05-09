@@ -42,8 +42,8 @@ const AuditFindingsPanel: React.FC<AuditFindingsPanelProps> = ({ auditId }) => {
   const [multiFindings, setMultiFindings] = useState<Partial<Finding>[]>([{ type: 'Other', status: 'Open', auditId }]);
   const [actionSnackbar, setActionSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
 
-  // Helper to get auth headers
-  const getAuthHeaders = () => {
+  // Helper to get auth headers as Record<string, string>
+  const getAuthHeaders = (): Record<string, string> => {
     const token = localStorage.getItem('token');
     return token ? { 'Authorization': `Bearer ${token}` } : {};
   };
@@ -52,11 +52,8 @@ const AuditFindingsPanel: React.FC<AuditFindingsPanelProps> = ({ auditId }) => {
   const fetchFindings = () => {
     setLoading(true);
     setError(null);
-    fetch(`/api/findings?auditId=${auditId}`, {
-      headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
+    fetch(`/findings?auditId=${auditId}`, {
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' } as HeadersInit,
     })
       .then(async res => {
         if (!res.ok) {
@@ -70,7 +67,15 @@ const AuditFindingsPanel: React.FC<AuditFindingsPanelProps> = ({ auditId }) => {
           }
           throw new Error(errorMsg);
         }
-        return res.json();
+        const text = await res.text();
+        try {
+          if (text.trim().startsWith('<')) {
+            throw new Error('Could not connect to the backend API. Please check your API URL and make sure the backend server is running.');
+          }
+          return JSON.parse(text);
+        } catch (e) {
+          throw new Error('Invalid response from server. ' + (e instanceof Error ? e.message : ''));
+        }
       })
       .then(data => {
         setFindings(data);
@@ -85,8 +90,8 @@ const AuditFindingsPanel: React.FC<AuditFindingsPanelProps> = ({ auditId }) => {
   useEffect(() => {
     if (!auditId) return;
     fetchFindings();
-    // Real-time updates
-    // @ts-ignore
+    // Real-time updates (WebSocket, only if enabled)
+    if (process.env.REACT_APP_ENABLE_WS === 'true') {
     import('socket.io-client').then(({ io }) => {
       const socket = io(process.env.REACT_APP_WS_URL || 'http://localhost:8000');
       socket.on('findingUpdate', fetchFindings);
@@ -97,18 +102,16 @@ const AuditFindingsPanel: React.FC<AuditFindingsPanelProps> = ({ auditId }) => {
         socket.disconnect();
       };
     });
+    }
     // eslint-disable-next-line
   }, [auditId]);
 
   // Create
   const handleCreate = () => {
     setCreating(true);
-    fetch('/api/findings', {
+    fetch('/findings', {
       method: 'POST',
-      headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' } as HeadersInit,
       body: JSON.stringify({ ...createFinding, auditId }),
     })
       .then(res => {
@@ -132,12 +135,9 @@ const AuditFindingsPanel: React.FC<AuditFindingsPanelProps> = ({ auditId }) => {
   const handleEdit = () => {
     if (!editFinding) return;
     setEditLoading(true);
-    fetch(`/api/findings/${editFinding._id}`, {
+    fetch(`/findings/${editFinding._id}`, {
       method: 'PUT',
-      headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' } as HeadersInit,
       body: JSON.stringify(editFields),
     })
       .then(res => {
@@ -156,9 +156,9 @@ const AuditFindingsPanel: React.FC<AuditFindingsPanelProps> = ({ auditId }) => {
   // Delete
   const handleDelete = (finding: Finding) => {
     setDeleteLoading(finding._id || '');
-    fetch(`/api/findings/${finding._id}`, { 
+    fetch(`/findings/${finding._id}`, {
       method: 'DELETE',
-      headers: getAuthHeaders(),
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' } as HeadersInit,
     })
       .then(res => {
         if (!res.ok) throw new Error('Failed to delete finding');
@@ -215,7 +215,7 @@ const AuditFindingsPanel: React.FC<AuditFindingsPanelProps> = ({ auditId }) => {
     const header = Object.keys(findings[0]).filter(k => k !== '_id');
     const csv = [
       header.join(','),
-      ...findings.map(row => header.map(fieldName => JSON.stringify(row[fieldName], replacer)).join(','))
+      ...findings.map(row => header.map(fieldName => JSON.stringify((row as any)[fieldName], replacer)).join(','))
     ].join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -240,12 +240,9 @@ const AuditFindingsPanel: React.FC<AuditFindingsPanelProps> = ({ auditId }) => {
     setCreating(true);
     Promise.all(
       multiFindings.filter(f => f.title && f.auditId).map(finding =>
-        fetch('/api/findings', {
+        fetch('/findings', {
           method: 'POST',
-          headers: {
-            ...getAuthHeaders(),
-            'Content-Type': 'application/json',
-          },
+          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' } as HeadersInit,
           body: JSON.stringify({ ...finding, auditId }),
         })
       )

@@ -1,12 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, Grid, Button, List, ListItem, ListItemText, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, MenuItem, Avatar } from '@mui/material';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import { User, UserRole } from '../../types';
-
-interface UserWithId extends User {
-  _id: string;
-  profileImage?: string;
-}
+import { User, UserRole, UserWithId } from '../../types';
 
 const roleOptions = Object.values(UserRole);
 
@@ -27,7 +22,7 @@ const UserDashboard: React.FC = () => {
   const fetchUsers = () => {
     setLoading(true);
     setError(null);
-    fetch('/api/users')
+    fetch('/users')
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch users');
         return res.json();
@@ -61,7 +56,7 @@ const UserDashboard: React.FC = () => {
   // Create
   const handleCreate = () => {
     setCreating(true);
-    fetch('/api/users', {
+    fetch('/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...createUser, password: createPassword }),
@@ -89,7 +84,7 @@ const UserDashboard: React.FC = () => {
   const handleEdit = () => {
     if (!editUser) return;
     setEditLoading(true);
-    fetch(`/api/users/${editUser._id}`, {
+    fetch(`/users/${editUser._id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...editFields, ...(editPassword ? { password: editPassword } : {}) }),
@@ -110,7 +105,7 @@ const UserDashboard: React.FC = () => {
   // Delete
   const handleDelete = (user: UserWithId) => {
     setDeleteLoading(user._id || '');
-    fetch(`/api/users/${user._id}`, { method: 'DELETE' })
+    fetch(`/users/${user._id}`, { method: 'DELETE' })
       .then(res => {
         if (!res.ok) throw new Error('Failed to delete user');
         return res.json();
@@ -126,9 +121,9 @@ const UserDashboard: React.FC = () => {
   const handleRoleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, isEdit = false) => {
     const newRole = e.target.value as UserRole;
     if (isEdit) {
-      setEditFields(f => ({ ...f, role: newRole }));
+      setEditFields((f: Partial<UserWithId>) => ({ ...f, role: newRole }));
     } else {
-      setCreateUser(u => ({ ...u, role: newRole }));
+      setCreateUser((u: Partial<UserWithId>) => ({ ...u, role: newRole }));
     }
   };
 
@@ -142,10 +137,10 @@ const UserDashboard: React.FC = () => {
       <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="h6" gutterBottom>Create New User</Typography>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-          <TextField label="Username" value={createUser.username || ''} onChange={e => setCreateUser(u => ({ ...u, username: e.target.value }))} size="small" />
-          <TextField label="Email" value={createUser.email || ''} onChange={e => setCreateUser(u => ({ ...u, email: e.target.value }))} size="small" />
-          <TextField label="First Name" value={createUser.firstName || ''} onChange={e => setCreateUser(u => ({ ...u, firstName: e.target.value }))} size="small" />
-          <TextField label="Last Name" value={createUser.lastName || ''} onChange={e => setCreateUser(u => ({ ...u, lastName: e.target.value }))} size="small" />
+          <TextField label="Username" value={createUser.username || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateUser((u: Partial<UserWithId>) => ({ ...u, username: e.target.value }))} size="small" />
+          <TextField label="Email" value={createUser.email || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateUser((u: Partial<UserWithId>) => ({ ...u, email: e.target.value }))} size="small" />
+          <TextField label="First Name" value={createUser.firstName || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateUser((u: Partial<UserWithId>) => ({ ...u, firstName: e.target.value }))} size="small" />
+          <TextField label="Last Name" value={createUser.lastName || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateUser((u: Partial<UserWithId>) => ({ ...u, lastName: e.target.value }))} size="small" />
           <TextField label="Password" type="password" value={createPassword} onChange={e => setCreatePassword(e.target.value)} size="small" />
           <TextField select label="Role" value={createUser.role || UserRole.VIEWER} onChange={e => handleRoleChange(e)} size="small">
             {roleOptions.map(role => <MenuItem key={role} value={role}>{role}</MenuItem>)}
@@ -160,7 +155,7 @@ const UserDashboard: React.FC = () => {
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6">All Users</Typography>
             <List>
-              {users.map(user => (
+              {users.map((user: UserWithId) => (
                 <ListItem key={user._id} secondaryAction={
                   <>
                     <Button variant="outlined" size="small" sx={{ mr: 1 }} onClick={() => openEdit(user)}>Edit</Button>
@@ -191,10 +186,10 @@ const UserDashboard: React.FC = () => {
       <Dialog open={!!editUser} onClose={() => setEditUser(null)}>
         <DialogTitle>Edit User</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 300 }}>
-          <TextField label="Username" value={editFields.username || ''} onChange={e => setEditFields(f => ({ ...f, username: e.target.value }))} />
-          <TextField label="Email" value={editFields.email || ''} onChange={e => setEditFields(f => ({ ...f, email: e.target.value }))} />
-          <TextField label="First Name" value={editFields.firstName || ''} onChange={e => setEditFields(f => ({ ...f, firstName: e.target.value }))} />
-          <TextField label="Last Name" value={editFields.lastName || ''} onChange={e => setEditFields(f => ({ ...f, lastName: e.target.value }))} />
+          <TextField label="Username" value={editFields.username || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditFields((f: Partial<UserWithId>) => ({ ...f, username: e.target.value }))} />
+          <TextField label="Email" value={editFields.email || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditFields((f: Partial<UserWithId>) => ({ ...f, email: e.target.value }))} />
+          <TextField label="First Name" value={editFields.firstName || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditFields((f: Partial<UserWithId>) => ({ ...f, firstName: e.target.value }))} />
+          <TextField label="Last Name" value={editFields.lastName || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditFields((f: Partial<UserWithId>) => ({ ...f, lastName: e.target.value }))} />
           <TextField label="Password (leave blank to keep)" type="password" value={editPassword} onChange={e => setEditPassword(e.target.value)} />
           <TextField select label="Role" value={editFields.role || UserRole.VIEWER} onChange={e => handleRoleChange(e, true)}>
             {roleOptions.map(role => <MenuItem key={role} value={role}>{role}</MenuItem>)}

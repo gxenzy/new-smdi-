@@ -15,6 +15,12 @@ export interface AuditRow {
   completed: boolean;
   riskIndex: RiskIndex;
   comments?: string;
+  tags?: string[];
+  status?: 'open' | 'in_review' | 'closed';
+  color?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: any; // Index signature for dynamic property access
 }
 
 export interface AuditTableProps {

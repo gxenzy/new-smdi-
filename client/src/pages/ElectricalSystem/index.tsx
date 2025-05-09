@@ -89,8 +89,8 @@ const ElectricalSystem = () => {
       } else {
         // Add new component
         const newComponent: ElectricalComponent = {
-          id: Math.random().toString(36).substr(2, 9),
           ...formData as ElectricalComponent,
+          id: formData.id || Math.random().toString(36).substr(2, 9),
           status: 'active',
           lastUpdated: new Date(),
         };

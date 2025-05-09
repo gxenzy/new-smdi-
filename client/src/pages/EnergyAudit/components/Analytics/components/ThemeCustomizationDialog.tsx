@@ -37,14 +37,19 @@ const ThemeCustomizationDialog: React.FC<Props> = ({
   settings,
   onSettingsChange,
 }) => {
-  const [localSettings, setLocalSettings] = React.useState(settings);
+  const [localSettings, setLocalSettings] = React.useState<{
+    mode: 'light' | 'dark';
+    primaryColor: string;
+    secondaryColor: string;
+    fontSize: number;
+  }>(settings);
 
   const handleSelectChange = (field: 'mode') => (
     event: SelectChangeEvent
   ) => {
     const newSettings = {
       ...localSettings,
-      [field]: event.target.value,
+      [field]: event.target.value as 'light' | 'dark',
     };
     setLocalSettings(newSettings);
   };

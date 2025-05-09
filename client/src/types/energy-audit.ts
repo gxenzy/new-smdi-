@@ -81,6 +81,8 @@ export interface Finding {
   category: 'power' | 'lighting' | 'hvac' | 'general';
   recommendations?: string[];
   attachments?: string[];
+  comments: Comment[];
+  activityLog?: ActivityLogEntry[];
 }
 
 export interface ActivityLogEntry {
@@ -93,6 +95,8 @@ export interface ActivityLogEntry {
   metadata?: {
     [key: string]: any;
   };
+  user?: string;
+  action?: string;
 }
 
 export interface Comment {

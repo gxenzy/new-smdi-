@@ -19,10 +19,10 @@ import {
 import { Add as AddIcon } from '@mui/icons-material';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { useEnergyAudit, Finding } from './EnergyAuditContext';
+import { useEnergyAudit, Finding, AuditData, ApprovalStatus } from './EnergyAuditContext';
 import { useUserContext } from '../../contexts/UserContext';
 import { useNotificationContext } from '../../contexts/NotificationContext';
-import { UserRole } from '../../types';
+import { UserRole, User, Comment, NotificationType } from '../../types';
 import FindingCard from '../../components/EnergyAudit/FindingCard';
 import WorkflowAdmin from '../../components/EnergyAudit/WorkflowAdmin';
 import { saveAs } from 'file-saver';
@@ -37,8 +37,6 @@ type AuditState = {
   summary: string;
 };
 
-type NotificationType = 'info' | 'warning' | 'error' | 'success';
-type ApprovalStatus = 'Draft' | 'Pending Review' | 'Manager Approval' | 'Final Approval' | 'Approved' | 'Rejected';
 type FindingStatus = 'Open' | 'In Progress' | 'Resolved';
 type FindingSeverity = 'Low' | 'Medium' | 'High' | 'Critical';
 
@@ -75,7 +73,7 @@ const EnergyAuditWizard: React.FC = () => {
         ) {
           addNotification({
             message: `Reminder: Finding in ${section.charAt(0).toUpperCase() + section.slice(1)} assigned to ${finding.assignee} is pending approval for more than ${reminderDays ?? 2} days!`,
-            type: 'warning' as NotificationType,
+            type: NotificationType.Warning,
           });
         }
         if (
@@ -85,7 +83,7 @@ const EnergyAuditWizard: React.FC = () => {
         ) {
           addNotification({
             message: `Escalation: Finding in ${section.charAt(0).toUpperCase() + section.slice(1)} assigned to ${finding.assignee} is overdue for approval by more than ${escalationDays ?? 5} days!`,
-            type: 'error' as NotificationType,
+            type: NotificationType.Error,
           });
         }
       });
@@ -122,7 +120,7 @@ const EnergyAuditWizard: React.FC = () => {
     }));
     addNotification({
       message: `A new finding was added to ${section.charAt(0).toUpperCase() + section.slice(1)} by ${currentUser.name}.`,
-      type: 'info' as NotificationType,
+      type: NotificationType.Info,
     });
   }, [currentUser.name, setAudit, addNotification]);
 
@@ -131,20 +129,20 @@ const EnergyAuditWizard: React.FC = () => {
     section: AuditSection,
     id: string,
     field: keyof Omit<Finding, 'id' | 'section' | 'createdAt' | 'comments'>,
-    value: FindingSeverity | FindingStatus | number | string
+    value: any
   ) => {
     setAudit((prev: AuditState) => {
       const prevFinding = prev[section].find(f => f.id === id);
       if (field === 'assignee' && value && value !== prevFinding?.assignee) {
         addNotification({
           message: `You have been assigned to a finding in ${section.charAt(0).toUpperCase() + section.slice(1)} by ${currentUser.name}.`,
-          type: 'info' as NotificationType,
+          type: NotificationType.Info,
         });
       }
       if (field === 'status' && value && value !== prevFinding?.status) {
         addNotification({
           message: `Status of a finding in ${section.charAt(0).toUpperCase() + section.slice(1)} was changed to ${value} by ${currentUser.name}.`,
-          type: 'info' as NotificationType,
+          type: NotificationType.Info,
         });
       }
       return {
@@ -178,7 +176,7 @@ const EnergyAuditWizard: React.FC = () => {
     file: File
   ) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = (e: ProgressEvent<FileReader>) => {
       const base64 = e.target?.result as string;
       setAudit((prev: AuditState) => ({
         ...prev,
@@ -225,7 +223,7 @@ const EnergyAuditWizard: React.FC = () => {
         f.estimatedCost.toLocaleString(),
         f.status,
         f.assignee || '-',
-        f.comments.map(c => `${c.author}: ${c.text}`).join('\n') || '-',
+        f.comments.map((c: Comment) => `${c.author}: ${c.text}`).join('\n') || '-',
       ]),
       startY: 90,
       styles: { cellWidth: 'wrap', fontSize: 9 },
@@ -309,10 +307,10 @@ const EnergyAuditWizard: React.FC = () => {
           : f
       ),
     }));
-    setCommentInputs((prev) => ({ ...prev, [id]: '' }));
+    setCommentInputs((prev: typeof commentInputs) => ({ ...prev, [id]: '' }));
     addNotification({
       message: `${currentUser.name} commented on a finding in ${section.charAt(0).toUpperCase() + section.slice(1)}.`,
-      type: 'info' as NotificationType,
+      type: NotificationType.Info,
     });
 
     // Mention notifications
@@ -324,7 +322,7 @@ const EnergyAuditWizard: React.FC = () => {
       if (mentionedUser) {
         addNotification({
           message: `You were mentioned by ${currentUser.name} in a comment on a finding in ${section.charAt(0).toUpperCase() + section.slice(1)}.`,
-          type: 'info' as NotificationType,
+          type: NotificationType.Info,
         });
       }
     }
@@ -356,7 +354,7 @@ const EnergyAuditWizard: React.FC = () => {
     if (finding && finding.assignee) {
       addNotification({
         message: `Your finding in ${section.charAt(0).toUpperCase() + section.slice(1)} is now at stage: ${status} (by ${currentUser.name}).`,
-        type: status === 'Approved' ? 'success' : status === 'Rejected' ? 'warning' : 'info' as NotificationType,
+        type: status === 'Approved' ? NotificationType.Success : status === 'Rejected' ? NotificationType.Warning : NotificationType.Info,
       });
     }
   }, [currentUser.name, audit, setAudit, addNotification]);
@@ -367,7 +365,7 @@ const EnergyAuditWizard: React.FC = () => {
   }, []);
 
   const handleSelectAll = useCallback((section: AuditSection) => {
-    const allIds = audit[section].map(f => f.id);
+    const allIds = audit[section].map((f: Finding) => f.id);
     setSelectedFindings((prev) => prev.length === allIds.length ? [] : allIds);
   }, [audit]);
 
@@ -398,7 +396,7 @@ const EnergyAuditWizard: React.FC = () => {
       if (selectedFindings.includes(f.id) && f.assignee) {
         addNotification({
           message: `Your finding in ${section.charAt(0).toUpperCase() + section.slice(1)} was bulk moved to ${status} by ${currentUser.name}.`,
-          type: status === 'Approved' ? 'success' : status === 'Rejected' ? 'warning' : 'info' as NotificationType,
+          type: status === 'Approved' ? NotificationType.Success : status === 'Rejected' ? NotificationType.Warning : NotificationType.Info,
         });
       }
     });
@@ -475,23 +473,23 @@ const EnergyAuditWizard: React.FC = () => {
         <Dialog open={addModalOpen === section} onClose={() => setAddModalOpen(null)} maxWidth="sm" fullWidth>
           <DialogTitle>Add Finding</DialogTitle>
           <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField label="Description" value={newFinding.description} onChange={e => setNewFinding(f => ({ ...f, description: e.target.value }))} fullWidth />
-            <TextField label="Recommendation" value={newFinding.recommendation} onChange={e => setNewFinding(f => ({ ...f, recommendation: e.target.value }))} fullWidth />
-            <TextField label="Severity" select value={newFinding.severity} onChange={e => setNewFinding(f => ({ ...f, severity: e.target.value }))} fullWidth>
+            <TextField label="Description" value={newFinding.description} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewFinding(f => ({ ...f, description: e.target.value }))} fullWidth />
+            <TextField label="Recommendation" value={newFinding.recommendation} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewFinding(f => ({ ...f, recommendation: e.target.value }))} fullWidth />
+            <TextField label="Severity" select value={newFinding.severity} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewFinding(f => ({ ...f, severity: e.target.value as FindingSeverity }))} fullWidth>
               <MenuItem value="Low">Low</MenuItem>
               <MenuItem value="Medium">Medium</MenuItem>
               <MenuItem value="High">High</MenuItem>
               <MenuItem value="Critical">Critical</MenuItem>
             </TextField>
-            <TextField label="Status" select value={newFinding.status} onChange={e => setNewFinding(f => ({ ...f, status: e.target.value }))} fullWidth>
+            <TextField label="Status" select value={newFinding.status} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewFinding(f => ({ ...f, status: e.target.value as FindingStatus }))} fullWidth>
               <MenuItem value="Open">Open</MenuItem>
               <MenuItem value="In Progress">In Progress</MenuItem>
               <MenuItem value="Resolved">Resolved</MenuItem>
             </TextField>
-            <TextField label="Estimated Cost (₱)" type="number" value={newFinding.estimatedCost} onChange={e => setNewFinding(f => ({ ...f, estimatedCost: Number(e.target.value) }))} fullWidth />
-            <TextField label="Assignee" select value={newFinding.assignee} onChange={e => setNewFinding(f => ({ ...f, assignee: e.target.value }))} fullWidth>
+            <TextField label="Estimated Cost (₱)" type="number" value={newFinding.estimatedCost} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewFinding(f => ({ ...f, estimatedCost: Number(e.target.value) }))} fullWidth />
+            <TextField label="Assignee" select value={newFinding.assignee} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewFinding(f => ({ ...f, assignee: e.target.value }))} fullWidth>
               <MenuItem value="">None</MenuItem>
-              {users.map(u => (
+              {users.map((u: User) => (
                 <MenuItem key={u.id} value={u.name}>{u.name}</MenuItem>
               ))}
             </TextField>
@@ -550,7 +548,7 @@ const EnergyAuditWizard: React.FC = () => {
             sx={{ minWidth: 140 }}
           >
             <MenuItem value="">All</MenuItem>
-            {users.map(u => (
+            {users.map((u: User) => (
               <MenuItem key={u.id} value={u.name}>{u.name}</MenuItem>
             ))}
           </TextField>
@@ -579,7 +577,7 @@ const EnergyAuditWizard: React.FC = () => {
         )}
 
         {/* Findings List */}
-        {findings.map((finding) => (
+        {findings.map((finding: Finding) => (
           <FindingCard
             key={finding.id}
             finding={finding}
@@ -643,7 +641,7 @@ const EnergyAuditWizard: React.FC = () => {
           <TextField
             label="Audit Summary & Notes"
             value={audit.summary}
-            onChange={(e) => setAudit(prev => ({ ...prev, summary: e.target.value }))}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAudit(prev => ({ ...prev, summary: e.target.value }))}
             fullWidth
             multiline
             minRows={4}

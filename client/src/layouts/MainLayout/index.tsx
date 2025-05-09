@@ -28,7 +28,7 @@ import {
   Brightness7,
   KeyboardArrowUp,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Outlet } from 'react-router-dom';
 import { useAuthContext } from '../../contexts/AuthContext';
 import Sidebar from './Sidebar';
 import NotificationsMenu from './NotificationsMenu';
@@ -53,10 +53,10 @@ const Main = styled('main')<{
 }));
 
 interface MainLayoutProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
-const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+const MainLayout: React.FC<MainLayoutProps> = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileAnchorEl, setProfileAnchorEl] = useState<null | HTMLElement>(null);
   const [notificationsAnchorEl, setNotificationsAnchorEl] = useState<null | HTMLElement>(null);
@@ -242,7 +242,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         }}
       >
         <Toolbar />
-        {children}
+        <Outlet />
       </Main>
 
       {/* Scroll to Top Button */}
@@ -319,7 +319,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         sx={{ bottom: { xs: 90, sm: 24 } }}
       >
-        {current && (
+        {current ? (
           <Alert 
             onClose={handleClose} 
             severity={current.type} 
@@ -330,7 +330,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           >
             {current.message}
           </Alert>
-        )}
+        ) : undefined}
       </Snackbar>
     </Box>
   );

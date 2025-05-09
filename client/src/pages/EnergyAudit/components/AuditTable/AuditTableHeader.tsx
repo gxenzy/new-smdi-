@@ -1,7 +1,7 @@
 import React from 'react';
 import { TableHead, TableRow, TableCell, Tooltip } from '@mui/material';
 
-const AuditTableHeader: React.FC = () => (
+const AuditTableHeader: React.FC<{ showActions?: boolean }> = ({ showActions = true }) => (
   <TableHead sx={{ position: 'sticky', top: 0, zIndex: 2, bgcolor: 'primary.main', color: 'primary.contrastText', '@media print': { backgroundColor: 'white !important', color: 'black !important' } }} aria-label="Audit Table Header">
     <TableRow>
       <TableCell align="center" sx={{ fontWeight: 'bold', bgcolor: 'primary.main', color: 'primary.contrastText', '@media print': { backgroundColor: 'white !important', color: 'black !important' } }} role="columnheader">Item No.</TableCell>
@@ -15,7 +15,9 @@ const AuditTableHeader: React.FC = () => (
         </Tooltip>
       </TableCell>
       <TableCell sx={{ fontWeight: 'bold', bgcolor: 'primary.main', color: 'primary.contrastText', '@media print': { backgroundColor: 'white !important', color: 'black !important' } }} role="columnheader">Comments</TableCell>
-      <TableCell sx={{ fontWeight: 'bold', bgcolor: 'primary.main', color: 'primary.contrastText', minWidth: 80, textAlign: 'right', '@media print': { backgroundColor: 'white !important', color: 'black !important' } }} role="columnheader">Actions</TableCell>
+      {showActions && (
+        <TableCell sx={{ fontWeight: 'bold', bgcolor: 'primary.main', color: 'primary.contrastText', minWidth: 80, textAlign: 'right', '@media print': { display: 'none !important' } }} role="columnheader" className="actions-col">Actions</TableCell>
+      )}
     </TableRow>
   </TableHead>
 );

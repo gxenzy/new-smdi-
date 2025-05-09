@@ -15,7 +15,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ findings, activityLog }) => {
   // Most active users (by comment count)
   const userCommentCounts: Record<string, number> = {};
   findings.forEach(finding => {
-    finding.comments.forEach(comment => {
+    finding.comments.forEach((comment: any) => {
       userCommentCounts[comment.author] = (userCommentCounts[comment.author] || 0) + 1;
     });
   });
@@ -26,7 +26,9 @@ const AnalyticsDashboard: React.FC<Props> = ({ findings, activityLog }) => {
   // Most active users (by activity log)
   const userActivityCounts: Record<string, number> = {};
   activityLog.forEach(log => {
-    userActivityCounts[log.user] = (userActivityCounts[log.user] || 0) + 1;
+    if (log.user) {
+      userActivityCounts[log.user as string] = (userActivityCounts[log.user as string] || 0) + 1;
+    }
   });
   const mostActiveLogUsers = Object.entries(userActivityCounts)
     .sort((a, b) => b[1] - a[1])
@@ -34,8 +36,10 @@ const AnalyticsDashboard: React.FC<Props> = ({ findings, activityLog }) => {
 
   // Most common actions
   const actionCounts: Record<string, number> = {};
-  activityLog.forEach(log => {
-    actionCounts[log.action] = (actionCounts[log.action] || 0) + 1;
+  activityLog.forEach((log: any) => {
+    if (log.action) {
+      actionCounts[log.action as string] = (actionCounts[log.action as string] || 0) + 1;
+    }
   });
   const mostCommonActions = Object.entries(actionCounts)
     .sort((a, b) => b[1] - a[1])
@@ -64,10 +68,10 @@ const AnalyticsDashboard: React.FC<Props> = ({ findings, activityLog }) => {
     const times: number[] = [];
     findings.forEach(f => {
       if (f.activityLog) {
-        const stageEntries = f.activityLog.filter(a => a.action === 'Approval Status Changed' && a.details?.includes(stage));
+        const stageEntries = f.activityLog.filter((a: any) => a.action === 'Approval Status Changed' && a.details && a.details.includes(stage));
         if (stageEntries.length > 0) {
           const first = stageEntries[0];
-          const prev = f.activityLog.find(a => a.timestamp < first.timestamp && a.action === 'Approval Status Changed');
+          const prev = f.activityLog.find((a: any) => a.timestamp < first.timestamp && a.action === 'Approval Status Changed');
           if (prev) {
             times.push(new Date(first.timestamp).getTime() - new Date(prev.timestamp).getTime());
           }
@@ -89,7 +93,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ findings, activityLog }) => {
     doc.text('Most Active Users (Comments):', 14, y);
     y += 6;
     findings.forEach(f => {
-      f.comments.forEach(c => {
+      f.comments.forEach((c: any) => {
         doc.text(`${c.author}: ${c.text}`, 16, y);
         y += 6;
       });
@@ -97,7 +101,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ findings, activityLog }) => {
     y += 4;
     doc.text('Most Active Users (Activity Log):', 14, y);
     y += 6;
-    activityLog.forEach(a => {
+    activityLog.forEach((a: any) => {
       doc.text(`${a.user}: ${a.action} (${a.timestamp})`, 16, y);
       y += 6;
     });
@@ -120,12 +124,12 @@ const AnalyticsDashboard: React.FC<Props> = ({ findings, activityLog }) => {
   const exportCSV = () => {
     let csv = 'User,Comment\n';
     findings.forEach(f => {
-      f.comments.forEach(c => {
+      f.comments.forEach((c: any) => {
         csv += `${c.author},"${c.text.replace(/"/g, '""')}"\n`;
       });
     });
     csv += '\nUser,Action,Timestamp\n';
-    activityLog.forEach(a => {
+    activityLog.forEach((a: any) => {
       csv += `${a.user},${a.action},${a.timestamp}\n`;
     });
     csv += '\nAction,Count\n';

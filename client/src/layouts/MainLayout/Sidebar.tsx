@@ -23,6 +23,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Menu as MenuIcon,
+  MonitorHeart as MonitorIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '../../contexts/AuthContext';
@@ -40,8 +41,9 @@ const menuItems = [
   { text: 'System Tools', icon: <ToolsIcon />, path: '/system-tools' },
   // { text: 'Testing', icon: <TestingIcon />, path: '/testing' }, // backed up
   // { text: 'TAM Evaluation', icon: <TamIcon />, path: '/tam-evaluation' }, // fully removed
-  { text: 'User Management', icon: <UsersIcon />, path: '/users' },
+  { text: 'User Management', icon: <UsersIcon />, path: '/user-management' },
   { text: 'Admin Settings', icon: <AdminIcon />, path: '/admin' },
+  { text: 'Energy Monitoring', icon: <MonitorIcon />, path: '/energy-monitoring' },
 ];
 
 interface SidebarProps {

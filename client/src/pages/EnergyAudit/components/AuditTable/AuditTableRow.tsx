@@ -15,9 +15,12 @@ interface AuditTableRowProps {
   onDuplicateRow?: (row: AuditRow) => void;
   onArchiveRow?: (row: AuditRow) => void;
   onQuickComment?: (row: AuditRow, comment: string) => void;
+  showActions?: boolean;
+  selected?: boolean;
+  onSelect?: (checked: boolean) => void;
 }
 
-const AuditTableRow: React.FC<AuditTableRowProps> = ({ row, onChange, onDuplicateRow, onArchiveRow, onQuickComment }) => {
+const AuditTableRow: React.FC<AuditTableRowProps> = ({ row, onChange, onDuplicateRow, onArchiveRow, onQuickComment, showActions = true, selected = false, onSelect }) => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [commentDialogOpen, setCommentDialogOpen] = React.useState(false);
   const [editMetaDialogOpen, setEditMetaDialogOpen] = React.useState(false);
@@ -52,6 +55,9 @@ const AuditTableRow: React.FC<AuditTableRowProps> = ({ row, onChange, onDuplicat
   return (
     <TableRow hover tabIndex={0} aria-label={`Audit row for ${row.category}`}
       sx={{ '&:focus': { outline: '2px solid', outlineColor: 'primary.main' }, borderLeft: `6px solid ${row.color || color || theme.palette.primary.main}`, '@media print': { backgroundColor: 'white !important', color: 'black !important' } }}>
+      <TableCell padding="checkbox">
+        <Checkbox checked={selected} onChange={e => onSelect?.(e.target.checked)} inputProps={{ 'aria-label': `Select row ${row.id}` }} />
+      </TableCell>
       <TableCell align="center" sx={{ color: 'text.primary', bgcolor: 'background.paper', '@media print': { backgroundColor: 'white !important', color: 'black !important' } }} role="cell">{row.id}</TableCell>
       <TableCell sx={{ color: 'text.primary', bgcolor: 'background.paper', '@media print': { backgroundColor: 'white !important', color: 'black !important' } }} role="cell">{row.category}</TableCell>
       <TableCell sx={{ color: 'text.primary', bgcolor: 'background.paper', '@media print': { backgroundColor: 'white !important', color: 'black !important' } }} role="cell">
@@ -102,77 +108,79 @@ const AuditTableRow: React.FC<AuditTableRowProps> = ({ row, onChange, onDuplicat
           inputProps={{ 'aria-label': `Comments for ${row.category}` }}
         />
       </TableCell>
-      <TableCell align="right" sx={{ verticalAlign: 'top', minWidth: 80, '@media print': { display: 'none' } }}>
-        <IconButton aria-label="Row actions" onClick={handleMenuOpen} size="small">
-          <MoreVertIcon fontSize="small" />
-        </IconButton>
-        <Menu anchorEl={anchorEl} open={!!anchorEl} onClose={handleMenuClose}>
-          <MenuItem onClick={handleDuplicate} aria-label="Duplicate row">
-            <ListItemIcon><ContentCopyIcon fontSize="small" /></ListItemIcon>
-            <ListItemText>Duplicate</ListItemText>
-          </MenuItem>
-          <MenuItem onClick={handleArchive} aria-label="Archive row">
-            <ListItemIcon><ArchiveIcon fontSize="small" /></ListItemIcon>
-            <ListItemText>Archive</ListItemText>
-          </MenuItem>
-          <MenuItem onClick={handleQuickComment} aria-label="Quick comment">
-            <ListItemIcon><CommentIcon fontSize="small" /></ListItemIcon>
-            <ListItemText>Quick Comment</ListItemText>
-          </MenuItem>
-          <MenuItem onClick={handleEditMeta} aria-label="Edit metadata">
-            <ListItemIcon><InfoOutlinedIcon fontSize="small" /></ListItemIcon>
-            <ListItemText>Edit Metadata</ListItemText>
-          </MenuItem>
-        </Menu>
-        <Dialog open={commentDialogOpen} onClose={() => setCommentDialogOpen(false)}>
-          <DialogTitle>Quick Comment</DialogTitle>
-          <DialogContent>
-            <TextField value={comment} onChange={e => setComment(e.target.value)} fullWidth multiline minRows={2} autoFocus />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setCommentDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleCommentSave} variant="contained">Save</Button>
-          </DialogActions>
-        </Dialog>
-        <Dialog open={editMetaDialogOpen} onClose={() => setEditMetaDialogOpen(false)}>
-          <DialogTitle>Edit Row Metadata</DialogTitle>
-          <DialogContent sx={{ minWidth: 350 }}>
-            <TextField label="Comments" value={comment} onChange={e => setComment(e.target.value)} fullWidth multiline minRows={2} sx={{ mb: 2 }} />
-            <InputLabel>Status</InputLabel>
-            <Select value={status} onChange={e => setStatus(e.target.value as any)} fullWidth sx={{ mb: 2 }}>
-              <MenuItem value="open">Open</MenuItem>
-              <MenuItem value="in_review">In Review</MenuItem>
-              <MenuItem value="closed">Closed</MenuItem>
-            </Select>
-            <InputLabel>Tags</InputLabel>
-            <Select
-              multiple
-              value={tags}
-              onChange={e => setTags(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value as string[])}
-              input={<OutlinedInput label="Tags" />}
-              fullWidth
-              sx={{ mb: 2 }}
-              renderValue={selected => (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{(selected as string[]).map(tag => <Chip key={tag} label={tag} size="small" />)}</Box>
-              )}
-            >
-              {['priority', 'flagged', 'reviewed', 'important'].map(tag => (
-                <MenuItem key={tag} value={tag}>{tag}</MenuItem>
-              ))}
-            </Select>
-            <InputLabel>Row Color</InputLabel>
-            <input type="color" value={color} onChange={e => setColor(e.target.value)} style={{ width: 40, height: 32, border: 'none', background: 'none', marginBottom: 16 }} />
-            <Box sx={{ fontSize: 12, color: 'text.secondary', mt: 1 }}>
-              Created: {createdAt ? new Date(createdAt).toLocaleString() : 'N/A'}<br />
-              Last Updated: {updatedAt ? new Date(updatedAt).toLocaleString() : 'N/A'}
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setEditMetaDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleMetaSave} variant="contained">Save</Button>
-          </DialogActions>
-        </Dialog>
-      </TableCell>
+      {showActions && (
+        <TableCell align="right" className="actions-col" sx={{ verticalAlign: 'top', '@media print': { display: 'none !important' } }}>
+          <IconButton aria-label="Row actions" onClick={handleMenuOpen} size="small">
+            <MoreVertIcon fontSize="small" />
+          </IconButton>
+          <Menu anchorEl={anchorEl} open={!!anchorEl} onClose={handleMenuClose}>
+            <MenuItem onClick={handleDuplicate} aria-label="Duplicate row">
+              <ListItemIcon><ContentCopyIcon fontSize="small" /></ListItemIcon>
+              <ListItemText>Duplicate</ListItemText>
+            </MenuItem>
+            <MenuItem onClick={handleArchive} aria-label="Archive row">
+              <ListItemIcon><ArchiveIcon fontSize="small" /></ListItemIcon>
+              <ListItemText>Archive</ListItemText>
+            </MenuItem>
+            <MenuItem onClick={handleQuickComment} aria-label="Quick comment">
+              <ListItemIcon><CommentIcon fontSize="small" /></ListItemIcon>
+              <ListItemText>Quick Comment</ListItemText>
+            </MenuItem>
+            <MenuItem onClick={handleEditMeta} aria-label="Edit metadata">
+              <ListItemIcon><InfoOutlinedIcon fontSize="small" /></ListItemIcon>
+              <ListItemText>Edit Metadata</ListItemText>
+            </MenuItem>
+          </Menu>
+          <Dialog open={commentDialogOpen} onClose={() => setCommentDialogOpen(false)}>
+            <DialogTitle>Quick Comment</DialogTitle>
+            <DialogContent>
+              <TextField value={comment} onChange={e => setComment(e.target.value)} fullWidth multiline minRows={2} autoFocus />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setCommentDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleCommentSave} variant="contained">Save</Button>
+            </DialogActions>
+          </Dialog>
+          <Dialog open={editMetaDialogOpen} onClose={() => setEditMetaDialogOpen(false)}>
+            <DialogTitle>Edit Row Metadata</DialogTitle>
+            <DialogContent sx={{ minWidth: 350 }}>
+              <TextField label="Comments" value={comment} onChange={e => setComment(e.target.value)} fullWidth multiline minRows={2} sx={{ mb: 2 }} />
+              <InputLabel>Status</InputLabel>
+              <Select value={status} onChange={e => setStatus(e.target.value as any)} fullWidth sx={{ mb: 2 }}>
+                <MenuItem value="open">Open</MenuItem>
+                <MenuItem value="in_review">In Review</MenuItem>
+                <MenuItem value="closed">Closed</MenuItem>
+              </Select>
+              <InputLabel>Tags</InputLabel>
+              <Select
+                multiple
+                value={tags}
+                onChange={e => setTags(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value as string[])}
+                input={<OutlinedInput label="Tags" />}
+                fullWidth
+                sx={{ mb: 2 }}
+                renderValue={selected => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{(selected as string[]).map(tag => <Chip key={tag} label={tag} size="small" />)}</Box>
+                )}
+              >
+                {['priority', 'flagged', 'reviewed', 'important'].map(tag => (
+                  <MenuItem key={tag} value={tag}>{tag}</MenuItem>
+                ))}
+              </Select>
+              <InputLabel>Row Color</InputLabel>
+              <input type="color" value={color} onChange={e => setColor(e.target.value)} style={{ width: 40, height: 32, border: 'none', background: 'none', marginBottom: 16 }} />
+              <Box sx={{ fontSize: 12, color: 'text.secondary', mt: 1 }}>
+                Created: {createdAt ? new Date(createdAt).toLocaleString() : 'N/A'}<br />
+                Last Updated: {updatedAt ? new Date(updatedAt).toLocaleString() : 'N/A'}
+              </Box>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setEditMetaDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleMetaSave} variant="contained">Save</Button>
+            </DialogActions>
+          </Dialog>
+        </TableCell>
+      )}
     </TableRow>
   );
 };

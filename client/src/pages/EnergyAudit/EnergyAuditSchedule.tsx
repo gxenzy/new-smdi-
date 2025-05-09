@@ -4,6 +4,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { useScheduleContext } from './EnergyAuditScheduleContext';
 import { useUserContext } from '../../contexts/UserContext';
 import { useNotificationContext } from '../../contexts/NotificationContext';
+import { NotificationType } from '../../types';
 
 const EnergyAuditSchedule: React.FC = () => {
   const { audits, addAudit, deleteAudit } = useScheduleContext();
@@ -17,7 +18,7 @@ const EnergyAuditSchedule: React.FC = () => {
     addAudit(form);
     addNotification({
       message: `Audit "${form.name}" scheduled for ${form.date} at ${form.location}.`,
-      type: 'info',
+      type: NotificationType.Info,
     });
     setForm({ name: '', date: '', location: '', team: '' });
     setOpen(false);

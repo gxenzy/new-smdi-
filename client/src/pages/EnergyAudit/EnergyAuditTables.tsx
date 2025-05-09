@@ -26,6 +26,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import { LocalizationProvider, DesktopDatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -56,34 +58,16 @@ import { LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveCo
 import { useSnackbar } from 'notistack';
 import { useAuthContext } from '../../contexts/AuthContext';
 import AuditTableContainer from './components/AuditTable/AuditTableContainer';
+import AnalyticsDashboard from './components/AnalyticsDashboard';
+import ActivityLog from './components/ActivityLog';
+import ApprovalWorkflow from './components/ApprovalWorkflow';
+import CommentsSection from './components/CommentsSection';
 
 // --- Main Component ---
 const EnergyAuditTablesInner: React.FC = () => {
-  const [audits, setAudits] = useState<Audit[]>(() => {
-    const saved = localStorage.getItem('energyAudits');
-    if (saved) {
-      return JSON.parse(saved);
-    } else {
-      return [{
-        id: Date.now(),
-        name: 'Audit 1',
-        complianceData: {},
-        ariData: {},
-        probabilityData: {},
-        riskSeverityData: {},
-        lastSaved: null,
-      }];
-    }
-  });
-  const [selectedAuditId, setSelectedAuditId] = useState<number | null>(() => {
-    const saved = localStorage.getItem('energyAudits');
-    if (saved) {
-      const audits: Audit[] = JSON.parse(saved);
-      return audits.length > 0 ? audits[0].id : null;
-    } else {
-      return null;
-    }
-  });
+  const { token } = useAuthContext();
+  const [audits, setAudits] = useState<Audit[]>([]);
+  const [selectedAuditId, setSelectedAuditId] = useState<number | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const [auditSearch, setAuditSearch] = useState('');
@@ -122,10 +106,36 @@ const EnergyAuditTablesInner: React.FC = () => {
   }), [themeSettings]);
   const { enqueueSnackbar } = useSnackbar();
   const [guidanceOpen, setGuidanceOpen] = useState(false);
+  const [tab, setTab] = useState(0);
 
   // Restore selectedAudit variable
   const selectedAudit = audits.find(audit => audit.id === selectedAuditId);
 
+  // Fetch audits from backend on mount
+  useEffect(() => {
+    const fetchAudits = async () => {
+      try {
+        const res = await fetch('/api/energy-audit', {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        });
+        if (!res.ok) throw new Error('Failed to fetch audits');
+        const data = await res.json();
+        setAudits(data);
+        setSelectedAuditId(data.length > 0 ? data[0].id : null);
+      } catch (err) {
+        // fallback to localStorage if backend fails
+        const saved = localStorage.getItem('energyAudits');
+        if (saved) {
+          const audits = JSON.parse(saved);
+          setAudits(audits);
+          setSelectedAuditId(audits.length > 0 ? audits[0].id : null);
+        }
+      }
+    };
+    fetchAudits();
+  }, [token]);
+
+  // Update localStorage on audits change
   useEffect(() => {
     localStorage.setItem('energyAudits', JSON.stringify(audits));
   }, [audits]);
@@ -154,20 +164,22 @@ const EnergyAuditTablesInner: React.FC = () => {
 
   useEffect(() => {
     // DEMO: Connect to a local WebSocket server (replace with your backend URL)
-    const ws = new window.WebSocket('ws://localhost:8080');
-    wsRef.current = ws;
-    ws.onopen = () => setIsLive(true);
-    ws.onclose = () => setIsLive(false);
-    ws.onerror = () => setIsLive(false);
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (Array.isArray(data) && data[0]?.id && data[0]?.name) {
-          setAudits(data);
-        }
-      } catch (e) { /* ignore */ }
-    };
-    return () => ws.close();
+    if (process.env.REACT_APP_ENABLE_WS === 'true') {
+      const ws = new window.WebSocket('ws://localhost:8080');
+      wsRef.current = ws;
+      ws.onopen = () => setIsLive(true);
+      ws.onclose = () => setIsLive(false);
+      ws.onerror = () => setIsLive(false);
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (Array.isArray(data) && data[0]?.id && data[0]?.name) {
+            setAudits(data);
+          }
+        } catch (e) { /* ignore */ }
+      };
+      return () => ws.close();
+    }
   }, []);
 
   // Send audits to WebSocket on change
@@ -177,21 +189,33 @@ const EnergyAuditTablesInner: React.FC = () => {
     }
   }, [audits]);
 
-  const createNewAudit = useCallback(() => {
+  // Update backend when creating a new audit
+  const createNewAudit = useCallback(async () => {
     const newAudit: Audit = {
-      id: Date.now(),
+        id: Date.now(),
       name: `Audit ${audits.length + 1}`,
-      complianceData: {},
-      ariData: {},
-      probabilityData: {},
-      riskSeverityData: {},
-      lastSaved: null,
+        complianceData: {},
+        ariData: {},
+        probabilityData: {},
+        riskSeverityData: {},
+        lastSaved: null,
     };
     setAudits(prev => [...prev, newAudit]);
     setSelectedAuditId(newAudit.id);
-  }, [audits.length]);
+    try {
+      await fetch('/api/energy-audit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(newAudit),
+      });
+    } catch {}
+  }, [audits.length, token]);
 
-  const deleteAudit = useCallback((id: number) => {
+  // Update backend when deleting an audit
+  const deleteAudit = useCallback(async (id: number) => {
     setAudits(prev => {
       const filtered = prev.filter(audit => audit.id !== id);
       if (filtered.length > 0) {
@@ -201,7 +225,13 @@ const EnergyAuditTablesInner: React.FC = () => {
       }
       return filtered;
     });
-  }, []);
+    try {
+      await fetch(`/api/energy-audit/${id}`, {
+        method: 'DELETE',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      });
+    } catch {}
+  }, [token]);
 
   const addAuditHistory = (audit: Audit) => {
     setAuditHistories(prev => {
@@ -222,9 +252,9 @@ const EnergyAuditTablesInner: React.FC = () => {
         if (field === 'date' || field === 'inspector' || field === 'location' || field === 'comments') {
           (updatedAudit as any)[field] = value;
         } else {
-          if (!updatedAudit[field]) updatedAudit[field] = {};
-          if (!updatedAudit[field][floor]) updatedAudit[field][floor] = {};
-          updatedAudit[field][floor][standard] = value;
+          if (!(updatedAudit as any)[field]) (updatedAudit as any)[field] = {};
+          if (!(updatedAudit as any)[field][floor]) (updatedAudit as any)[field][floor] = {};
+          (updatedAudit as any)[field][floor][standard] = value;
         }
         addAuditHistory(updatedAudit);
         return updatedAudit;
@@ -305,7 +335,7 @@ const EnergyAuditTablesInner: React.FC = () => {
     });
     // Standard tables
     ['Size of Wires', 'Protection', 'Electrical Outlets', 'Lighting'].forEach(standard => {
-      const rows = Object.keys(categories).map(floor => {
+      const rows = Object.keys(categories).map((floor: string) => {
         const compliance = selectedAudit.complianceData?.[floor]?.[standard] || {};
         return {
           'Floor': floor,
@@ -341,7 +371,7 @@ const EnergyAuditTablesInner: React.FC = () => {
       doc.setFontSize(14);
       doc.text(`Assessment of Old Building ${floor}`, 14, y);
       y += 6;
-      const tableRows = categories[floor].map((category, idx) => {
+      const tableRows = categories[floor].map((category: string, idx: number) => {
         const compliance = selectedAudit.complianceData?.[floor]?.[category] || {};
         const completed = compliance.completed ? 'Yes' : 'No';
         const ari = selectedAudit.ariData?.[floor]?.[category] || '';
@@ -379,7 +409,7 @@ const EnergyAuditTablesInner: React.FC = () => {
       doc.setFontSize(14);
       doc.text(`Standard Compliance per Floor for ${standard}`, 14, y);
       y += 6;
-      const tableRows = Object.keys(categories).map(floor => {
+      const tableRows = Object.keys(categories).map((floor: string) => {
         const compliance = selectedAudit.complianceData?.[floor]?.[standard] || {};
         return [
           floor,
@@ -419,7 +449,7 @@ const EnergyAuditTablesInner: React.FC = () => {
   ), [selectedAudit, updateAuditField, calculateValue]);
 
   const standardTables = useMemo(() => (
-    ['Size of Wires', 'Protection', 'Electrical Outlets', 'Lighting'].map((standard, index) => (
+    ['Size of Wires', 'Protection', 'Electrical Outlets', 'Lighting'].map((standard: string, index: number) => (
       <StandardTable
         key={index}
         standard={standard}
@@ -434,7 +464,7 @@ const EnergyAuditTablesInner: React.FC = () => {
     if (historyAuditId == null) return;
     const history = auditHistories[historyAuditId];
     if (!history || !history[versionIdx]) return;
-    setAudits(prev => prev.map(audit =>
+    setAudits((prev: Audit[]) => prev.map((audit: Audit) =>
       audit.id === historyAuditId ? { ...history[versionIdx].data } : audit
     ));
     setHistoryDialogOpen(false);
@@ -443,9 +473,9 @@ const EnergyAuditTablesInner: React.FC = () => {
   const complianceTrendData = useMemo(() => {
     if (!selectedAudit) return [];
     // Example: compliance rate by floor
-    return Object.keys(categories).map(floor => {
+    return Object.keys(categories).map((floor: string) => {
       const cats = categories[floor];
-      const completed = cats.filter(cat => selectedAudit.complianceData?.[floor]?.[cat]?.completed).length;
+      const completed = cats.filter((cat: string) => selectedAudit.complianceData?.[floor]?.[cat]?.completed).length;
       return {
         floor,
         completed,
@@ -459,13 +489,13 @@ const EnergyAuditTablesInner: React.FC = () => {
     if (!selectedAudit) return [];
     const riskCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
     Object.keys(categories).forEach(floor => {
-      categories[floor].forEach(cat => {
+      categories[floor].forEach((cat: string) => {
         const ari = selectedAudit.ariData?.[floor]?.[cat] || '';
         const risk = riskIndexMapping[ari] || 0;
         if (risk) riskCounts[risk] = (riskCounts[risk] || 0) + 1;
       });
     });
-    return [1, 2, 3, 4].map(risk => ({
+    return [1, 2, 3, 4].map((risk: number) => ({
       name: `Risk ${risk}`,
       value: riskCounts[risk],
     }));
@@ -497,7 +527,7 @@ const EnergyAuditTablesInner: React.FC = () => {
     const rows: AuditRow[] = [];
     const meta = audit.rowMetaData || {};
     Object.keys(categories).forEach(floor => {
-      categories[floor].forEach((category, idx) => {
+      categories[floor].forEach((category: string, idx: number) => {
         const rowId = `${floor}__${category}`;
         const compliance = audit.complianceData?.[floor]?.[category] || {};
         const riskIndex = {
@@ -526,9 +556,9 @@ const EnergyAuditTablesInner: React.FC = () => {
     <ThemeProvider theme={localTheme}>
       <Paper elevation={3} sx={{ display: 'grid', gridTemplateColumns: '280px 1fr', height: '100vh', overflow: 'hidden', bgcolor: '#f5f5f5', '@media print': { display: 'block', height: 'auto', overflow: 'visible', bgcolor: 'white' } }}>
         <Box className="no-print" sx={{ borderRight: 1, borderColor: 'divider', display: 'flex', flexDirection: 'column', bgcolor: 'white', p: 2, '@media print': { display: 'none' } }}>
-          <Typography variant="h6" gutterBottom>
-            Audits
-          </Typography>
+        <Typography variant="h6" gutterBottom>
+          Audits
+        </Typography>
           <Box sx={{ mb: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
@@ -552,17 +582,17 @@ const EnergyAuditTablesInner: React.FC = () => {
               </Tooltip>
             </Box>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={createNewAudit}
-            fullWidth
-            sx={{ mb: 2 }}
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={createNewAudit}
+          fullWidth
+          sx={{ mb: 2 }}
             disabled={role !== 'admin'}
             aria-label="Create new audit"
-          >
-            Create New Audit
-          </Button>
+        >
+          Create New Audit
+        </Button>
           <Box sx={{ mb: 2 }}>
             <input
               type="text"
@@ -575,66 +605,64 @@ const EnergyAuditTablesInner: React.FC = () => {
           </Box>
           <List sx={{ flexGrow: 1, overflowY: 'auto' }} role="listbox" aria-label="Audit list">
             {audits
-              .filter(audit => audit.name.toLowerCase().includes(auditSearch.toLowerCase()))
-              .map(audit => (
-                <ListItem
-                  button
-                  key={audit.id}
-                  selected={audit.id === selectedAuditId}
-                  onClick={() => setSelectedAuditId(audit.id)}
+              .filter((audit: Audit) => audit.name.toLowerCase().includes(auditSearch.toLowerCase()))
+              .map((audit: Audit) => (
+            <ListItem
+              button
+              key={audit.id}
+              selected={audit.id === selectedAuditId}
+              onClick={() => setSelectedAuditId(audit.id)}
                   role="option"
                   tabIndex={0}
                   aria-selected={audit.id === selectedAuditId}
-                  secondaryAction={
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      {role === 'admin' && (
-                        <>
-                          <Tooltip title="Audit History">
-                            <IconButton edge="end" color="info" aria-label={`View history for ${audit.name}`} onClick={e => { e.stopPropagation(); setHistoryAuditId(audit.id); setHistoryDialogOpen(true); }}>
-                              <span className="material-icons">history</span>
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Delete Audit">
-                            <IconButton edge="end" color="error" aria-label={`Delete audit ${audit.name}`} onClick={e => { e.stopPropagation(); deleteAudit(audit.id); }}>
-                              <DeleteIcon />
-                            </IconButton>
-                          </Tooltip>
-                        </>
-                      )}
-                    </Box>
-                  }
-                >
+              secondaryAction={
+                role === 'admin' ? (
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Tooltip title="Audit History">
+                      <IconButton edge="end" color="info" aria-label={`View history for ${audit.name}`} onClick={e => { e.stopPropagation(); setHistoryAuditId(audit.id); setHistoryDialogOpen(true); }}>
+                        <span className="material-icons">history</span>
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete Audit">
+                      <IconButton edge="end" color="error" aria-label={`Delete audit ${audit.name}`} onClick={e => { e.stopPropagation(); deleteAudit(audit.id); }}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                ) : null
+              }
+            >
                   <ListItemText primary={audit.name} secondary={audit.lastSaved ? `Last saved: ${audit.lastSaved}` : ''} />
-                </ListItem>
-              ))}
-          </List>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<SaveIcon />}
-              onClick={saveCurrentAudit}
-              sx={{ flexGrow: 1, mr: 1 }}
+            </ListItem>
+          ))}
+        </List>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<SaveIcon />}
+            onClick={saveCurrentAudit}
+            sx={{ flexGrow: 1, mr: 1 }}
               disabled={role !== 'admin'}
               aria-label="Save current audit"
-            >
-              Save Current Audit
-            </Button>
-            <Button
-              variant="contained"
-              color="secondary"
-              startIcon={<PrintIcon />}
-              onClick={handlePrint}
-              sx={{ flexGrow: 1, ml: 1 }}
+          >
+            Save Current Audit
+          </Button>
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<PrintIcon />}
+            onClick={handlePrint}
+            sx={{ flexGrow: 1, ml: 1 }}
               aria-label="Print audit"
-            >
-              Print
-            </Button>
-          </Box>
+          >
+            Print
+          </Button>
+        </Box>
           <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
             <Button variant="outlined" color="info" fullWidth onClick={handleExportExcel} disabled={!selectedAudit} aria-label="Export audit to Excel">Export to Excel</Button>
             <Button variant="outlined" color="info" fullWidth onClick={handleExportPDF} disabled={!selectedAudit} aria-label="Export audit to PDF">Export to PDF</Button>
-          </Box>
+      </Box>
         </Box>
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', '@media print': { height: 'auto' } }}>
           <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', bgcolor: 'white', position: 'sticky', top: 0, zIndex: 1, '@media print': { display: 'none' }, display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -646,127 +674,30 @@ const EnergyAuditTablesInner: React.FC = () => {
             </IconButton>
           </Box>
           <Box ref={printRef} sx={{ flex: 1, p: 3, overflow: 'auto', '&::-webkit-scrollbar': { width: '8px', height: '8px' }, '&::-webkit-scrollbar-track': { backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: '8px' }, '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: '8px', '&:hover': { backgroundColor: 'rgba(0,0,0,0.25)' } }, '@media print': { overflow: 'visible', height: 'auto', padding: 0 } }}>
-            {selectedAudit ? (
-              <>
-                <AuditTableContainer
-                  rows={flattenAuditToRows(selectedAudit)}
-                  onRowChange={row => {
-                    const [floor, category] = row.id.split('__');
-                    setAudits(prev => prev.map(audit => {
-                      if (audit.id !== selectedAuditId) return audit;
-                      const updated = { ...audit };
-                      if (!updated.complianceData[floor]) updated.complianceData[floor] = {};
-                      updated.complianceData[floor][category] = {
-                        ...updated.complianceData[floor][category],
-                        completed: row.completed,
-                      };
-                      if (!updated.probabilityData[floor]) updated.probabilityData[floor] = {};
-                      updated.probabilityData[floor][category] = row.riskIndex.PO;
-                      if (!updated.riskSeverityData[floor]) updated.riskSeverityData[floor] = {};
-                      updated.riskSeverityData[floor][category] = row.riskIndex.SO;
-                      if (!updated.ariData[floor]) updated.ariData[floor] = {};
-                      updated.ariData[floor][category] = row.riskIndex.ARI;
-                      // Update comments in rowMetaData
-                      updated.rowMetaData = { ...(updated.rowMetaData || {}) };
-                      updated.rowMetaData[row.id] = {
-                        ...(updated.rowMetaData[row.id] || {}),
-                        comments: row.comments,
-                      };
-                      return updated;
-                    }));
-                  }}
-                  onAddRow={() => {/* Not supported for flattened view */}}
-                  onDeleteRow={id => {/* Not supported for flattened view */}}
-                  onDuplicateRow={row => {
-                    // Create a new row with a unique id and copy meta
-                    const [floor, category] = row.id.split('__');
-                    const newId = `${floor}__${category}__${Date.now()}`;
-                    setAudits(prev => prev.map(audit => {
-                      if (audit.id !== selectedAuditId) return audit;
-                      const updated = { ...audit };
-                      updated.rowMetaData = { ...(updated.rowMetaData || {}) };
-                      updated.rowMetaData[newId] = { ...updated.rowMetaData?.[row.id] };
-                      // No need to update complianceData, as this is a virtual row
-                      return updated;
-                    }));
-                  }}
-                  onArchiveRow={row => {
-                    setAudits(prev => prev.map(audit => {
-                      if (audit.id !== selectedAuditId) return audit;
-                      const updated = { ...audit };
-                      updated.rowMetaData = { ...(updated.rowMetaData || {}) };
-                      updated.rowMetaData[row.id] = {
-                        ...(updated.rowMetaData[row.id] || {}),
-                        archived: true,
-                      };
-                      return updated;
-                    }));
-                  }}
-                  onQuickComment={(row, comment) => {
-                    setAudits(prev => prev.map(audit => {
-                      if (audit.id !== selectedAuditId) return audit;
-                      const updated = { ...audit };
-                      updated.rowMetaData = { ...(updated.rowMetaData || {}) };
-                      updated.rowMetaData[row.id] = {
-                        ...(updated.rowMetaData[row.id] || {}),
-                        comments: comment,
-                      };
-                      return updated;
-                    }));
-                  }}
-                />
-                <Box sx={{ mb: 3, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'flex-start' }} aria-live="polite">
-                  <Box sx={{ minWidth: 320, flex: 1 }}>
-                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Compliance Rate by Floor</Typography>
-                    <ResponsiveContainer width="100%" height={180}>
-                      <LineChart data={complianceTrendData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-                        <XAxis dataKey="floor" />
-                        <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} />
-                        <RechartsTooltip formatter={v => `${v}%`} />
-                        <Line type="monotone" dataKey="rate" stroke="#1976d2" strokeWidth={2} dot />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </Box>
-                  <Box sx={{ minWidth: 320, flex: 1 }}>
-                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Risk Distribution</Typography>
-                    <ResponsiveContainer width="100%" height={180}>
-                      <PieChart>
-                        <Pie data={riskDistData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} label>
-                          {riskDistData.map((entry, idx) => (
-                            <Cell key={`cell-${idx}`} fill={riskColors[idx]} />
-                          ))}
-                        </Pie>
-                        <Legend />
-                        <RechartsTooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </Box>
-                </Box>
-                <Box aria-live="polite">
-                  <AuditAnalyticsDashboard selectedAudit={selectedAudit} calculateValue={calculateValue} />
-                </Box>
-                <PageBreakWrapper>
+          {selectedAudit ? (
+            <>
+              <PageBreakWrapper>
                   <Paper elevation={2} sx={{ mb: 3, bgcolor: 'white', border: '1px solid #ddd', overflow: 'visible', '@media print': { backgroundColor: 'white !important', boxShadow: 'none !important', border: '1px solid #000 !important', pageBreakInside: 'avoid', breakInside: 'avoid', marginBottom: '1cm', '& .MuiInputBase-root': { height: 'auto !important', minHeight: 'unset !important' }, '& .print-comments .MuiInputBase-root': { minHeight: '120px !important' }, '& textarea': { whiteSpace: 'pre-wrap !important', wordBreak: 'break-word !important', overflow: 'visible !important', height: 'auto !important' } } }}>
                     <Typography variant="h5" align="center" fontWeight="bold" sx={{ bgcolor: 'primary.dark', color: 'primary.contrastText', py: 2, px: 3, borderBottom: '1px solid rgba(224, 224, 224, 1)' }}>
-                      ELECTRICAL AUDIT CHECKLIST
-                    </Typography>
-                    <IntroductionSection 
-                      selectedAudit={selectedAudit}
-                      updateAuditField={updateAuditField}
-                    />
-                    {selectedAudit?.id && (
+                    ELECTRICAL AUDIT CHECKLIST
+                  </Typography>
+                  <IntroductionSection 
+                    selectedAudit={selectedAudit}
+                    updateAuditField={updateAuditField}
+                  />
+                  {selectedAudit?.id && (
                       <AuditFindingsPanel auditId={String(selectedAudit.id)} />
-                    )}
-                  </Paper>
-                </PageBreakWrapper>
-                {floorTables}
-                {standardTables}
-              </>
-            ) : (
-              <Typography>Select or create an audit to begin.</Typography>
-            )}
-          </Box>
+                  )}
+                </Paper>
+              </PageBreakWrapper>
+              {floorTables}
+              {standardTables}
+            </>
+          ) : (
+            <Typography>Select or create an audit to begin.</Typography>
+          )}
         </Box>
+      </Box>
         <AuditHistoryDialog
           open={historyDialogOpen}
           onClose={() => setHistoryDialogOpen(false)}
@@ -816,7 +747,35 @@ const EnergyAuditTablesInner: React.FC = () => {
             <Button onClick={() => setGuidanceOpen(false)}>Close</Button>
           </DialogActions>
         </Dialog>
-      </Paper>
+        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
+          <Tab label="Audit Table" />
+          <Tab label="Analytics & Graphs" />
+          <Tab label="Activity Log" />
+          <Tab label="Approval Workflow" />
+          <Tab label="Comments" />
+        </Tabs>
+        {tab === 0 && selectedAudit && (
+          <AuditTableContainer
+            rows={flattenAuditToRows(selectedAudit)}
+            onRowChange={(row: AuditRow) => {
+              setAudits((prev: Audit[]) => prev.map((audit: Audit) => {
+                if (audit.id !== selectedAudit.id) return audit;
+                const meta = { ...(audit.rowMetaData || {}) };
+                meta[row.id] = { ...(meta[row.id] || {}), comments: row.comments };
+                return { ...audit, rowMetaData: meta };
+              }));
+            }}
+            onAddRow={() => {/* Implement as needed */}}
+            onDeleteRow={(id: string) => {/* Implement as needed */}}
+          />
+        )}
+        {tab === 1 && selectedAudit && (
+          <AnalyticsDashboard selectedAudit={selectedAudit} calculateValue={calculateValue} />
+        )}
+        {tab === 2 && <ActivityLog />}
+        {tab === 3 && <ApprovalWorkflow />}
+        {tab === 4 && <CommentsSection />}
+    </Paper>
     </ThemeProvider>
   );
 };
@@ -851,4 +810,3 @@ function getThemeSettingsFromUser(user: any): ThemeSettings | null {
   }
   return null;
 }
-  

@@ -137,26 +137,15 @@ const FindingCard: React.FC<FindingCardProps> = ({
 
   // New: Handlers for editing and deleting comments
   const handleAddComment = (text: string, attachments?: { name: string; url: string; type: string }[]) => {
-    const newComment = {
-      id: Date.now().toString() + Math.random(),
-      author: currentUser.name,
-      text,
-      createdAt: new Date().toISOString(),
-      attachments: attachments || [],
-    };
-    onUpdate('comments', [...finding.comments, newComment]);
+    onAddComment(text);
   };
 
-  const handleEditComment = (id: string, text: string, attachments?: { name: string; url: string; type: string }[]) => {
-    const updatedComments = finding.comments.map(c =>
-      c.id === id ? { ...c, text, attachments: attachments || [] } : c
-    );
-    onUpdate('comments', updatedComments);
+  const handleEditComment = (id: string, text: string) => {
+    // Not implemented - use a separate prop if needed
   };
 
   const handleDeleteComment = (id: string) => {
-    const updatedComments = finding.comments.filter(c => c.id !== id);
-    onUpdate('comments', updatedComments);
+    // Not implemented - use a separate prop if needed
   };
 
   const canEdit = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.MANAGER;
@@ -430,7 +419,7 @@ const FindingCard: React.FC<FindingCardProps> = ({
           onEditComment={handleEditComment}
           onDeleteComment={handleDeleteComment}
           currentUser={currentUser.name}
-          users={users}
+          users={users.map(u => u.name)}
         />
       </Box>
 

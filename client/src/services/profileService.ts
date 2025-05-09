@@ -4,12 +4,12 @@ import { User, ProfileUpdateData, UserPreferences } from '../types';
 const API_URL = process.env.REACT_APP_API_URL;
 
 export const getProfile = async (): Promise<User> => {
-  const response = await axios.get(`${API_URL}/api/profile`);
+  const response = await axios.get(`${API_URL}/profile`);
   return response.data;
 };
 
 export const updateProfile = async (data: ProfileUpdateData): Promise<User> => {
-  const response = await axios.put(`${API_URL}/api/profile`, data);
+  const response = await axios.put(`${API_URL}/profile`, data);
   return response.data;
 };
 
@@ -18,11 +18,11 @@ export const updatePassword = async (data: {
   newPassword: string;
   confirmPassword: string;
 }): Promise<void> => {
-  await axios.put(`${API_URL}/api/profile/password`, data);
+  await axios.put(`${API_URL}/profile/password`, data);
 };
 
 export const updatePreferences = async (preferences: Partial<UserPreferences>): Promise<User> => {
-  const response = await axios.put(`${API_URL}/api/profile/preferences`, { preferences });
+  const response = await axios.put(`${API_URL}/profile/preferences`, { preferences });
   return response.data;
 };
 
@@ -30,7 +30,7 @@ export const uploadProfilePicture = async (file: File): Promise<{ url: string }>
   const formData = new FormData();
   formData.append('profilePicture', file);
   
-  const response = await axios.post(`${API_URL}/api/profile/picture`, formData, {
+  const response = await axios.post(`${API_URL}/profile/picture`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
@@ -40,31 +40,31 @@ export const uploadProfilePicture = async (file: File): Promise<{ url: string }>
 };
 
 export const deleteProfilePicture = async (): Promise<void> => {
-  await axios.delete(`${API_URL}/api/profile/picture`);
+  await axios.delete(`${API_URL}/profile/picture`);
 };
 
 export const getActivityHistory = async (): Promise<any[]> => {
-  const response = await axios.get(`${API_URL}/api/profile/activity`);
+  const response = await axios.get(`${API_URL}/profile/activity`);
   return response.data;
 };
 
 export const getNotificationPreferences = async (): Promise<UserPreferences['notifications']> => {
-  const response = await axios.get(`${API_URL}/api/profile/notifications`);
+  const response = await axios.get(`${API_URL}/profile/notifications`);
   return response.data;
 };
 
 export const updateNotificationPreferences = async (
   preferences: UserPreferences['notifications']
 ): Promise<User> => {
-  const response = await axios.put(`${API_URL}/api/profile/notifications`, { preferences });
+  const response = await axios.put(`${API_URL}/profile/notifications`, { preferences });
   return response.data;
 };
 
 export const requestDataExport = async (): Promise<{ downloadUrl: string }> => {
-  const response = await axios.post(`${API_URL}/api/profile/export-data`);
+  const response = await axios.post(`${API_URL}/profile/export-data`);
   return response.data;
 };
 
 export const deleteAccount = async (password: string): Promise<void> => {
-  await axios.post(`${API_URL}/api/profile/delete-account`, { password });
+  await axios.post(`${API_URL}/profile/delete-account`, { password });
 }; 

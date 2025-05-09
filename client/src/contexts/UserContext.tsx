@@ -9,10 +9,50 @@ interface UserContextType {
 }
 
 const mockUsers: User[] = [
-  { id: '1', name: 'Alice Auditor', email: 'alice@example.com', role: UserRole.AUDITOR, team: 'Team A' },
-  { id: '2', name: 'Bob Manager', email: 'bob@example.com', role: UserRole.MANAGER, team: 'Team A' },
-  { id: '3', name: 'Carol Admin', email: 'carol@example.com', role: UserRole.ADMIN, team: 'HQ' },
-  { id: '4', name: 'Dave Auditor', email: 'dave@example.com', role: UserRole.AUDITOR, team: 'Team B' },
+  {
+    id: '1',
+    username: 'alice.auditor',
+    name: 'Alice Auditor',
+    email: 'alice@example.com',
+    role: UserRole.AUDITOR,
+    team: 'Team A',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: '2',
+    username: 'bob.manager',
+    name: 'Bob Manager',
+    email: 'bob@example.com',
+    role: UserRole.MANAGER,
+    team: 'Team A',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: '3',
+    username: 'carol.admin',
+    name: 'Carol Admin',
+    email: 'carol@example.com',
+    role: UserRole.ADMIN,
+    team: 'HQ',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: '4',
+    username: 'dave.auditor',
+    name: 'Dave Auditor',
+    email: 'dave@example.com',
+    role: UserRole.AUDITOR,
+    team: 'Team B',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
 ];
 
 const defaultUser = { ...mockUsers[0], notificationPreferences: { enabled: true, types: [NotificationType.Info, NotificationType.Success, NotificationType.Warning, NotificationType.Error] } };

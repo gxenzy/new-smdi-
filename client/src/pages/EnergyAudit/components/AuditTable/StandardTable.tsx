@@ -20,12 +20,13 @@ interface StandardTableProps {
   onDuplicateRow?: (floor: string) => void;
   onArchiveRow?: (floor: string) => void;
   onQuickComment?: (floor: string, comment: string) => void;
+  showActions?: boolean;
 }
 
 type SortColumn = 'floor' | 'complied' | 'nonCompliant';
 type SortDirection = 'asc' | 'desc';
 
-const StandardTable: React.FC<StandardTableProps> = ({ standard, selectedAudit, updateAuditField, calculatePercentage, onDuplicateRow, onArchiveRow, onQuickComment }) => {
+const StandardTable: React.FC<StandardTableProps> = ({ standard, selectedAudit, updateAuditField, calculatePercentage, onDuplicateRow, onArchiveRow, onQuickComment, showActions = true }) => {
   const theme = useTheme();
   const [sortColumn, setSortColumn] = useState<SortColumn>('floor');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -83,12 +84,22 @@ const StandardTable: React.FC<StandardTableProps> = ({ standard, selectedAudit, 
               <col style={{ width: '18%' }} />
               <col style={{ width: '18%' }} />
               <col style={{ width: '18%' }} />
-              <col style={{ width: '18%' }} />
-              <col style={{ minWidth: 80, width: '10%' }} />
+              {showActions && <col style={{ minWidth: 80, width: '10%' }} />}
             </colgroup>
-            <TableHead sx={{ position: 'sticky', top: 0, zIndex: 2, bgcolor: 'primary.main', color: 'primary.contrastText', '@media print': { backgroundColor: 'white !important', color: 'black !important' } }}>
+            <TableHead sx={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 2,
+              bgcolor: 'primary.main',
+              color: 'primary.contrastText',
+              '@media print': {
+                backgroundColor: 'white !important',
+                color: 'black !important',
+                '& .actions-col': { display: 'none !important' },
+              },
+            }}>
               <TableRow>
-                <TableCell role="columnheader">
+                <TableCell role="columnheader" aria-label="Floor">
                   <TableSortLabel
                     active={sortColumn === 'floor'}
                     direction={sortDirection}
@@ -97,7 +108,7 @@ const StandardTable: React.FC<StandardTableProps> = ({ standard, selectedAudit, 
                     FLOOR
                   </TableSortLabel>
                 </TableCell>
-                <TableCell role="columnheader">
+                <TableCell role="columnheader" aria-label="Complied">
                   <TableSortLabel
                     active={sortColumn === 'complied'}
                     direction={sortDirection}
@@ -109,7 +120,7 @@ const StandardTable: React.FC<StandardTableProps> = ({ standard, selectedAudit, 
                     </Tooltip>
                   </TableSortLabel>
                 </TableCell>
-                <TableCell role="columnheader">
+                <TableCell role="columnheader" aria-label="Non Compliant">
                   <TableSortLabel
                     active={sortColumn === 'nonCompliant'}
                     direction={sortDirection}
@@ -121,18 +132,13 @@ const StandardTable: React.FC<StandardTableProps> = ({ standard, selectedAudit, 
                     </Tooltip>
                   </TableSortLabel>
                 </TableCell>
-                <TableCell role="columnheader">
+                <TableCell role="columnheader" aria-label="Percentage">
                   PERCENTAGE
                   <Tooltip title="Percentage of complied vs. non-compliant items.">
                     <InfoOutlinedIcon fontSize="small" sx={{ ml: 0.5, verticalAlign: 'middle' }} />
                   </Tooltip>
                 </TableCell>
-                <TableCell role="columnheader">
-                  <Tooltip title="Risk Index: 1 = Low, 2 = Moderate, 3 = High, 4 = Critical. Combines Probability (PO) and Severity (SO).">
-                    <span>Risk Index <InfoOutlinedIcon fontSize="small" sx={{ ml: 0.5, verticalAlign: 'middle' }} /></span>
-                  </Tooltip>
-                </TableCell>
-                <TableCell role="columnheader">Actions</TableCell>
+                {showActions && <TableCell role="columnheader" className="actions-col" aria-label="Actions">Actions</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -185,10 +191,7 @@ const StandardTable: React.FC<StandardTableProps> = ({ standard, selectedAudit, 
                       </span>
                     ))}
                   </TableCell>
-                  <TableCell role="cell" sx={{ whiteSpace: 'nowrap' }}>
-                    {/* Risk Index calculation */}
-                  </TableCell>
-                  <TableCell align="right" sx={{ verticalAlign: 'top' }}>
+                  {showActions && <TableCell align="right" className="actions-col" sx={{ verticalAlign: 'top', '@media print': { display: 'none !important' } }}>
                     <IconButton aria-label="Row actions" onClick={e => handleMenuOpen(e, floor)} size="small">
                       <MoreVertIcon fontSize="small" />
                     </IconButton>
@@ -216,7 +219,7 @@ const StandardTable: React.FC<StandardTableProps> = ({ standard, selectedAudit, 
                         <Button onClick={handleCommentSave} variant="contained">Save</Button>
                       </DialogActions>
                     </Dialog>
-                  </TableCell>
+                  </TableCell>}
                 </TableRow>
               ))}
             </TableBody>

@@ -15,7 +15,7 @@ export interface Comment {
   author: string;
   text: string;
   createdAt: string;
-  attachments?: { name: string; url: string; type: string }[];
+  attachments?: { id: string; name: string; url: string; type: string }[];
 }
 
 export interface ActivityLogEntry {

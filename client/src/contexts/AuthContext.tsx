@@ -75,7 +75,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/auth/login`, {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/auth/login`, {
         username,
         password
       });
@@ -96,7 +96,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = async () => {
     try {
-      await axios.post(`${process.env.REACT_APP_API_URL}/api/auth/logout`, {}, {
+      await axios.post(`${process.env.REACT_APP_API_URL}/auth/logout`, {}, {
         withCredentials: true
       });
     } catch (err) {

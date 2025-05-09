@@ -1,31 +1,39 @@
-import React, { createContext, useContext, useEffect, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
+import React, { createContext, useContext, useEffect } from 'react';
+import { Socket } from 'socket.io-client';
+import { realTimeService } from '../services/realTimeService';
 
-const SocketContext = createContext<Socket | null>(null);
+interface SocketContextType {
+  socket: Socket | null;
+}
 
-export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const socketRef = useRef<Socket | null>(null);
+const SocketContext = createContext<SocketContextType>({ socket: null });
 
-  if (!socketRef.current) {
-    const wsUrl = process.env.REACT_APP_WS_URL || 'http://localhost:8000';
-    socketRef.current = io(wsUrl);
+export const useSocket = () => {
+  const context = useContext(SocketContext);
+  if (!context) {
+    throw new Error('useSocket must be used within a SocketProvider');
   }
+  return context.socket!;
+};
 
+interface SocketProviderProps {
+  children: React.ReactNode;
+}
+
+export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   useEffect(() => {
+    const socket = realTimeService.connect();
+
     return () => {
-      socketRef.current?.disconnect();
+      realTimeService.disconnect();
     };
   }, []);
 
   return (
-    <SocketContext.Provider value={socketRef.current}>
+    <SocketContext.Provider value={{ socket: realTimeService.connect() }}>
       {children}
     </SocketContext.Provider>
   );
 };
 
-export const useSocket = () => {
-  const socket = useContext(SocketContext);
-  if (!socket) throw new Error('useSocket must be used within a SocketProvider');
-  return socket;
-}; 
+export default SocketProvider; 

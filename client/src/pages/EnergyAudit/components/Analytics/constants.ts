@@ -18,6 +18,16 @@ const ROLE_PERMISSIONS_MAP = {
       canManageBenchmarks: true,
     },
   },
+  user: {
+    role: 'user' as LowercaseUserRole,
+    permissions: {
+      canEdit: false,
+      canDelete: false,
+      canSign: false,
+      canExport: true,
+      canManageBenchmarks: false,
+    },
+  },
   auditor: {
     role: 'auditor' as LowercaseUserRole,
     permissions: {
