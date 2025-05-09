@@ -1,22 +1,30 @@
 import React, { useState } from 'react';
 import { useAuthContext } from '../../contexts/AuthContext';
-import { Box, TextField, Button, Typography, Container, Paper } from '@mui/material';
+import { Box, TextField, Button, Typography, Container, Paper, Alert } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import { useNavigate } from 'react-router-dom';
 
 const LoginForm: React.FC = () => {
   const { login, error: authError } = useAuthContext();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const theme = useTheme();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
     try {
       await login(username, password);
-    } catch (err) {
-      setError('Login failed. Please try again.');
+      navigate('/dashboard');
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError(err.response?.data?.message || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -35,11 +43,7 @@ const LoginForm: React.FC = () => {
         minWidth: '100vw',
         width: '100vw',
         height: '100vh',
-        backgroundImage: 'url(/fulllogo.png)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center center',
-        backgroundRepeat: 'no-repeat',
-        backgroundColor: '#f5f5f5', // fallback color
+        background: `linear-gradient(135deg, ${theme.palette.primary.light} 0%, ${theme.palette.secondary.light} 100%)`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -88,15 +92,10 @@ const LoginForm: React.FC = () => {
           >
             Compliance Audit Tool
           </Typography>
-          {error && (
-            <Typography color="error" align="center" gutterBottom>
-              {error}
-            </Typography>
-          )}
-          {authError && (
-            <Typography color="error" align="center" gutterBottom>
-              {authError}
-            </Typography>
+          {(error || authError) && (
+            <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
+              {error || authError}
+            </Alert>
           )}
           <Box
             component="form"
@@ -111,6 +110,7 @@ const LoginForm: React.FC = () => {
               margin="normal"
               required
               autoFocus
+              disabled={loading}
             />
             <TextField
               fullWidth
@@ -120,11 +120,13 @@ const LoginForm: React.FC = () => {
               onChange={(e) => setPassword(e.target.value)}
               margin="normal"
               required
+              disabled={loading}
             />
             <Button
               fullWidth
               type="submit"
               variant="contained"
+              disabled={loading}
               sx={{
                 mt: { xs: 2, sm: 3 },
                 py: { xs: 1, sm: 1.5 },
@@ -139,7 +141,7 @@ const LoginForm: React.FC = () => {
                 },
               }}
             >
-              Login
+              {loading ? 'Signing in...' : 'Login'}
             </Button>
           </Box>
         </Paper>

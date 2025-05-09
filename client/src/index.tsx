@@ -23,25 +23,26 @@ const future = {
   v7_startTransition: true,
   v7_relativeSplatPath: true,
 };
+
 root.render(
   <Provider store={store}>
-    <SocketProvider>
-      <ThemeProvider>
-        <SnackbarProvider maxSnack={3}>
-          <CssBaseline />
-          <UserProvider>
-            <NotificationProvider>
-              <AuthProvider>
-                <EnergyAuditProvider>
-                  <BrowserRouter future={future}>
+    <ThemeProvider>
+      <SnackbarProvider maxSnack={3}>
+        <CssBaseline />
+        <BrowserRouter future={future}>
+          <AuthProvider>
+            <UserProvider>
+              <NotificationProvider>
+                <SocketProvider>
+                  <EnergyAuditProvider>
                     <App />
-                  </BrowserRouter>
-                </EnergyAuditProvider>
-              </AuthProvider>
-            </NotificationProvider>
-          </UserProvider>
-        </SnackbarProvider>
-      </ThemeProvider>
-    </SocketProvider>
+                  </EnergyAuditProvider>
+                </SocketProvider>
+              </NotificationProvider>
+            </UserProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </SnackbarProvider>
+    </ThemeProvider>
   </Provider>
 );

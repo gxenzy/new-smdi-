@@ -40,7 +40,7 @@ import { updateUser } from '../../store/slices/authSlice';
 import { useUserContext } from '../../contexts/UserContext';
 import { NotificationType } from '../../types';
 import { useTheme } from '@mui/material/styles';
-import { useThemeMode } from '../../contexts/ThemeContext';
+import { useThemeMode, ThemeMode } from '../../contexts/ThemeContext';
 
 const Settings: React.FC = () => {
   const { currentUser } = useAuthContext();
@@ -155,15 +155,16 @@ const Settings: React.FC = () => {
                   <ListItemSecondaryAction>
                     <Select
                       value={mode}
-                      onChange={(e) => setMode(e.target.value as string)}
+                      onChange={(e) => setMode(e.target.value as ThemeMode)}
                       size="small"
                       sx={{ minWidth: 120 }}
                     >
                       <MenuItem value="light">Light</MenuItem>
                       <MenuItem value="dark">Dark</MenuItem>
+                      <MenuItem value="darkBlue">Dark Blue</MenuItem>
+                      <MenuItem value="energy">Energy</MenuItem>
+                      <MenuItem value="blue">Blue</MenuItem>
                       <MenuItem value="gray">Gray</MenuItem>
-                      <MenuItem value="tile">Tile</MenuItem>
-                      <MenuItem value="logo">Logo</MenuItem>
                     </Select>
                   </ListItemSecondaryAction>
                 </ListItem>

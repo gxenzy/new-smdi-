@@ -107,7 +107,11 @@ const UserManagement: React.FC = () => {
 
   const socket = useSocket();
 
+  // Debug log at the top of the component
+  console.log('UserManagement mounted. user:', user);
+
   useEffect(() => {
+    console.log('UserManagement useEffect running', { user, isAdmin: hasRole(UserRole.ADMIN) });
     if (!hasRole(UserRole.ADMIN)) {
       setError('Access denied. Admins only.');
       setLoading(false);

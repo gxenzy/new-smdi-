@@ -6,286 +6,230 @@ import {
   CardContent,
   Typography,
   IconButton,
-  LinearProgress,
-  CardHeader,
-  CircularProgress,
-  Paper,
-  useTheme,
-  useMediaQuery,
-  Alert,
-  Snackbar,
   Button,
+  Tabs,
+  Tab,
+  Chip,
+  Avatar,
+  CircularProgress,
+  Alert,
+  Menu,
+  MenuItem,
+  Divider,
 } from '@mui/material';
 import {
-  ElectricBolt as ElectricIcon,
-  Assessment as AuditIcon,
-  Speed as TestingIcon,
-  Poll as TamIcon,
-  ArrowForward as ArrowIcon,
+  Assessment,
   TrendingUp,
-  People,
   Warning,
-  MoreVert,
+  CheckCircle,
+  Schedule,
+  Add as AddIcon,
+  MoreVert as MoreVertIcon,
+  Download as DownloadIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../../contexts/AuthContext';
-import { UserRole } from '../../types';
-import { useEnergyAudit } from '../EnergyAudit/EnergyAuditContext';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, Legend, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
-import { useSocket } from '../../contexts/SocketContext';
-import { glassCardSx } from '../../theme/glassCardSx';
+import { useEnergyAudit } from '../../contexts/EnergyAuditContext';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as ChartTooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  Area,
+  AreaChart,
+} from 'recharts';
+import { format } from 'date-fns';
+import { motion } from 'framer-motion';
+import { alpha } from '@mui/material/styles';
 
+// Types
 interface StatCardProps {
   title: string;
   value: string | number;
   icon: React.ReactNode;
-  progress?: number;
-  onClick?: () => void;
   color: string;
+  trend?: string;
+  onClick?: () => void;
 }
 
-const StatCard: React.FC<StatCardProps> = ({
-  title,
-  value,
-  icon,
-  progress,
-  onClick,
-  color,
-}) => (
-  <Card 
-    sx={{ 
-      height: '100%', 
-      cursor: onClick ? 'pointer' : 'default',
-      transition: 'transform 0.2s',
-      '&:hover': onClick ? { transform: 'translateY(-4px)' } : {},
-      ...glassCardSx(),
-    }}
-    onClick={onClick}
+interface AuditStatusChipProps {
+  status: string;
+}
+
+interface RecentActivity {
+  id: number;
+  type: string;
+  title: string;
+  status: string;
+  date: string;
+}
+
+interface AuditStatus {
+  status: string;
+  count: number;
+}
+
+interface FindingCategory {
+  category: string;
+  count: number;
+  savings: number;
+}
+
+interface EnergyTrend {
+  month: string;
+  consumption: number;
+  baseline: number;
+}
+
+interface DashboardData {
+  totalAudits: number;
+  completedAudits: number;
+  totalFindings: number;
+  criticalFindings: number;
+  potentialSavings: number;
+  implementedSavings: number;
+  recentActivity: RecentActivity[];
+  auditsByStatus: AuditStatus[];
+  findingsByCategory: FindingCategory[];
+  energyTrends: EnergyTrend[];
+}
+
+// Custom components
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, trend, onClick }) => (
+  <motion.div
+    whileHover={{ y: -4 }}
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.3 }}
   >
-    <CardContent>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6" color="textSecondary" sx={{ color: '#222' }}>
-            {title}
-          </Typography>
-        <Box sx={{ color }}>
-          {icon}
+    <Card 
+      sx={{ 
+        cursor: onClick ? 'pointer' : 'default',
+        height: '100%',
+      }}
+      onClick={onClick}
+    >
+      <CardContent>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+          <Box sx={{ color: color, p: 1, borderRadius: 1, bgcolor: alpha(color, 0.1) }}>
+            {icon}
+          </Box>
+          {trend && (
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <TrendingUp sx={{ color: 'success.main', mr: 0.5 }} />
+              <Typography variant="body2" color="success.main">
+                {trend}
+              </Typography>
+            </Box>
+          )}
         </Box>
-      </Box>
-      <Typography variant="h4" component="div" sx={{ mb: 1, color: '#222' }}>
-        {value}
-      </Typography>
-      {progress !== undefined && (
-        <Box sx={{ width: '100%', mt: 2 }}>
-          <LinearProgress 
-            variant="determinate" 
-            value={progress} 
-            sx={{ 
-              height: 8, 
-              borderRadius: 4,
-              backgroundColor: 'rgba(0, 0, 0, 0.1)',
-              '& .MuiLinearProgress-bar': {
-                backgroundColor: color
-              }
-            }} 
-          />
-        </Box>
-      )}
-    </CardContent>
-  </Card>
+        <Typography variant="h4" sx={{ mb: 1 }}>{value}</Typography>
+        <Typography color="textSecondary">{title}</Typography>
+      </CardContent>
+    </Card>
+  </motion.div>
 );
+
+const AuditStatusChip: React.FC<AuditStatusChipProps> = ({ status }) => {
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completed': return 'success';
+      case 'in progress': return 'warning';
+      case 'pending': return 'info';
+      default: return 'default';
+    }
+  };
+
+  return (
+    <Chip
+      label={status}
+      color={getStatusColor(status)}
+      size="small"
+      sx={{ minWidth: 80 }}
+    />
+  );
+};
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser, token } = useAuthContext();
-  const { audit } = useEnergyAudit();
-  const theme = useTheme();
-  const socket = useSocket();
-  const [findings, setFindings] = useState<any[]>([]);
+  const { currentUser } = useAuthContext();
+  const { audits, findings, metrics } = useEnergyAudit();
+  const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
 
-  // State for real data
-  const [totalEnergyUsage, setTotalEnergyUsage] = useState<number | null>(null);
-  const [activeUsers, setActiveUsers] = useState<number | null>(null);
-  const [auditsCompleted, setAuditsCompleted] = useState<number | null>(null);
-  const [alerts, setAlerts] = useState<number | null>(null);
-  const [energyTrend, setEnergyTrend] = useState<{ name: string; value: number }[]>([]);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
-  const [dateRange, setDateRange] = useState<{ start: string; end: string } | null>(null);
-
-  const [electricalProgress, setElectricalProgress] = useState(85);
-  const [auditCount, setAuditCount] = useState(42);
-  const [testingCount, setTestingCount] = useState(12);
-  const [tamProgress, setTamProgress] = useState(78);
-  const [severityData, setSeverityData] = useState(audit.lighting.map(f => ({
-    severity: f.severity,
-    count: 1
-  })));
-  const [statusData, setStatusData] = useState(audit.lighting.map(f => ({
-    status: f.status,
-    count: 1
-  })));
-
-  const canAccessElectrical = currentUser?.role === UserRole.ADMIN;
-  const canAccessAudit = currentUser?.role === UserRole.ADMIN;
-  const canAccessTesting = currentUser?.role === UserRole.ADMIN;
-  const canAccessTam = currentUser?.role === UserRole.ADMIN;
-  const canViewUsers = currentUser?.role === UserRole.ADMIN;
-  const canViewReports = currentUser?.role === UserRole.ADMIN;
-  const canViewSettings = currentUser?.role === UserRole.ADMIN;
-  const canViewAnalytics = currentUser?.role === UserRole.ADMIN;
-
-  useEffect(() => {
-    setSeverityData(audit.lighting.map(f => ({
-      severity: f.severity,
-      count: 1
-    })));
-    setStatusData(audit.lighting.map(f => ({
-      status: f.status,
-      count: 1
-    })));
-  }, [audit]);
-
-  useEffect(() => {
-    socket.on('chartUpdate', (update) => {
-      setSeverityData(prev => prev.map(d =>
-        d.severity === update.category ? { ...d, count: update.findings } : d
-      ));
-      // If you want to update statusData, add similar logic here
-    });
-    return () => {
-      socket.off('chartUpdate');
-    };
-  }, [socket]);
-
-  // Fetch findings from backend
-  const fetchFindings = () => {
-    setLoading(true);
-    setError(null);
-    fetch(`${process.env.REACT_APP_API_URL}/findings`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-      .then(async res => {
-        if (!res.ok) throw new Error('Failed to fetch findings');
-        const text = await res.text();
-        try {
-          return JSON.parse(text);
-        } catch (e) {
-          if (text.trim().startsWith('<')) {
-            throw new Error('Could not connect to the backend API. Please check your API URL and make sure the backend server is running.');
-          }
-          throw new Error('Invalid response from server.');
-        }
-      })
-      .then(data => {
-        setFindings(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        setError(err.message);
-        setLoading(false);
-      });
-  };
-
-  useEffect(() => {
-    fetchFindings();
-    socket.on('findingUpdate', fetchFindings);
-    socket.on('findingDelete', fetchFindings);
-    return () => {
-      socket.off('findingUpdate', fetchFindings);
-      socket.off('findingDelete', fetchFindings);
-    };
-  }, [socket]);
-
-  // Chart data
-  const severityCounts = ['Low', 'Medium', 'High', 'Critical'].map(sev => ({
-    severity: sev,
-    count: findings.filter(f => f.severity === sev).length
-  }));
-  const statusCounts = ['Open', 'In Progress', 'Resolved'].map(status => ({
-    status,
-    count: findings.filter(f => f.status === status).length
-  }));
-
-  // Analytics data
-  const allFindings = [...audit.lighting, ...audit.hvac, ...audit.envelope];
-  const statusColors = [theme.palette.info.main, theme.palette.warning.main, theme.palette.success.main];
-
-  // Debug output
-  console.log('allFindings', allFindings);
-  console.log('severityCounts', severityCounts);
-  console.log('statusCounts', statusCounts);
-
-  // Fetch dashboard data from backend
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const headers = { Authorization: `Bearer ${token}` };
-      // Fetch all dashboard data in parallel
-      const [energyRes, usersRes, auditsRes, alertsRes, trendRes, activityRes] = await Promise.all([
-        fetch(`${process.env.REACT_APP_API_URL}/dashboard/energy-usage/total`, { headers }),
-        fetch(`${process.env.REACT_APP_API_URL}/dashboard/users/active`, { headers }),
-        fetch(`${process.env.REACT_APP_API_URL}/dashboard/audits/completed`, { headers }),
-        fetch(`${process.env.REACT_APP_API_URL}/dashboard/alerts/count`, { headers }),
-        fetch(`${process.env.REACT_APP_API_URL}/dashboard/energy-usage/trend`, { headers }),
-        fetch(`${process.env.REACT_APP_API_URL}/dashboard/activity/recent`, { headers }),
-      ]);
-
-      // Check for errors in responses
-      const responses = [energyRes, usersRes, auditsRes, alertsRes, trendRes, activityRes];
-      const errors = responses.filter(res => !res.ok);
-      if (errors.length > 0) {
-        throw new Error('One or more API requests failed');
-      }
-
-      // Parse responses
-      const [energyData, usersData, auditsData, alertsData, trendData, activityData] = await Promise.all(
-        responses.map(res => res.json())
-      );
-
-      setTotalEnergyUsage(energyData.total);
-      setActiveUsers(usersData.count);
-      setAuditsCompleted(auditsData.count);
-      setAlerts(alertsData.count);
-      setEnergyTrend(trendData.trend);
-      setRecentActivity(activityData.activity);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load dashboard data');
-      setSnackbar({
-        open: true,
-        message: err.message || 'Failed to load dashboard data',
-        severity: 'error'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchDashboardData();
-
-    // Set up real-time updates via socket
-    if (socket) {
-      socket.on('dashboardUpdate', fetchDashboardData);
-      return () => {
-        socket.off('dashboardUpdate', fetchDashboardData);
-      };
-    }
-  }, [token, socket]);
-
-  // Trend indicators (dummy logic, replace with real trend calculation)
-  const trendUp = (curr: number | null, prev: number | null) => curr !== null && prev !== null && curr > prev;
-  const trendDown = (curr: number | null, prev: number | null) => curr !== null && prev !== null && curr < prev;
-
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
-    open: false,
-    message: '',
-    severity: 'success'
+  // Dashboard state
+  const [dashboardData, setDashboardData] = useState<DashboardData>({
+    totalAudits: 0,
+    completedAudits: 0,
+    totalFindings: 0,
+    criticalFindings: 0,
+    potentialSavings: 0,
+    implementedSavings: 0,
+    recentActivity: [],
+    auditsByStatus: [],
+    findingsByCategory: [],
+    energyTrends: [],
   });
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        setLoading(true);
+        // TODO: Replace with actual API calls
+        const mockData: DashboardData = {
+          totalAudits: 45,
+          completedAudits: 32,
+          totalFindings: 128,
+          criticalFindings: 15,
+          potentialSavings: 250000,
+          implementedSavings: 120000,
+          recentActivity: [
+            { id: 1, type: 'audit', title: 'Building A Audit', status: 'Completed', date: '2024-03-15' },
+            { id: 2, type: 'finding', title: 'HVAC Optimization', status: 'In Progress', date: '2024-03-14' },
+            { id: 3, type: 'approval', title: 'Lighting Retrofit', status: 'Pending', date: '2024-03-13' },
+          ],
+          auditsByStatus: [
+            { status: 'Completed', count: 32 },
+            { status: 'In Progress', count: 8 },
+            { status: 'Pending', count: 5 },
+          ],
+          findingsByCategory: [
+            { category: 'HVAC', count: 45, savings: 120000 },
+            { category: 'Lighting', count: 38, savings: 80000 },
+            { category: 'Envelope', count: 25, savings: 50000 },
+            { category: 'Other', count: 20, savings: 30000 },
+          ],
+          energyTrends: Array.from({ length: 12 }, (_, i) => ({
+            month: format(new Date(2024, i, 1), 'MMM'),
+            consumption: Math.random() * 1000 + 500,
+            baseline: 800,
+          })),
+        };
+
+        setDashboardData(mockData);
+        setError(null);
+      } catch (err) {
+        setError('Failed to load dashboard data');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboardData();
+  }, []);
 
   if (loading) {
     return (
@@ -298,165 +242,210 @@ const Dashboard: React.FC = () => {
   if (error) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error" sx={{ mb: 3 }}>
           {error}
         </Alert>
-        <Button variant="contained" onClick={fetchDashboardData}>
-          Retry
-        </Button>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ flexGrow: 1, p: { xs: 2, sm: 3 } }}>
-      <Typography variant="h4" gutterBottom sx={{ mb: 4 }}>
-        Dashboard Overview
-      </Typography>
-      {/* Filters */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="subtitle1">Date Range:</Typography>
-        {/* Add your date range picker here and update setDateRange */}
+    <Box sx={{ p: 3 }}>
+      {/* Header */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4">Energy Audit Dashboard</Typography>
+        <Box>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => navigate('/energy-audit/new')}
+            sx={{ mr: 2 }}
+          >
+            New Audit
+          </Button>
+          <IconButton onClick={(e) => setMenuAnchor(e.currentTarget)}>
+            <MoreVertIcon />
+          </IconButton>
+          <Menu
+            anchorEl={menuAnchor}
+            open={Boolean(menuAnchor)}
+            onClose={() => setMenuAnchor(null)}
+          >
+            <MenuItem onClick={() => {}}>
+              <DownloadIcon sx={{ mr: 1 }} /> Export Report
+            </MenuItem>
+            <MenuItem onClick={() => {}}>
+              <RefreshIcon sx={{ mr: 1 }} /> Refresh Data
+            </MenuItem>
+          </Menu>
+        </Box>
       </Box>
-      <Grid container spacing={3}>
-        {/* Stats Cards */}
+
+      {/* Stats Overview */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
-            title="Total Energy Usage"
-            value={typeof totalEnergyUsage === 'number' ? `${totalEnergyUsage.toLocaleString()} kWh` : '--'}
-            icon={<TrendingUp sx={{ fontSize: 40 }} />}
-            color={theme.palette.primary.main}
-            onClick={() => navigate('/energy-audit/analytics')}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Active Users"
-            value={activeUsers !== null ? activeUsers : '--'}
-            icon={<People sx={{ fontSize: 40 }} />}
-            color={theme.palette.success.main}
-            onClick={() => navigate('/users')}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Audits Completed"
-            value={auditsCompleted !== null ? auditsCompleted : '--'}
-            icon={<AuditIcon sx={{ fontSize: 40 }} />}
-            color={theme.palette.info.main}
+            title="Total Audits"
+            value={dashboardData.totalAudits}
+            icon={<Assessment />}
+            color="#1976d2"
+            trend="+12% this month"
             onClick={() => navigate('/energy-audit')}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
-            title="Alerts"
-            value={alerts !== null ? alerts : '--'}
-            icon={<Warning sx={{ fontSize: 40 }} />}
-            color={theme.palette.error.main}
-            onClick={() => navigate('/admin')}
+            title="Total Findings"
+            value={dashboardData.totalFindings}
+            icon={<Warning />}
+            color="#ed6c02"
+            trend="+8 new"
+            onClick={() => navigate('/findings')}
           />
         </Grid>
-        {/* Energy Usage Chart */}
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            title="Potential Savings"
+            value={`₱${(dashboardData.potentialSavings / 1000).toFixed(0)}K`}
+            icon={<TrendingUp />}
+            color="#2e7d32"
+            trend="+15% identified"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            title="Critical Findings"
+            value={dashboardData.criticalFindings}
+            icon={<Warning />}
+            color="#d32f2f"
+            trend="5 unresolved"
+          />
+        </Grid>
+      </Grid>
+
+      {/* Main Content */}
+      <Grid container spacing={3}>
+        {/* Left Column */}
         <Grid item xs={12} md={8}>
-          <Card>
-            <CardHeader
-              title="Energy Usage Trend"
-              action={
-                <IconButton onClick={() => navigate('/energy-audit/analytics')}>
-                  <ArrowIcon />
-                </IconButton>
-              }
-            />
+          <Card sx={{ mb: 3 }}>
             <CardContent>
-              <Box sx={{ height: 300 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={energyTrend}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="value"
-                      stroke={theme.palette.primary.main}
-                      name="Energy Usage (kWh)"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </Box>
+              <Typography variant="h6" gutterBottom>Energy Consumption Trends</Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={dashboardData.energyTrends}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <ChartTooltip />
+                  <Legend />
+                  <Area
+                    type="monotone"
+                    dataKey="consumption"
+                    stroke="#8884d8"
+                    fill="#8884d8"
+                    fillOpacity={0.3}
+                    name="Actual Consumption"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="baseline"
+                    stroke="#82ca9d"
+                    fill="#82ca9d"
+                    fillOpacity={0.3}
+                    name="Baseline"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>Findings by Category</Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={dashboardData.findingsByCategory}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="category" />
+                  <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
+                  <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
+                  <ChartTooltip />
+                  <Legend />
+                  <Bar yAxisId="left" dataKey="count" fill="#8884d8" name="Number of Findings" />
+                  <Bar yAxisId="right" dataKey="savings" fill="#82ca9d" name="Potential Savings (₱)" />
+                </BarChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
         </Grid>
-        {/* Recent Activity */}
+
+        {/* Right Column */}
         <Grid item xs={12} md={4}>
-          <Card sx={{ height: '100%' }}>
-            <CardHeader
-              title="Recent Activity"
-              action={
-                <IconButton aria-label="settings">
-                  <MoreVert />
-                </IconButton>
-              }
-            />
+          <Card sx={{ mb: 3 }}>
             <CardContent>
+              <Typography variant="h6" gutterBottom>Audit Status</Typography>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={dashboardData.auditsByStatus}
+                    dataKey="count"
+                    nameKey="status"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    label
+                  >
+                    {dashboardData.auditsByStatus.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={['#4caf50', '#ff9800', '#2196f3'][index % 3]} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">Recent Activity</Typography>
+                <Button size="small">View All</Button>
+              </Box>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {recentActivity.length === 0 ? (
-                  <Typography variant="body2" color="textSecondary">No recent activity.</Typography>
-                ) : (
-                  recentActivity.map((activity, idx) => (
-                    <Paper
-                      key={activity.id || idx}
+                {dashboardData.recentActivity.map((activity) => (
+                  <Box
+                    key={activity.id}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      p: 1,
+                      borderRadius: 1,
+                      bgcolor: 'background.default',
+                    }}
+                  >
+                    <Avatar
                       sx={{
-                        p: 2,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 2,
-                        bgcolor: theme.palette.background.default,
+                        bgcolor: activity.type === 'audit' ? 'primary.main' : 'warning.main',
+                        width: 40,
+                        height: 40,
+                        mr: 2,
                       }}
                     >
-                      <Box
-                        sx={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: '50%',
-                          bgcolor: theme.palette.primary.main,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'white',
-                        }}
-                      >
-                        {idx + 1}
-                      </Box>
-                      <Box>
-                        <Typography variant="subtitle2">{activity.title || activity.action}</Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          {activity.description || activity.details || ''}
-                        </Typography>
-                      </Box>
-                    </Paper>
-                  ))
-                )}
+                      {activity.type === 'audit' ? <Assessment /> : <Warning />}
+                    </Avatar>
+                    <Box sx={{ flexGrow: 1 }}>
+                      <Typography variant="subtitle2">{activity.title}</Typography>
+                      <Typography variant="body2" color="textSecondary">
+                        {format(new Date(activity.date), 'MMM d, yyyy')}
+                      </Typography>
+                    </Box>
+                    <AuditStatusChip status={activity.status} />
+                  </Box>
+                ))}
               </Box>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };

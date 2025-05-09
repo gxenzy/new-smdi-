@@ -17,6 +17,9 @@ import {
   Snackbar,
   Alert,
   Fab,
+  Button,
+  ListItemIcon,
+  Tooltip,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -28,7 +31,7 @@ import {
   Brightness7,
   KeyboardArrowUp,
 } from '@mui/icons-material';
-import { useNavigate, Outlet } from 'react-router-dom';
+import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthContext } from '../../contexts/AuthContext';
 import Sidebar from './Sidebar';
 import NotificationsMenu from './NotificationsMenu';
@@ -37,8 +40,10 @@ import { useNotificationContext } from '../../contexts/NotificationContext';
 import NotificationListener from '../../components/NotificationListener';
 import ThemeSwitcher from '../../components/ThemeSwitcher';
 import { useThemeMode } from '../../contexts/ThemeContext';
+import { designTokens } from '../../theme';
+import { alpha } from '@mui/material/styles';
 
-const drawerWidth = 240;
+const drawerWidth = 190;
 
 const Main = styled('main')<{
   sidebarwidth: number;
@@ -64,15 +69,33 @@ const MainLayout: React.FC<MainLayoutProps> = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuthContext();
   const { notifications, markAsRead } = useNotificationContext();
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState<typeof notifications[0] | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const { mode } = useThemeMode();
+  const { mode, isDarkMode } = useThemeMode();
 
   const sidebarWidth = sidebarCollapsed ? 64 : drawerWidth;
+
+  // Calculate the needed space after the sidebar based on the theme
+  const mainContentSpacing = () => {
+    // Energy theme should have no extra padding
+    if (mode === 'energy') {
+      return {
+        p: { xs: 1, sm: 1 },
+        ml: 0,
+        marginLeft: 0
+      };
+    }
+    return {
+      p: { xs: 1, sm: 2 },
+      ml: 0,
+      marginLeft: 0
+    };
+  };
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -133,17 +156,14 @@ const MainLayout: React.FC<MainLayoutProps> = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Get user's profile picture if available
+  const userProfileImage = user && ('profileImage' in user ? user.profileImage : 
+                          ('avatar' in user ? user.avatar : null));
+  
+  const userImageSrc = userProfileImage ? String(userProfileImage) : '';
+
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        minHeight: '100vh',
-        overflowX: 'hidden',
-        ...(mode === 'gradient' && {
-          background: 'linear-gradient(135deg, #456789 0%, #3bb54a 100%)',
-        }),
-      }}
-    >
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <CssBaseline />
       <NotificationListener />
       <AppBar
@@ -152,46 +172,156 @@ const MainLayout: React.FC<MainLayoutProps> = () => {
           width: { sm: `calc(100% - ${sidebarWidth}px)` },
           ml: { sm: `${sidebarWidth}px` },
           zIndex: (theme) => theme.zIndex.drawer + 1,
-          bgcolor: 'rgba(255,255,255,0.7)',
-          color: '#222',
+          bgcolor: mode === 'energy' 
+            ? 'transparent'
+            : mode === 'blue' || mode === 'gray'
+              ? theme.palette.primary.main
+              : isDarkMode 
+                ? alpha(theme.palette.background.paper, 0.8)
+                : 'rgba(255,255,255,0.8)',
+          color: mode === 'energy' || mode === 'blue' || mode === 'gray'
+            ? '#ffffff'
+            : theme.palette.text.primary,
           backdropFilter: 'blur(8px)',
           WebkitBackdropFilter: 'blur(8px)',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-          borderBottom: '1px solid rgba(0,0,0,0.06)',
-          transition: 'width 0.3s, margin-left 0.3s',
+          backgroundImage: mode === 'energy' 
+            ? 'linear-gradient(135deg, #059669 0%, #0284c7 100%)'
+            : 'none',
+          boxShadow: isDarkMode 
+            ? '0 4px 16px rgba(0,0,0,0.2)'
+            : '0 2px 16px rgba(0,0,0,0.05)',
+          borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+          transition: theme => theme.transitions.create(['width', 'margin-left', 'box-shadow'], {
+            easing: theme.transitions.easing.easeInOut,
+            duration: theme.transitions.duration.standard,
+          }),
         }}
       >
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-            <Box sx={{ width: 36, height: 36, bgcolor: '#1976d2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: 20 }}>
-              C
+        <Toolbar sx={{ justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ mr: 2, display: { sm: 'none' } }}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                mr: 2,
+                transition: 'transform 0.2s ease-in-out',
+                '&:hover': {
+                  transform: 'scale(1.05)'
+                }
+              }}
+            >
+              <Box 
+                sx={{ 
+                  width: 36, 
+                  height: 36, 
+                  bgcolor: theme.palette.primary.main,
+                  borderRadius: '50%', 
+                  display: 'flex',
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  fontSize: 20,
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                }}
+              >
+                C
+              </Box>
             </Box>
+            <Typography 
+              variant="h6" 
+              noWrap 
+              component="div" 
+              sx={{ 
+                flexGrow: { xs: 0, md: 0 },
+                fontSize: { xs: '1rem', sm: '1.25rem' },
+                fontWeight: 600,
+                background: ['energy', 'blue', 'gray'].includes(mode)
+                  ? 'linear-gradient(45deg, #ffffff 30%, #e0e0e0 90%)'
+                  : theme.palette.mode === 'dark' 
+                    ? 'linear-gradient(45deg, #e0e0e0 30%, #ffffff 90%)'
+                    : 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: ['energy', 'blue', 'gray'].includes(mode) 
+                  ? 'transparent' 
+                  : theme.palette.mode === 'dark' 
+                    ? 'transparent' 
+                    : undefined,
+                mr: 4
+              }}
+            >
+              CompAT
+            </Typography>
+            
+            {!isMobile && (
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button 
+                  size="small" 
+                  onClick={() => navigate('/dashboard')}
+                  sx={{
+                    minWidth: 'auto',
+                    px: 2,
+                    borderRadius: '20px',
+                    color: location.pathname === '/dashboard' 
+                      ? ['energy', 'blue', 'gray'].includes(mode) ? '#ffffff' : theme.palette.primary.main 
+                      : ['energy', 'blue', 'gray'].includes(mode) ? 'rgba(255, 255, 255, 0.8)' : theme.palette.text.secondary,
+                    bgcolor: location.pathname === '/dashboard' 
+                      ? ['energy', 'blue', 'gray'].includes(mode) ? 'rgba(255, 255, 255, 0.15)' : alpha(theme.palette.primary.main, 0.1)
+                      : 'transparent',
+                    '&:hover': {
+                      bgcolor: ['energy', 'blue', 'gray'].includes(mode) 
+                        ? 'rgba(255, 255, 255, 0.2)' 
+                        : alpha(theme.palette.primary.main, 0.1)
+                    },
+                    textTransform: 'none'
+                  }}
+                >
+                  Dashboard
+                </Button>
+                
+                <Button 
+                  size="small"
+                  onClick={() => navigate('/energy-audit')}
+                  sx={{
+                    minWidth: 'auto',
+                    px: 2,
+                    borderRadius: '20px',
+                    color: location.pathname.includes('/energy-audit') 
+                      ? ['energy', 'blue', 'gray'].includes(mode) ? '#ffffff' : theme.palette.primary.main 
+                      : ['energy', 'blue', 'gray'].includes(mode) ? 'rgba(255, 255, 255, 0.8)' : theme.palette.text.secondary,
+                    bgcolor: location.pathname.includes('/energy-audit') 
+                      ? ['energy', 'blue', 'gray'].includes(mode) ? 'rgba(255, 255, 255, 0.15)' : alpha(theme.palette.primary.main, 0.1)
+                      : 'transparent',
+                    '&:hover': {
+                      bgcolor: ['energy', 'blue', 'gray'].includes(mode) 
+                        ? 'rgba(255, 255, 255, 0.2)' 
+                        : alpha(theme.palette.primary.main, 0.1)
+                    },
+                    textTransform: 'none'
+                  }}
+                >
+                  Energy Audit
+                </Button>
+              </Box>
+            )}
           </Box>
-          <Typography 
-            variant="h6" 
-            noWrap 
-            component="div" 
-            sx={{ 
-              flexGrow: 1,
-              fontSize: { xs: '1rem', sm: '1.25rem' },
-              color: '#222',
-              fontWeight: 700
-            }}
-          >
-            CompAT - Compliance Audit Tool
-          </Typography>
+          
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* Theme Switcher */}
+            <ThemeSwitcher />
+            
+            {/* Notifications */}
             <IconButton 
-              sx={{ color: '#222', display: { xs: 'none', sm: 'flex' } }}
+              sx={{ color: theme.palette.text.primary }}
               onClick={handleNotificationsOpen}
               aria-label="notifications"
             >
@@ -199,16 +329,40 @@ const MainLayout: React.FC<MainLayoutProps> = () => {
                 <NotificationsIcon />
               </Badge>
             </IconButton>
-            <IconButton 
-              sx={{ color: '#222', display: { xs: 'none', sm: 'flex' }, '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)' } }}
-              onClick={handleProfileMenuOpen}
-              aria-label="profile"
-            >
-              <AccountCircle />
-            </IconButton>
+            
+            {/* User Menu */}
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Tooltip title={user?.name || 'Profile'}>
+                <IconButton 
+                  onClick={handleProfileMenuOpen}
+                  size="small"
+                  sx={{ 
+                    ml: 1,
+                    border: 1,
+                    borderColor: 'divider',
+                    borderRadius: '50%',
+                    p: 0.5,
+                    transition: 'transform 0.2s',
+                    '&:hover': {
+                      transform: 'scale(1.05)'
+                    }
+                  }}
+                >
+                  {userProfileImage ? (
+                    <Avatar 
+                      alt={user?.name} 
+                      src={userImageSrc} 
+                      sx={{ width: 32, height: 32 }} 
+                    />
+                  ) : (
+                    <Avatar sx={{ width: 32, height: 32, bgcolor: theme.palette.primary.main }}>
+                      {user?.name?.charAt(0) || 'U'}
+                    </Avatar>
+                  )}
+                </IconButton>
+              </Tooltip>
+            </Box>
           </Box>
-          <Box sx={{ flexGrow: 1 }} />
-          <ThemeSwitcher />
         </Toolbar>
       </AppBar>
 
@@ -219,31 +373,125 @@ const MainLayout: React.FC<MainLayoutProps> = () => {
         ModalProps={{ keepMounted: true }}
         sx={{
           '& .MuiDrawer-paper': {
-            boxSizing: 'border-box',
             width: sidebarWidth,
-            borderRight: `1px solid ${theme.palette.divider}`,
-            boxShadow: sidebarCollapsed ? '2px 0 8px rgba(0,0,0,0.08)' : 'none',
-            transition: 'width 0.3s',
-            bgcolor: theme.palette.background.default,
-            overflowX: 'hidden',
+            boxSizing: 'border-box',
+            backgroundColor: theme.palette.background.sidebar,
+            color: ['dark', 'darkBlue', 'energy', 'blue', 'gray'].includes(mode) ? '#ffffff' : theme.palette.text.primary,
+            borderRight: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
+            boxShadow: sidebarCollapsed 
+              ? `4px 0 8px ${alpha(theme.palette.common.black, 0.08)}`
+              : 'none',
+            transition: theme.transitions.create(
+              ['width', 'background-color', 'border-color', 'box-shadow'],
+              {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.standard,
+              }
+            ),
+            '& .MuiListItemIcon-root': {
+              color: 'inherit',
+              minWidth: sidebarCollapsed ? 'auto' : 36,
+              marginRight: sidebarCollapsed ? 0 : 2,
+              opacity: 0.9,
+            },
+            '& .MuiListItemText-root': {
+              opacity: sidebarCollapsed ? 0 : 0.9,
+              transition: theme.transitions.create(['opacity', 'margin'], {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.standard,
+              }),
+              color: 'inherit',
+            },
+            '& .MuiListItemButton-root': {
+              justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+              px: sidebarCollapsed ? 2 : 1.5,
+              '&:hover': {
+                backgroundColor: ['dark', 'darkBlue', 'energy', 'blue', 'gray'].includes(mode) 
+                  ? alpha('#ffffff', 0.08) 
+                  : alpha(theme.palette.primary.main, 0.08),
+              },
+              '&.Mui-selected': {
+                backgroundColor: ['dark', 'darkBlue', 'energy', 'blue', 'gray'].includes(mode) 
+                  ? alpha('#ffffff', 0.12) 
+                  : alpha(theme.palette.primary.main, 0.12),
+                '&:hover': {
+                  backgroundColor: ['dark', 'darkBlue', 'energy', 'blue', 'gray'].includes(mode) 
+                    ? alpha('#ffffff', 0.18) 
+                    : alpha(theme.palette.primary.main, 0.18),
+                },
+              },
+            },
           },
+          width: sidebarWidth,
+          flexShrink: 0,
+          whiteSpace: 'nowrap',
         }}
       >
+        <Toolbar />
         <Sidebar collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
       </Drawer>
 
       <Main 
         sidebarwidth={sidebarWidth} 
         sx={{ 
-          flex: 1, 
-          transition: 'margin-left 0.3s',
-          p: { xs: 2, sm: 3 },
-          width: { xs: '100%', sm: `calc(100% - ${sidebarWidth}px)` },
+          flexGrow: 1,
+          ...mainContentSpacing(),
+          width: { sm: `calc(100% - ${sidebarWidth}px)` },
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         <Toolbar />
-        <Outlet />
+        <Box sx={{ 
+          flex: 1, 
+          display: 'flex', 
+          flexDirection: 'column',
+          maxWidth: '100%',
+          gap: mode === 'energy' ? 1 : 2, // Smaller gaps in energy theme
+          pl: 0,
+          pr: 0
+        }}>
+          <Outlet />
+        </Box>
       </Main>
+
+      {/* Profile Menu */}
+      <Menu
+        anchorEl={profileAnchorEl}
+        open={Boolean(profileAnchorEl)}
+        onClose={handleProfileMenuClose}
+        onClick={handleProfileMenuClose}
+      >
+        <MenuItem onClick={handleProfileClick}>
+          <ListItemIcon>
+            <AccountCircle fontSize="small" />
+          </ListItemIcon>
+          Profile
+        </MenuItem>
+        <MenuItem onClick={handleSettingsClick}>
+          <ListItemIcon>
+            <SettingsIcon fontSize="small" />
+          </ListItemIcon>
+          Settings
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={handleLogout}>
+          <ListItemIcon>
+            <ExitToApp fontSize="small" />
+          </ListItemIcon>
+          Logout
+        </MenuItem>
+      </Menu>
+
+      {/* Notifications Menu */}
+      <NotificationsMenu
+        anchorEl={notificationsAnchorEl}
+        open={Boolean(notificationsAnchorEl)}
+        onClose={handleNotificationsClose}
+        notifications={notifications}
+        onMarkAsRead={markAsRead}
+      />
 
       {/* Scroll to Top Button */}
       {showScrollTop && (
@@ -261,56 +509,6 @@ const MainLayout: React.FC<MainLayoutProps> = () => {
           <KeyboardArrowUp />
         </Fab>
       )}
-
-      {/* Profile Menu */}
-      <Menu
-        anchorEl={profileAnchorEl}
-        open={Boolean(profileAnchorEl)}
-        onClose={handleProfileMenuClose}
-        onClick={handleProfileMenuClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        PaperProps={{ 
-          sx: { 
-            minWidth: '200px',
-            mt: 1.5,
-            '& .MuiMenuItem-root': {
-              px: 2,
-              py: 1.5,
-            }
-          } 
-        }}
-      >
-        <MenuItem onClick={handleProfileClick}>
-          <AccountCircle sx={{ mr: 2 }} />
-          Profile
-        </MenuItem>
-        <MenuItem onClick={handleSettingsClick}>
-          <SettingsIcon sx={{ mr: 2 }} />
-          Settings
-        </MenuItem>
-        <Divider />
-        <MenuItem onClick={handleLogout}>
-          <ExitToApp sx={{ mr: 2 }} />
-          Logout
-        </MenuItem>
-      </Menu>
-
-      {/* Notifications Menu */}
-      <NotificationsMenu
-        anchorEl={notificationsAnchorEl}
-        open={Boolean(notificationsAnchorEl)}
-        onClose={handleNotificationsClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        PaperProps={{ 
-          sx: { 
-            minWidth: '300px',
-            maxWidth: '90vw',
-            mt: 1.5,
-          } 
-        }}
-      />
 
       <Snackbar 
         open={open && !!current} 

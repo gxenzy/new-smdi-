@@ -132,7 +132,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const hasRole = (role: UserRole): boolean => {
-    return user?.role === role;
+    // Case-insensitive role check
+    const userRole = user?.role ? user.role.toLowerCase() : undefined;
+    const checkRole = role ? role.toLowerCase() : undefined;
+    console.log('[AuthContext] hasRole check:', { userRole, checkRole });
+    return userRole === checkRole;
   };
 
   const hasPermission = (permission: string): boolean => {

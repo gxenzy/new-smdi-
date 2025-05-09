@@ -29,6 +29,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { UserRole } from '../../types';
 import { useThemeMode } from '../../contexts/ThemeContext';
+import { alpha } from '@mui/material/styles';
 
 // Backup of removed sidebar items:
 // { text: 'Electrical System', icon: <ElectricIcon />, path: '/electrical-system' },
@@ -41,9 +42,9 @@ const menuItems = [
   { text: 'System Tools', icon: <ToolsIcon />, path: '/system-tools' },
   // { text: 'Testing', icon: <TestingIcon />, path: '/testing' }, // backed up
   // { text: 'TAM Evaluation', icon: <TamIcon />, path: '/tam-evaluation' }, // fully removed
-  { text: 'User Management', icon: <UsersIcon />, path: '/user-management' },
-  { text: 'Admin Settings', icon: <AdminIcon />, path: '/admin' },
-  { text: 'Energy Monitoring', icon: <MonitorIcon />, path: '/energy-monitoring' },
+  { text: 'Users', icon: <UsersIcon />, path: '/user-management' },
+  { text: 'Admin', icon: <AdminIcon />, path: '/admin' },
+  { text: 'Monitoring', icon: <MonitorIcon />, path: '/energy-monitoring' },
 ];
 
 interface SidebarProps {
@@ -69,44 +70,134 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
 
   const isOpen = !collapsed;
 
+  // Calculate colors based on theme
+  const getThemeColors = () => {
+    // Default avatar colors
+    let avatarBg, avatarColor, avatarBorder;
+
+    switch (mode) {
+      case 'light':
+        avatarBg = alpha(theme.palette.primary.main, 0.1);
+        avatarColor = theme.palette.primary.main;
+        avatarBorder = alpha(theme.palette.primary.main, 0.2);
+        break;
+      case 'dark':
+        avatarBg = alpha('#bb86fc', 0.2);
+        avatarColor = '#bb86fc';
+        avatarBorder = alpha('#bb86fc', 0.3);
+        break;
+      case 'darkBlue':
+        avatarBg = alpha('#60a5fa', 0.2);
+        avatarColor = '#60a5fa';
+        avatarBorder = alpha('#60a5fa', 0.3);
+        break;
+      case 'energy':
+        avatarBg = alpha('#34d399', 0.2);
+        avatarColor = '#ffffff';
+        avatarBorder = alpha('#ffffff', 0.3);
+        break;
+      case 'blue':
+        avatarBg = alpha('#ffffff', 0.2);
+        avatarColor = '#ffffff';
+        avatarBorder = alpha('#ffffff', 0.3);
+        break;
+      case 'gray':
+        avatarBg = alpha('#ffffff', 0.2);
+        avatarColor = '#ffffff';
+        avatarBorder = alpha('#ffffff', 0.3);
+        break;
+      default:
+        avatarBg = alpha(theme.palette.primary.main, 0.1);
+        avatarColor = theme.palette.primary.main;
+        avatarBorder = alpha(theme.palette.primary.main, 0.2);
+    }
+
+    return { avatarBg, avatarColor, avatarBorder };
+  };
+
+  const { avatarBg, avatarColor, avatarBorder } = getThemeColors();
+
   return (
     <Box
       sx={{
-        width: isOpen ? 240 : 64,
-        bgcolor: 'rgba(255,255,255,0.7)',
-        color: '#222',
+        width: isOpen ? 190 : 64,
+        bgcolor: 'background.sidebar',
+        color: theme.palette.mode === 'dark' || ['energy', 'blue', 'gray', 'darkBlue'].includes(mode) ? '#ffffff' : theme.palette.text.primary,
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
-        boxShadow: '2px 0 24px rgba(0,0,0,0.08)',
-        borderRight: '1px solid rgba(0,0,0,0.06)',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+        borderRight: `1px solid ${alpha(theme.palette.divider, 0.07)}`,
         height: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        transition: 'width 0.3s',
+        transition: theme => theme.transitions.create(['width', 'background-color'], {
+          easing: theme.transitions.easing.sharp,
+          duration: theme.transitions.duration.standard,
+        }),
         position: 'relative',
         zIndex: 1200,
         overflow: 'hidden',
       }}
     >
-      <Box sx={{ p: 2, textAlign: 'center', minHeight: 56 }}>
+      <Box sx={{ p: 1, textAlign: 'center', minHeight: 48, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         {isOpen ? (
           <>
             {/* Profile Section */}
-            <Box sx={{ mt: 1, mb: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <Box sx={{ width: 36, height: 36, bgcolor: '#90caf9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1976d2', fontWeight: 'bold', fontSize: 20, mb: 0.5 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <Box 
+                sx={{ 
+                  width: 32, 
+                  height: 32, 
+                  bgcolor: avatarBg, 
+                  borderRadius: '50%', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  color: avatarColor, 
+                  fontWeight: 'bold', 
+                  fontSize: 16, 
+                  mb: 0.5,
+                  border: `1px solid ${avatarBorder}`,
+                }}
+              >
                 {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
               </Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: 14, color: mode === 'gradient' ? '#fff' : theme.palette.text.primary }} noWrap>
+              <Typography 
+                variant="subtitle2" 
+                sx={{ 
+                  fontWeight: 600, 
+                  fontSize: 12, 
+                  color: theme.palette.mode === 'dark' || ['energy', 'blue', 'gray', 'darkBlue'].includes(mode) ? '#ffffff' : theme.palette.text.primary,
+                  opacity: 0.9,
+                }} 
+                noWrap
+              >
                 {user?.name || ''}
               </Typography>
             </Box>
           </>
         ) : (
-          <MenuIcon />
+          <Box
+            sx={{
+              width: 32, 
+              height: 32, 
+              bgcolor: avatarBg, 
+              borderRadius: '50%', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              color: avatarColor, 
+              fontWeight: 'bold', 
+              fontSize: 16,
+              border: `1px solid ${avatarBorder}`,
+            }}
+          >
+            {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+          </Box>
         )}
       </Box>
-      <Divider />
-      <List>
+      <Divider sx={{ opacity: 0.1 }} />
+      <List sx={{ py: 0.5 }}>
         {menuItems.map((item) => (
           <Tooltip title={isOpen ? '' : item.text} placement="right" key={item.text}>
             <ListItem
@@ -114,31 +205,54 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
               onClick={() => handleNavigation(item.path)}
               selected={location.pathname === item.path}
               sx={{
-                mb: 1,
+                mb: 0.25,
                 borderRadius: 1,
                 bgcolor:
                   location.pathname === item.path
-                    ? mode === 'gradient'
-                      ? 'rgba(255,255,255,0.18)'
-                      : theme.palette.action.selected
+                    ? alpha(theme.palette.primary.main, 0.12)
                     : 'transparent',
                 '&:hover': {
-                  bgcolor:
-                    mode === 'gradient'
-                      ? 'rgba(255,255,255,0.12)'
-                      : theme.palette.action.hover,
+                  bgcolor: alpha(theme.palette.primary.main, 0.08),
                 },
                 color: 'inherit',
                 opacity: 1,
                 cursor: 'pointer',
                 justifyContent: isOpen ? 'flex-start' : 'center',
-                px: isOpen ? 2 : 1,
-                minHeight: 48,
+                px: isOpen ? 1 : 1,
+                py: 0.75,
+                minHeight: 38,
+                maxWidth: '100%',
+                overflow: 'visible'
               }}
             >
               <>
-                <ListItemIcon sx={{ color: mode === 'gradient' ? '#fff' : 'inherit', minWidth: 40, justifyContent: 'center' }}>{item.icon}</ListItemIcon>
-                {isOpen && <ListItemText primary={item.text} primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: location.pathname === item.path ? 'bold' : 'normal', color: '#222' }} />}
+                <ListItemIcon 
+                  sx={{ 
+                    color: location.pathname === item.path ? theme.palette.primary.main : 'inherit', 
+                    minWidth: 34, 
+                    justifyContent: 'center' 
+                  }}
+                >
+                  {item.icon}
+                </ListItemIcon>
+                {isOpen && (
+                  <ListItemText 
+                    primary={item.text} 
+                    sx={{ 
+                      margin: 0, 
+                      pr: 0.5,
+                      overflow: 'visible'
+                    }}
+                    primaryTypographyProps={{ 
+                      fontSize: '0.85rem',
+                      fontWeight: location.pathname === item.path ? 600 : 400,
+                      color: location.pathname === item.path ? theme.palette.primary.main : 'inherit',
+                      whiteSpace: 'normal',
+                      lineHeight: 1.2,
+                      display: 'block'
+                    }} 
+                  />
+                )}
               </>
             </ListItem>
           </Tooltip>
@@ -147,7 +261,17 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
       <Box sx={{ flexGrow: 1 }} />
       {/* Collapse/Expand Button */}
       <Box sx={{ p: 1, textAlign: 'center' }}>
-        <IconButton onClick={handleToggleCollapse} size="small">
+        <IconButton 
+          onClick={handleToggleCollapse} 
+          size="small" 
+          sx={{ 
+            color: theme.palette.text.secondary,
+            '&:hover': {
+              backgroundColor: alpha(theme.palette.primary.main, 0.08),
+              color: theme.palette.primary.main
+            }
+          }}
+        >
           {collapsed ? <ChevronRight /> : <ChevronLeft />}
         </IconButton>
       </Box>

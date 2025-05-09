@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, Grid, Button, List, ListItem, ListItemText, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert } from '@mui/material';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { glassCardSx } from '../../theme/glassCardSx';
+import socketService from '../../services/socketService';
 
 interface Audit {
   _id?: string;
@@ -65,18 +66,17 @@ const EnergyAuditDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchAudits();
+    
     // Real-time updates
-    // @ts-ignore
-    import('socket.io-client').then(({ io }) => {
-      const socket = io(process.env.REACT_APP_WS_URL || 'http://localhost:8000');
+    const socket = socketService.connect();
       socket.on('energyAuditUpdate', fetchAudits);
       socket.on('energyAuditDelete', fetchAudits);
+
       return () => {
         socket.off('energyAuditUpdate', fetchAudits);
         socket.off('energyAuditDelete', fetchAudits);
-        socket.disconnect();
+      socketService.disconnect();
       };
-    });
   }, []);
 
   // Create

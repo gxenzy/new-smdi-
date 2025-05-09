@@ -1,13 +1,11 @@
 import React from 'react';
-import { useThemeMode, ThemeMode } from '../contexts/ThemeContext';
+import { useThemeMode, ThemeMode } from '../../contexts/ThemeContext';
 import { 
-  FormControl, 
   Button, 
   Menu, 
   MenuItem, 
   ListItemIcon, 
   ListItemText,
-  IconButton,
   Tooltip,
   useTheme,
   Box,
@@ -24,7 +22,7 @@ import {
 import { alpha } from '@mui/material/styles';
 
 const ThemeSwitcher: React.FC = () => {
-  const { mode, setMode, isDarkMode } = useThemeMode();
+  const { mode, setMode } = useThemeMode();
   const theme = useTheme();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -42,69 +40,78 @@ const ThemeSwitcher: React.FC = () => {
     handleClose();
   };
 
-  // Get theme display name and icon
   const getThemeInfo = (themeMode: ThemeMode) => {
     switch (themeMode) {
       case 'light':
-        return { name: 'Light', icon: <LightIcon /> };
+        return { 
+          name: 'Light', 
+          icon: <LightIcon />,
+          color: '#2563eb',
+          bgColor: '#f8fafc'
+        };
       case 'dark':
-        return { name: 'Dark', icon: <DarkIcon /> };
+        return { 
+          name: 'Dark', 
+          icon: <DarkIcon />,
+          color: '#bb86fc',
+          bgColor: '#121212'
+        };
       case 'darkBlue':
-        return { name: 'Dark Blue', icon: <DarkBlueIcon sx={{ color: '#60a5fa' }} /> };
+        return { 
+          name: 'Dark Blue', 
+          icon: <DarkBlueIcon sx={{ color: '#60a5fa' }} />,
+          color: '#60a5fa',
+          bgColor: '#0f172a'
+        };
       case 'energy':
-        return { name: 'Energy', icon: <EnergyIcon sx={{ color: '#059669' }} /> };
+        return { 
+          name: 'Energy', 
+          icon: <EnergyIcon sx={{ color: '#34d399' }} />,
+          color: '#059669',
+          bgColor: '#042f2e'
+        };
       case 'blue':
-        return { name: 'Blue', icon: <BlueIcon sx={{ color: '#0284c7' }} /> };
+        return { 
+          name: 'Blue', 
+          icon: <BlueIcon sx={{ color: '#38bdf8' }} />,
+          color: '#0284c7',
+          bgColor: '#082f49'
+        };
       case 'gray':
-        return { name: 'Gray', icon: <GrayIcon sx={{ color: '#374151' }} /> };
+        return { 
+          name: 'Gray', 
+          icon: <GrayIcon sx={{ color: '#9ca3af' }} />,
+          color: '#374151',
+          bgColor: '#1f2937'
+        };
       default:
-        return { name: 'Light', icon: <LightIcon /> };
+        return { 
+          name: 'Light', 
+          icon: <LightIcon />,
+          color: '#2563eb',
+          bgColor: '#f8fafc'
+        };
     }
   };
 
   const currentTheme = getThemeInfo(mode);
 
-  // Theme color previews
   const themePreview = (themeMode: ThemeMode) => {
-    let colors;
-    
-    switch(themeMode) {
-      case 'light':
-        colors = { primary: '#2563eb', bg: '#f8fafc', text: '#1e293b' };
-        break;
-      case 'dark':
-        colors = { primary: '#bb86fc', bg: '#121212', text: '#ffffff' };
-        break;
-      case 'darkBlue':
-        colors = { primary: '#60a5fa', bg: '#0f172a', text: '#f1f5f9' };
-        break;
-      case 'energy':
-        colors = { primary: '#059669', bg: '#0f172a', text: '#f1f5f9' };
-        break;
-      case 'blue':
-        colors = { primary: '#0284c7', bg: '#e0f2fe', text: '#0f172a' };
-        break;
-      case 'gray':
-        colors = { primary: '#374151', bg: '#f3f4f6', text: '#111827' };
-        break;
-      default:
-        colors = { primary: '#2563eb', bg: '#f8fafc', text: '#1e293b' };
-    }
-    
+    const { color, bgColor } = getThemeInfo(themeMode);
     return (
       <Box 
         sx={{ 
           width: 16, 
           height: 16, 
           borderRadius: '50%', 
-          background: colors.primary,
-          border: `1px solid ${alpha(theme.palette.divider, 0.5)}`
+          background: color,
+          border: `1px solid ${alpha(theme.palette.divider, 0.5)}`,
+          boxShadow: `0 0 0 3px ${alpha(color, 0.1)}`,
+          ml: 'auto'
         }} 
       />
     );
   };
-
-  const marginLeft = theme.spacing(1);
 
   return (
     <>
@@ -122,10 +129,10 @@ const ThemeSwitcher: React.FC = () => {
             textTransform: 'none',
             borderRadius: '20px',
             px: 2,
-            bgcolor: alpha(theme.palette.primary.main, 0.1),
-            color: theme.palette.text.primary,
+            bgcolor: alpha(currentTheme.color, 0.1),
+            color: theme.palette.mode === 'dark' ? '#fff' : theme.palette.text.primary,
             '&:hover': {
-              bgcolor: alpha(theme.palette.primary.main, 0.2),
+              bgcolor: alpha(currentTheme.color, 0.2),
             }
           }}
         >

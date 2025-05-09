@@ -1,76 +1,156 @@
-import React, { lazy, Suspense } from 'react';
-import { Navigate, useRoutes, Outlet } from 'react-router-dom';
-import { CircularProgress, Box } from '@mui/material';
-import { useAuthContext } from '../contexts/AuthContext';
-import { UserRole } from '../types';
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
+import Dashboard from '../pages/Dashboard';
+import EnergyAudit from '../pages/EnergyAudit';
+import ElectricalSystem from '../pages/ElectricalSystem';
+import TamEvaluation from '../pages/TamEvaluation';
+import Testing from '../pages/Testing';
+import Login from '../pages/Login';
+import Profile from '../pages/Profile';
+import Settings from '../pages/Settings';
+import NotFound from '../pages/NotFound';
+import UserManagement from '../pages/UserManagement';
+import { useAuthContext } from '../contexts/AuthContext';
+import PageTransition from '../components/PageTransition';
+import { UserRole } from '../types';
 
-// Lazy load components
-const LoginPage = lazy(() => import('../pages/Login'));
-const DashboardPage = lazy(() => import('../pages/Dashboard'));
-const EnergyAuditPage = lazy(() => import('../pages/EnergyAudit'));
-const SystemToolsPage = lazy(() => import('../pages/SystemTools'));
-const UserManagementPage = lazy(() => import('../pages/UserManagement'));
-const AdminSettingsPage = lazy(() => import('../pages/AdminSettings'));
-const ProfilePage = lazy(() => import('../pages/Profile'));
-const SettingsPage = lazy(() => import('../pages/Settings'));
-const NotFoundPage = lazy(() => import('../pages/NotFound'));
-const EnergyMonitoringDashboard = lazy(() => import('../components/EnergyMonitoring/Dashboard'));
-
-// Loading component
-const LoadingScreen = () => (
-  <Box
-    display="flex"
-    justifyContent="center"
-    alignItems="center"
-    minHeight="100vh"
-  >
-    <CircularProgress />
-  </Box>
-);
+// Protected route component
+const ProtectedRoute: React.FC<{ 
+  element: React.ReactNode; 
+  requiredRole?: UserRole;
+}> = ({ element, requiredRole }) => {
+  const { isAuthenticated, hasRole } = useAuthContext();
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (requiredRole && !hasRole(requiredRole)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <>{element}</>;
+};
 
 const AppRoutes: React.FC = () => {
-  const { isAuthenticated, user } = useAuthContext();
-
-  const routes = [
-    {
-      path: '/login',
-      element: !isAuthenticated ? <LoginPage /> : <Navigate to="/" replace />
-    },
-    {
-      path: '/',
-      element: isAuthenticated ? (
-        <MainLayout>
-          <Outlet />
-        </MainLayout>
-      ) : (
-        <Navigate to="/login" replace />
-      ),
-      children: [
-        { path: '', element: <Navigate to="/dashboard" replace /> },
-        { path: 'dashboard', element: <DashboardPage /> },
-        { path: 'energy-monitoring', element: <EnergyMonitoringDashboard /> },
-        { path: 'energy-audit/*', element: <EnergyAuditPage /> },
-        { path: 'settings', element: <SettingsPage /> },
-        { path: 'profile', element: <ProfilePage /> },
-        { path: 'system-tools', element: <SystemToolsPage /> },
-        ...(user?.role === ('admin' as UserRole) ? [
-          { path: 'admin', element: <Navigate to="/admin/settings" replace /> },
-          { path: 'admin/settings', element: <AdminSettingsPage /> },
-          { path: 'admin/user-management', element: <UserManagementPage /> },
-          { path: 'user-management', element: <UserManagementPage /> }
-        ] : []),
-      ]
-    },
-    {
-      path: '*',
-      element: <NotFoundPage />
-    }
-  ];
-
-  const routing = useRoutes(routes);
-
-  return <Suspense fallback={<LoadingScreen />}>{routing}</Suspense>;
+  const { isAuthenticated } = useAuthContext();
+  
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route 
+        path="/login" 
+        element={
+          isAuthenticated ? 
+          <Navigate to="/dashboard" replace /> : 
+          <PageTransition variant="fade">
+            <Login />
+          </PageTransition>
+        } 
+      />
+      
+      {/* Protected routes with MainLayout */}
+      <Route 
+        element={
+          <ProtectedRoute 
+            element={<MainLayout />}
+          />
+        }
+      >
+        <Route 
+          path="/" 
+          element={
+            <PageTransition variant="fade">
+              <Dashboard />
+            </PageTransition>
+          } 
+        />
+        
+        <Route 
+          path="/dashboard" 
+          element={
+            <PageTransition variant="fade">
+              <Dashboard />
+            </PageTransition>
+          } 
+        />
+        
+        <Route 
+          path="/energy-audit/*" 
+          element={
+            <PageTransition variant="slide">
+              <EnergyAudit />
+            </PageTransition>
+          } 
+        />
+        
+        <Route 
+          path="/electrical-system" 
+          element={
+            <PageTransition variant="slide">
+              <ElectricalSystem />
+            </PageTransition>
+          } 
+        />
+        
+        <Route 
+          path="/tam-evaluation" 
+          element={
+            <PageTransition variant="slide">
+              <TamEvaluation />
+            </PageTransition>
+          } 
+        />
+        
+        <Route 
+          path="/testing" 
+          element={
+            <PageTransition variant="slide">
+              <Testing />
+            </PageTransition>
+          } 
+        />
+        
+        <Route 
+          path="/profile" 
+          element={
+            <PageTransition variant="scale">
+              <Profile />
+            </PageTransition>
+          } 
+        />
+        
+        <Route 
+          path="/settings" 
+          element={
+            <PageTransition variant="scale">
+              <Settings />
+            </PageTransition>
+          } 
+        />
+        
+        <Route 
+          path="/user-management" 
+          element={
+            <PageTransition variant="scale">
+              <UserManagement />
+            </PageTransition>
+          }
+        />
+        
+        {/* 404 Not Found */}
+        <Route 
+          path="*" 
+          element={
+            <PageTransition variant="fade">
+              <NotFound />
+            </PageTransition>
+          } 
+        />
+      </Route>
+    </Routes>
+  );
 };
 
 export default AppRoutes;

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, Grid, Button, List, ListItem, ListItemText, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert, MenuItem, Avatar } from '@mui/material';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { User, UserRole, UserWithId } from '../../types';
+import socketService from '../../services/socketService';
 
 const roleOptions = Object.values(UserRole);
 
@@ -39,18 +40,17 @@ const UserDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchUsers();
+    
     // Real-time updates
-    // @ts-ignore
-    import('socket.io-client').then(({ io }) => {
-      const socket = io(process.env.REACT_APP_WS_URL || 'http://localhost:8000');
+    const socket = socketService.connect();
       socket.on('userUpdate', fetchUsers);
       socket.on('userDelete', fetchUsers);
+
       return () => {
         socket.off('userUpdate', fetchUsers);
         socket.off('userDelete', fetchUsers);
-        socket.disconnect();
+      socketService.disconnect();
       };
-    });
   }, []);
 
   // Create

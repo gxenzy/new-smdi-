@@ -9,6 +9,7 @@ import AddIcon from '@mui/icons-material/Add';
 import MuiAlert from '@mui/material/Alert';
 import { useTheme } from '@mui/material/styles';
 import { glassCardSx } from '../../theme/glassCardSx';
+import socketService from '../../services/socketService';
 
 interface Finding {
   _id?: string;
@@ -62,18 +63,17 @@ const FindingsDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchFindings();
+    
     // Real-time updates
-    // @ts-ignore
-    import('socket.io-client').then(({ io }) => {
-      const socket = io(process.env.REACT_APP_WS_URL || 'http://localhost:8000');
+    const socket = socketService.connect();
       socket.on('findingUpdate', fetchFindings);
       socket.on('findingDelete', fetchFindings);
+
       return () => {
         socket.off('findingUpdate', fetchFindings);
         socket.off('findingDelete', fetchFindings);
-        socket.disconnect();
+      socketService.disconnect();
       };
-    });
   }, []);
 
   // Create
