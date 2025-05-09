@@ -5,9 +5,9 @@ CREATE DATABASE IF NOT EXISTS energyauditdb;
 USE energyauditdb;
 
 -- Create user if it doesn't exist and grant privileges
-CREATE USER IF NOT EXISTS 'sdmisql'@'localhost' IDENTIFIED BY 'cXg4uIEMAUQ2zy5O';
-GRANT ALL PRIVILEGES ON energyauditdb.* TO 'sdmisql'@'localhost';
-FLUSH PRIVILEGES;
+-- CREATE USER IF NOT EXISTS 'smdi'@'localhost' IDENTIFIED BY 'SMD1SQLADM1N';
+-- GRANT ALL PRIVILEGES ON energyauditdb.* TO 'smdi'@'localhost';
+-- FLUSH PRIVILEGES;
 
 -- You can add your table creation scripts here
 -- Example:

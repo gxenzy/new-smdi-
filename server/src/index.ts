@@ -1,72 +1,80 @@
-import { Request, Response, NextFunction } from 'express';
 import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
 import { createServer } from 'http';
-import { Server, Socket } from 'socket.io';
-import userRouter from './routes/userRoutes';
-import findingsRouter from './routes/findingsRoutes';
-import authRouter from './routes/authRoutes';
-import attachmentsRouter from './routes/attachmentsRoutes';
-import commentsRouter from './routes/commentsRoutes';
-import notificationsRouter from './routes/notificationsRoutes';
-import dashboardRouter from './routes/dashboardRoutes';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import * as compressionMiddleware from 'compression';
+import { createWebSocketServer, attachWebSocketHandlers } from './config/websocket';
+import { errorHandler } from './middleware/errorHandler';
+import routes from './routes';
+import dotenv from 'dotenv';
 
+// Load environment variables
 dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-  }
-});
 
-const port = 8000;
+// WebSocket setup
+const io = createWebSocketServer(httpServer);
+attachWebSocketHandlers(io);
+
+// Middleware
+app.use(morgan('dev'));
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
 
 // CORS configuration
 const corsOptions = {
-  origin: '*',
+  origin: ['http://localhost:3000', 'http://localhost:8000', 'http://127.0.0.1:3000', 'http://127.0.0.1:8000'],
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  allowedHeaders: ['Content-Type', 'Authorization']
 };
-
-// Middleware
 app.use(cors(corsOptions));
-app.use(express.json());
+
+// Basic middleware setup
+app.use(compressionMiddleware.default());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Health check endpoint
-app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok' });
-});
-
-// Socket.io connection handling
-io.on('connection', (socket: Socket) => {
-  console.log('Client connected');
-
-  socket.on('disconnect', () => {
-    console.log('Client disconnected');
+app.get('/health', (_req, res) => {
+  res.status(200).json({ 
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
   });
 });
 
-// Routes
-app.use('/api/auth', authRouter);
-app.use('/api/users', userRouter);
-app.use('/api/findings', findingsRouter);
-app.use('/api/attachments', attachmentsRouter);
-app.use('/api/comments', commentsRouter);
-app.use('/api/notifications', notificationsRouter);
-app.use('/api/dashboard', dashboardRouter);
+// API routes
+app.use('/api', routes);
 
-// Error handling middleware
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something broke!' });
+// Error handling
+app.use(errorHandler);
+
+// Handle WebSocket errors
+io.on('error', (error) => {
+  console.error('WebSocket Server Error:', error);
 });
 
-httpServer.listen(port, '0.0.0.0', () => {
-  console.log(`Server is running on port ${port}`);
+// Graceful shutdown
+const gracefulShutdown = () => {
+  console.log('SIGTERM/SIGINT received. Closing HTTP and WebSocket servers...');
+  httpServer.close(() => {
+    console.log('HTTP and WebSocket servers closed.');
+    process.exit(0);
+  });
+};
+
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
+
+const PORT = process.env.PORT || 8000;
+
+httpServer.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`WebSocket server available at ws://localhost:${PORT}`);
 }); 

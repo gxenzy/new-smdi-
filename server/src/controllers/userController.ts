@@ -56,19 +56,24 @@ export const createUser = async (req: Request, res: Response) => {
 
 export const updateUser = async (req: Request, res: Response) => {
   try {
-    const { firstName, lastName, role, department, position, phoneNumber } = req.body;
-    
-    await pool.query(
-      'UPDATE users SET first_name = ?, last_name = ?, role = ?, department = ?, position = ?, phone_number = ? WHERE id = ?',
-      [firstName, lastName, role, department, position, phoneNumber, req.params.id]
-    );
-    
+    const { firstName, lastName, role, department, position, phoneNumber, password } = req.body;
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await pool.query(
+        'UPDATE users SET first_name = ?, last_name = ?, role = ?, department = ?, position = ?, phone_number = ?, password = ? WHERE id = ?',
+        [firstName, lastName, role, department, position, phoneNumber, hashedPassword, req.params.id]
+      );
+    } else {
+      await pool.query(
+        'UPDATE users SET first_name = ?, last_name = ?, role = ?, department = ?, position = ?, phone_number = ? WHERE id = ?',
+        [firstName, lastName, role, department, position, phoneNumber, req.params.id]
+      );
+    }
     // Log the action
     await pool.query(
       'INSERT INTO audit_logs (user_id, action, details) VALUES (?, ?, ?)',
       [req.user?.id, 'UPDATE_USER', JSON.stringify({ userId: req.params.id, updates: req.body })]
     );
-    
     return res.json({ message: 'User updated successfully' });
   } catch (error) {
     console.error('Error updating user:', error);

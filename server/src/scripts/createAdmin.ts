@@ -10,7 +10,7 @@ async function createAdminUser() {
     const password = 'admin123';
     const firstName = 'Admin';
     const lastName = 'User';
-    const role = 'ADMIN';
+    const role = 'admin';
 
     // Hash password
     console.log('Hashing password...');

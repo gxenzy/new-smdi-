@@ -1,18 +1,34 @@
 import mysql from 'mysql2/promise';
 import { ResultSetHeader, RowDataPacket, FieldPacket } from 'mysql2';
+import path from 'path';
 import dotenv from 'dotenv';
+import fs from 'fs';
 
-dotenv.config();
+const envPath = path.resolve(__dirname, '../../.env');
+console.log('Reading .env from:', envPath);
+try {
+  const envContents = fs.readFileSync(envPath, 'utf-8');
+  console.log('.env contents:\n', envContents);
+} catch (e) {
+  console.error('Could not read .env file:', e);
+}
+dotenv.config({ path: envPath });
+
+console.log('DB_HOST:', process.env.DB_HOST);
+console.log('DB_USER:', process.env.DB_USER);
+console.log('DB_PASS:', process.env.DB_PASS);
+console.log('DB_NAME:', process.env.DB_NAME);
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   port: Number(process.env.DB_PORT) || 3306,
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'smdi',
+  user: process.env.DB_USER || 'sdmi',
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME || 'energyauditdb',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  multipleStatements: true
 });
 
 // Override the query method to return properly typed results
@@ -24,9 +40,33 @@ pool.query = async function<T extends RowDataPacket[] | ResultSetHeader>(
   return originalQuery.call(this, sql, values);
 };
 
+// Function to run a migration file
+async function runMigration(filename: string) {
+  try {
+    const filePath = path.join(__dirname, '../database/migrations', filename);
+    const sql = fs.readFileSync(filePath, 'utf-8');
+    await pool.query(sql);
+    console.log(`Migration ${filename} completed successfully`);
+  } catch (error) {
+    console.error(`Error running migration ${filename}:`, error);
+    throw error;
+  }
+}
+
 // Function to create and update tables
 async function setupDatabase() {
   try {
+    // Run migrations in order
+    const migrations = [
+      '001_create_users_table.sql',
+      '002_create_findings_table.sql',
+      'create_power_readings_table.sql'
+    ];
+
+    for (const migration of migrations) {
+      await runMigration(migration);
+    }
+
     // Create attachments table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS attachments (

@@ -21,8 +21,19 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "resolveJsonModule": true,
-    "baseUrl": "."
+    "baseUrl": "./src",
+    "paths": {
+      "@/*": ["*"],
+      "@middleware/*": ["middleware/*"],
+      "@routes/*": ["routes/*"],
+      "@config/*": ["config/*"],
+      "@types/*": ["types/*"]
+    },
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/types"
+    ]
   },
-  "exclude": ["node_modules"],
-  "include": ["./src/**/*.ts"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "test", "dist"]
 } 

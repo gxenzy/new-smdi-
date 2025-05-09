@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS findings (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  description TEXT NOT NULL,
+  recommendation TEXT NOT NULL,
+  section ENUM('lighting', 'hvac', 'envelope') NOT NULL,
+  severity ENUM('Low', 'Medium', 'High', 'Critical') NOT NULL,
+  status ENUM('Open', 'In Progress', 'Resolved') NOT NULL DEFAULT 'Open',
+  estimated_cost DECIMAL(10, 2),
+  assignee_id INT UNSIGNED,
+  created_by INT UNSIGNED NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  approval_status ENUM('Draft', 'Pending Review', 'Manager Approval', 'Final Approval', 'Approved', 'Rejected') NOT NULL DEFAULT 'Draft',
+  FOREIGN KEY (assignee_id) REFERENCES users(id),
+  FOREIGN KEY (created_by) REFERENCES users(id),
+  INDEX idx_section (section),
+  INDEX idx_severity (severity),
+  INDEX idx_status (status),
+  INDEX idx_approval_status (approval_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci; 

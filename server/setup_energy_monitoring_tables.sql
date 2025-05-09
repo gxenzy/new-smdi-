@@ -1,3 +1,5 @@
+USE energyauditdb;
+
 CREATE TABLE IF NOT EXISTS MonitoringDevice (
     deviceId VARCHAR(255) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
