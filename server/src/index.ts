@@ -8,6 +8,7 @@ import { createWebSocketServer, attachWebSocketHandlers } from './config/websock
 import { errorHandler } from './middleware/errorHandler';
 import routes from './routes';
 import dotenv from 'dotenv';
+import path from 'path';
 
 // Load environment variables
 dotenv.config();
@@ -39,6 +40,10 @@ app.use(cors(corsOptions));
 app.use(compressionMiddleware.default());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Serve static files from uploads directory
+app.use('/floorplan', express.static(path.join(__dirname, '../../uploads/floorplans')));
+app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
 
 // Health check endpoint
 app.get('/health', (_req, res) => {

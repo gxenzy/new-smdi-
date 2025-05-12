@@ -129,9 +129,9 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, trend, o
               <TrendingUp sx={{ color: 'success.main', mr: 0.5 }} />
               <Typography variant="body2" color="success.main">
                 {trend}
-              </Typography>
-            </Box>
-          )}
+        </Typography>
+          </Box>
+        )}
         </Box>
         <Typography variant="h4" sx={{ mb: 1 }}>{value}</Typography>
         <Typography color="textSecondary">{title}</Typography>
@@ -168,7 +168,7 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
-
+  
   // Dashboard state
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     totalAudits: 0,
@@ -283,54 +283,54 @@ const Dashboard: React.FC = () => {
 
       {/* Stats Overview */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
+          <Grid item xs={12} sm={6} md={3}>
+              <StatCard
             title="Total Audits"
             value={dashboardData.totalAudits}
             icon={<Assessment />}
             color="#1976d2"
             trend="+12% this month"
             onClick={() => navigate('/energy-audit')}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
+              />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+              <StatCard
             title="Total Findings"
             value={dashboardData.totalFindings}
             icon={<Warning />}
             color="#ed6c02"
             trend="+8 new"
             onClick={() => navigate('/findings')}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
+              />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+              <StatCard
             title="Potential Savings"
             value={`₱${(dashboardData.potentialSavings / 1000).toFixed(0)}K`}
             icon={<TrendingUp />}
             color="#2e7d32"
             trend="+15% identified"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
+              />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+              <StatCard
             title="Critical Findings"
             value={dashboardData.criticalFindings}
             icon={<Warning />}
             color="#d32f2f"
             trend="5 unresolved"
           />
+          </Grid>
         </Grid>
-      </Grid>
 
       {/* Main Content */}
       <Grid container spacing={3}>
         {/* Left Column */}
-        <Grid item xs={12} md={8}>
+          <Grid item xs={12} md={8}>
           <Card sx={{ mb: 3 }}>
-            <CardContent>
+                <CardContent>
               <Typography variant="h6" gutterBottom>Energy Consumption Trends</Typography>
-              <ResponsiveContainer width="100%" height={300}>
+                  <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={dashboardData.energyTrends}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
@@ -371,79 +371,79 @@ const Dashboard: React.FC = () => {
                   <Legend />
                   <Bar yAxisId="left" dataKey="count" fill="#8884d8" name="Number of Findings" />
                   <Bar yAxisId="right" dataKey="savings" fill="#82ca9d" name="Potential Savings (₱)" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </Grid>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+          </Grid>
 
         {/* Right Column */}
-        <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={4}>
           <Card sx={{ mb: 3 }}>
-            <CardContent>
+                <CardContent>
               <Typography variant="h6" gutterBottom>Audit Status</Typography>
               <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
+                    <PieChart>
+                      <Pie
                     data={dashboardData.auditsByStatus}
                     dataKey="count"
                     nameKey="status"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
                     label
                   >
                     {dashboardData.auditsByStatus.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={['#4caf50', '#ff9800', '#2196f3'][index % 3]} />
-                    ))}
-                  </Pie>
+                        ))}
+                      </Pie>
                   <ChartTooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
 
           <Card>
-            <CardContent>
+                <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h6">Recent Activity</Typography>
                 <Button size="small">View All</Button>
               </Box>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {dashboardData.recentActivity.map((activity) => (
-                  <Box
+                      <Box 
                     key={activity.id}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      p: 1,
-                      borderRadius: 1,
+                        sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          p: 1, 
+                          borderRadius: 1,
                       bgcolor: 'background.default',
-                    }}
-                  >
-                    <Avatar
-                      sx={{
+                        }}
+                      >
+                        <Avatar 
+                          sx={{ 
                         bgcolor: activity.type === 'audit' ? 'primary.main' : 'warning.main',
-                        width: 40,
-                        height: 40,
+                            width: 40,
+                            height: 40,
                         mr: 2,
-                      }}
-                    >
+                          }}
+                        >
                       {activity.type === 'audit' ? <Assessment /> : <Warning />}
-                    </Avatar>
+                        </Avatar>
                     <Box sx={{ flexGrow: 1 }}>
                       <Typography variant="subtitle2">{activity.title}</Typography>
-                      <Typography variant="body2" color="textSecondary">
+                          <Typography variant="body2" color="textSecondary">
                         {format(new Date(activity.date), 'MMM d, yyyy')}
-                      </Typography>
-                    </Box>
+                          </Typography>
+                        </Box>
                     <AuditStatusChip status={activity.status} />
+                      </Box>
+                    ))}
                   </Box>
-                ))}
-              </Box>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
         </Grid>
       </Grid>
     </Box>

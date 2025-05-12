@@ -27,6 +27,7 @@ import { useAppDispatch } from '../../store';
 import { updateUser } from '../../store/slices/authSlice';
 import * as Yup from 'yup';
 import { useFormik } from 'formik';
+import { UserRole, NotificationType } from '../../types';
 
 const validationSchema = Yup.object({
   name: Yup.string().required('Name is required'),
@@ -56,11 +57,41 @@ const Profile: React.FC = () => {
     onSubmit: async (values) => {
       try {
         // Update user profile
-        dispatch(updateUser({
+        const formattedUser = {
           ...currentUser!,
           name: values.name,
           email: values.email,
-        }));
+          // Convert Date objects to ISO strings for proper serialization
+          createdAt: currentUser!.createdAt instanceof Date 
+            ? currentUser!.createdAt.toISOString() 
+            : currentUser!.createdAt,
+          updatedAt: currentUser!.updatedAt instanceof Date 
+            ? currentUser!.updatedAt.toISOString() 
+            : currentUser!.updatedAt,
+          lastLogin: currentUser!.lastLogin instanceof Date 
+            ? currentUser!.lastLogin.toISOString() 
+            : currentUser!.lastLogin,
+          // Convert notification preferences
+          notificationPreferences: currentUser!.notificationPreferences 
+            ? {
+                enabled: currentUser!.notificationPreferences.enabled,
+                types: currentUser!.notificationPreferences.types.map(type => {
+                  // Convert string types to NotificationType enum
+                  switch(type) {
+                    case 'info': return NotificationType.Info;
+                    case 'success': return NotificationType.Success;
+                    case 'warning': return NotificationType.Warning;
+                    case 'error': return NotificationType.Error;
+                    default: return NotificationType.Info;
+                  }
+                })
+              }
+            : undefined,
+          // Cast role to string to avoid type conflicts
+          role: currentUser!.role as unknown as any
+        };
+        
+        dispatch(updateUser(formattedUser));
         setSaveSuccess(true);
         setEditMode(false);
         setTimeout(() => setSaveSuccess(false), 3000);
@@ -191,7 +222,7 @@ const Profile: React.FC = () => {
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
                     error={formik.touched.name && Boolean(formik.errors.name)}
-                    helperText={formik.touched.name && formik.errors.name}
+                    helperText={formik.touched.name && formik.errors.name ? String(formik.errors.name) : ''}
                     disabled={!editMode}
                   />
                 </Grid>
@@ -205,7 +236,7 @@ const Profile: React.FC = () => {
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
                     error={formik.touched.email && Boolean(formik.errors.email)}
-                    helperText={formik.touched.email && formik.errors.email}
+                    helperText={formik.touched.email && formik.errors.email ? String(formik.errors.email) : ''}
                     disabled={!editMode}
                   />
                 </Grid>
@@ -229,7 +260,7 @@ const Profile: React.FC = () => {
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               error={formik.touched.currentPassword && Boolean(formik.errors.currentPassword)}
-              helperText={formik.touched.currentPassword && formik.errors.currentPassword}
+              helperText={formik.touched.currentPassword && formik.errors.currentPassword ? String(formik.errors.currentPassword) : ''}
             />
             <TextField
               fullWidth
@@ -240,7 +271,7 @@ const Profile: React.FC = () => {
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               error={formik.touched.newPassword && Boolean(formik.errors.newPassword)}
-              helperText={formik.touched.newPassword && formik.errors.newPassword}
+              helperText={formik.touched.newPassword && formik.errors.newPassword ? String(formik.errors.newPassword) : ''}
             />
             <TextField
               fullWidth
@@ -251,7 +282,7 @@ const Profile: React.FC = () => {
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               error={formik.touched.confirmPassword && Boolean(formik.errors.confirmPassword)}
-              helperText={formik.touched.confirmPassword && formik.errors.confirmPassword}
+              helperText={formik.touched.confirmPassword && formik.errors.confirmPassword ? String(formik.errors.confirmPassword) : ''}
             />
           </Box>
         </DialogContent>

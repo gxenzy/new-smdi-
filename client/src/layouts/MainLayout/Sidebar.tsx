@@ -24,6 +24,8 @@ import {
   ChevronRight,
   Menu as MenuIcon,
   MonitorHeart as MonitorIcon,
+  Assessment as ReportsIcon,
+  MenuBook as StandardsIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '../../contexts/AuthContext';
@@ -35,10 +37,14 @@ import { alpha } from '@mui/material/styles';
 // { text: 'Electrical System', icon: <ElectricIcon />, path: '/electrical-system' },
 // { text: 'Testing', icon: <TestingIcon />, path: '/testing' },
 // { text: 'TAM Evaluation', icon: <TamIcon />, path: '/tam-evaluation' },
+// { text: 'Energy Audit V2', icon: <AuditIcon />, path: '/energy-audit-v2' },
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
   // { text: 'Electrical System', icon: <ElectricIcon />, path: '/electrical-system' }, // backed up
   { text: 'Energy Audit', icon: <AuditIcon />, path: '/energy-audit' },
+  { text: 'Reports', icon: <ReportsIcon />, path: '/reports' },
+  { text: 'Standards', icon: <StandardsIcon />, path: '/standards-reference' },
+  // { text: 'Energy Audit V2', icon: <AuditIcon />, path: '/energy-audit-v2' }, // backed up and removed
   { text: 'System Tools', icon: <ToolsIcon />, path: '/system-tools' },
   // { text: 'Testing', icon: <TestingIcon />, path: '/testing' }, // backed up
   // { text: 'TAM Evaluation', icon: <TamIcon />, path: '/tam-evaluation' }, // fully removed

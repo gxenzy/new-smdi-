@@ -31,6 +31,41 @@ const pool = mysql.createPool({
   multipleStatements: true
 });
 
+// Helper functions for database queries
+export const query = async (text: string, params: any[] = []): Promise<any> => {
+  try {
+    const start = Date.now();
+    const [rows] = await pool.query(text, params);
+    const duration = Date.now() - start;
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Executed query', { text, duration, rows: Array.isArray(rows) ? rows.length : 1 });
+    }
+    
+    return rows;
+  } catch (error) {
+    console.error('Query error:', error);
+    throw error;
+  }
+};
+
+// Transaction helper
+export const transaction = async (callback: (connection: mysql.PoolConnection) => Promise<any>): Promise<any> => {
+  const connection = await pool.getConnection();
+  
+  try {
+    await connection.beginTransaction();
+    const result = await callback(connection);
+    await connection.commit();
+    return result;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
+
 // Override the query method to return properly typed results
 const originalQuery = pool.query;
 pool.query = async function<T extends RowDataPacket[] | ResultSetHeader>(
