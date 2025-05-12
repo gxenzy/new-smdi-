@@ -10,6 +10,8 @@
 - [x] Power Factor Calculator
 - [x] Harmonic Distortion Calculator
 - [x] Schedule of Loads Calculator
+- [x] Illumination Calculator
+- [x] Advanced Illumination Level Calculator with reflectance factors
 - [x] Mobile responsiveness for all calculators
 - [x] Validation and error handling
 - [x] Save calculation results
@@ -77,6 +79,12 @@
   - Peak demand profile visualization
   - Hierarchical data drill-down for detailed analysis
   - Interactive zoom and pan capability for time series data
+- Advanced Illumination Level Calculator providing:
+  - Room surface reflectance analysis
+  - Maintenance factor considerations
+  - Detailed compliance checking with PEC Rule 1075
+  - Specific recommendations based on calculation results
+  - PDF export and result storage
 - Schedule of Loads calculator with:
   - Multi-step interface for creating detailed load schedules
   - Load item management with calculated electrical values
@@ -106,14 +114,21 @@
 - [x] Implement data table alternative view for charts
 - [x] Implement responsive sizing based on container/paper format
 
-### 2. Advanced Interactivity Features (CURRENT PRIORITY)
+### 2. Standards Reference System (NEW PRIORITY)
+- [ ] Implement PEC Rule 1075 reference database
+- [ ] Create standards lookup system
+- [ ] Integrate standards references with calculators
+- [ ] Add educational content explaining standards
+- [ ] Implement versioning for standards updates
+
+### 3. Advanced Interactivity Features
 - [x] Implement drill-down capabilities for hierarchical data
 - [x] Add zoom and pan controls for detailed data exploration
 - [ ] Create linked charts that update together
 - [ ] Add data filtering controls directly on charts
 - [ ] Implement custom tooltips with extended information
 
-### 3. Report Management System (NEXT PRIORITY)
+### 4. Report Management System (NEXT PRIORITY)
 - [x] Create report database schema for storing generated reports
 - [x] Implement report saving functionality
 - [x] Build report browsing interface
@@ -122,7 +137,7 @@
 - [x] Implement report templates selection
 - [x] Add company branding/logo options for reports
 
-### 4. Data Analysis and Visualization Dashboard
+### 5. Data Analysis and Visualization Dashboard
 - [ ] Design dashboard layout for energy audit overview
 - [ ] Create summary cards for key metrics
 - [ ] Implement comparative analysis between multiple calculations
@@ -131,7 +146,7 @@
 - [ ] Add custom metric tracking and configuration
 - [ ] Implement printable dashboard summaries
 
-### 5. Building Profile System
+### 6. Building Profile System
 - [ ] Building profile creation and management
 - [ ] Area/zone management within buildings
 - [ ] Equipment inventory system

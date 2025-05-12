@@ -1,4 +1,4 @@
-const Report = require('../../models/Report');
+const Report = require('../models/Report');
 const { validationResult } = require('express-validator');
 
 /**
@@ -191,7 +191,7 @@ const reportController = {
       // Update contents if provided
       if (contents && Array.isArray(contents)) {
         // First delete existing contents
-        await db.query('DELETE FROM report_contents WHERE report_id = $1', [reportId]);
+        await Report.deleteContents(reportId);
         
         // Then add new contents
         if (contents.length > 0) {

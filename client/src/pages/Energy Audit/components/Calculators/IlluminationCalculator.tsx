@@ -41,6 +41,7 @@ import BookmarkIcon from '@mui/icons-material/Bookmark';
 import PdfIcon from '@mui/icons-material/PictureAsPdf';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { useSnackbar } from 'notistack';
+import { IlluminationStandardsLookup } from '../../../../components/StandardsReference';
 
 import SavedCalculationsViewer from './SavedCalculationsViewer';
 import { saveCalculation } from './utils/storage';
@@ -352,6 +353,9 @@ const IlluminationCalculator: React.FC<IlluminationCalculatorProps> = ({ onSave 
   
   // Add new state for quick start guide
   const [quickStartOpen, setQuickStartOpen] = useState<boolean>(false);
+  
+  // Add new state for standards dialog
+  const [standardsDialogOpen, setStandardsDialogOpen] = useState<boolean>(false);
   
   // Handle input changes
   const handleInputChange = (field: keyof IlluminationCalculationInputs) => (
@@ -888,6 +892,26 @@ const IlluminationCalculator: React.FC<IlluminationCalculatorProps> = ({ onSave 
     }
   };
   
+  // Handle selecting a standard requirement
+  const handleStandardRequirementSelect = (requirement: any) => {
+    setInputs(prev => ({ 
+      ...prev, 
+      roomType: requirement.roomType.toLowerCase().includes('classroom') ? 'classroom' : 
+                requirement.roomType.toLowerCase().includes('office') ? 'office' : 
+                requirement.roomType.toLowerCase().includes('laboratory') ? 'laboratory' : 
+                requirement.roomType.toLowerCase().includes('corridor') ? 'corridor' : 
+                requirement.roomType.toLowerCase().includes('conference') ? 'conference' : 
+                'other'
+    }));
+    
+    setStandardsDialogOpen(false);
+    
+    // Show notification
+    enqueueSnackbar(`Selected standard for ${requirement.roomType}: ${requirement.requiredIlluminance} lux`, {
+      variant: 'success'
+    });
+  };
+  
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -1034,15 +1058,33 @@ const IlluminationCalculator: React.FC<IlluminationCalculatorProps> = ({ onSave 
                     <TextField
                       select
                       fullWidth
+                      id="roomType"
+                      name="roomType"
                       label="Room Type"
-                      variant="outlined"
                       value={inputs.roomType}
                       onChange={handleInputChange('roomType')}
-                      helperText="Select the room type to determine required illumination level"
+                      error={Boolean(errors.roomType)}
+                      helperText={getHelperText('roomType')}
+                      required
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <Tooltip title="Look up standards for room types">
+                              <IconButton 
+                                edge="end"
+                                onClick={() => setStandardsDialogOpen(true)}
+                                size="small"
+                              >
+                                <InfoIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </InputAdornment>
+                        )
+                      }}
                     >
-                      {roomTypes.map(option => (
+                      {roomTypes.map((option) => (
                         <MenuItem key={option.value} value={option.value}>
-                          {option.label} ({option.requiredLux} lux)
+                          {option.label}
                         </MenuItem>
                       ))}
                     </TextField>
@@ -1697,6 +1739,28 @@ const IlluminationCalculator: React.FC<IlluminationCalculatorProps> = ({ onSave 
         open={quickStartOpen} 
         onClose={() => setQuickStartOpen(false)} 
       />
+      
+      {/* Add this dialog to the end of the return statement, before the closing fragment tag */}
+      <Dialog 
+        open={standardsDialogOpen} 
+        onClose={() => setStandardsDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          PEC Rule 1075 Illumination Standards
+        </DialogTitle>
+        <DialogContent>
+          <IlluminationStandardsLookup 
+            onSelectRequirement={handleStandardRequirementSelect} 
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setStandardsDialogOpen(false)}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 };

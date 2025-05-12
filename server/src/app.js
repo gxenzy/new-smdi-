@@ -6,8 +6,9 @@ const helmet = require('helmet');
 const path = require('path');
 
 // Import routes
-const reportRoutes = require('./routes/reportRoutes.ts').default;
+const reportRoutes = require('./routes/reportRoutes.js');
 const standardsRoutes = require('./routes/standardsRoutes');
+const standardsApiRoutes = require('./routes/standards-api');
 
 // Create Express app
 const app = express();
@@ -22,6 +23,7 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 // API routes
 app.use('/api/reports', reportRoutes);
 app.use('/api', standardsRoutes);
+app.use('/api/standards-api', standardsApiRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

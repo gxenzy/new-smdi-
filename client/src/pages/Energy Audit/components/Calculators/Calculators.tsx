@@ -19,9 +19,11 @@ import AcUnitIcon from '@mui/icons-material/AcUnit';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import WbIncandescentIcon from '@mui/icons-material/WbIncandescent';
 import WavesIcon from '@mui/icons-material/Waves';
+import SquareFootIcon from '@mui/icons-material/SquareFoot';
 import EnergyCalculator from '../EnergyCalculators';
 import ROICalculator from './ROICalculator';
 import IlluminationCalculator from './IlluminationCalculator';
+import IlluminationLevelCalculator from './IlluminationLevelCalculator';
 import PowerFactorCalculator from './PowerFactorCalculator';
 import HarmonicDistortionCalculator from './HarmonicDistortionCalculator';
 
@@ -84,10 +86,11 @@ const Calculators: React.FC = () => {
             <Tab icon={<ElectricalServicesIcon />} label="Energy Calculator" {...a11yProps(1)} />
             <Tab icon={<LightbulbIcon />} label="Lighting" {...a11yProps(2)} />
             <Tab icon={<WbIncandescentIcon />} label="Illumination" {...a11yProps(3)} />
-            <Tab icon={<AcUnitIcon />} label="HVAC" {...a11yProps(4)} />
-            <Tab icon={<MonetizationOnIcon />} label="ROI Calculator" {...a11yProps(5)} />
-            <Tab icon={<CalculateIcon />} label="Power Factor" {...a11yProps(6)} />
-            <Tab icon={<WavesIcon />} label="Harmonic Distortion" {...a11yProps(7)} />
+            <Tab icon={<SquareFootIcon />} label="Illumination Level" {...a11yProps(4)} />
+            <Tab icon={<AcUnitIcon />} label="HVAC" {...a11yProps(5)} />
+            <Tab icon={<MonetizationOnIcon />} label="ROI Calculator" {...a11yProps(6)} />
+            <Tab icon={<CalculateIcon />} label="Power Factor" {...a11yProps(7)} />
+            <Tab icon={<WavesIcon />} label="Harmonic Distortion" {...a11yProps(8)} />
           </Tabs>
           
           {/* Overview Tab */}
@@ -151,6 +154,22 @@ const Calculators: React.FC = () => {
                 <Card>
                   <CardActionArea onClick={() => setTabValue(4)}>
                     <CardContent>
+                      <SquareFootIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
+                      <Typography variant="h6" gutterBottom>
+                        Illumination Level Calculator
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Calculate illumination levels for a given area and verify compliance with PEC Rule 1075 requirements.
+                      </Typography>
+                    </CardContent>
+                  </CardActionArea>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={12} sm={6} md={4}>
+                <Card>
+                  <CardActionArea onClick={() => setTabValue(5)}>
+                    <CardContent>
                       <AcUnitIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
                       <Typography variant="h6" gutterBottom>
                         HVAC Calculator
@@ -166,7 +185,7 @@ const Calculators: React.FC = () => {
               
               <Grid item xs={12} sm={6} md={4}>
                 <Card>
-                  <CardActionArea onClick={() => setTabValue(5)}>
+                  <CardActionArea onClick={() => setTabValue(6)}>
                     <CardContent>
                       <MonetizationOnIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
                       <Typography variant="h6" gutterBottom>
@@ -183,7 +202,7 @@ const Calculators: React.FC = () => {
               
               <Grid item xs={12} sm={6} md={4}>
                 <Card>
-                  <CardActionArea onClick={() => setTabValue(6)}>
+                  <CardActionArea onClick={() => setTabValue(7)}>
                     <CardContent>
                       <CalculateIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
                       <Typography variant="h6" gutterBottom>
@@ -200,7 +219,7 @@ const Calculators: React.FC = () => {
               
               <Grid item xs={12} sm={6} md={4}>
                 <Card>
-                  <CardActionArea onClick={() => setTabValue(7)}>
+                  <CardActionArea onClick={() => setTabValue(8)}>
                     <CardContent>
                       <WavesIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
                       <Typography variant="h6" gutterBottom>
@@ -279,26 +298,35 @@ const Calculators: React.FC = () => {
             <IlluminationCalculator />
           </TabPanel>
           
-          {/* HVAC Tab */}
+          {/* Illumination Level Tab */}
           <TabPanel value={tabValue} index={4}>
-            <Typography variant="h5" gutterBottom>HVAC Calculator</Typography>
-            <Typography variant="body1" paragraph>
-              The HVAC calculator is currently under development. Please check back later.
-            </Typography>
+            <IlluminationLevelCalculator />
+          </TabPanel>
+          
+          {/* HVAC Tab */}
+          <TabPanel value={tabValue} index={5}>
+            <Box sx={{ textAlign: 'center', py: 5 }}>
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                HVAC Calculator Coming Soon
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                This calculator is under development and will be available in a future update.
+              </Typography>
+            </Box>
           </TabPanel>
           
           {/* ROI Calculator Tab */}
-          <TabPanel value={tabValue} index={5}>
+          <TabPanel value={tabValue} index={6}>
             <ROICalculator />
           </TabPanel>
           
           {/* Power Factor Tab */}
-          <TabPanel value={tabValue} index={6}>
+          <TabPanel value={tabValue} index={7}>
             <PowerFactorCalculator />
           </TabPanel>
           
           {/* Harmonic Distortion Tab */}
-          <TabPanel value={tabValue} index={7}>
+          <TabPanel value={tabValue} index={8}>
             <HarmonicDistortionCalculator />
           </TabPanel>
         </Paper>

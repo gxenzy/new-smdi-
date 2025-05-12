@@ -9,6 +9,7 @@ This directory contains calculator components used in the Energy Audit Platform.
 | Calculator | File | Description | Standard |
 |------------|------|-------------|----------|
 | Illumination Level Calculator | IlluminationCalculator.tsx | Calculates required illumination levels and verifies compliance with standards | PEC Rule 1075 |
+| Advanced Illumination Level Calculator | IlluminationLevelCalculator.tsx | Calculates illumination levels with room reflectance and maintenance factors | PEC Rule 1075 |
 | ROI Calculator | ROICalculator.tsx | Calculates return on investment for energy efficiency projects | Financial analysis standards |
 | Power Factor Calculator | PowerFactorCalculator.tsx | Calculates power factor and correction requirements | PEC 2017 Section 4.30 |
 
@@ -118,6 +119,62 @@ A = Area of the working plane (m²)
 
 Room Index (K) = (L × W) / [Hm × (L + W)]
 ```
+
+## Advanced Illumination Level Calculator
+
+### Overview
+
+The Advanced Illumination Level Calculator provides a more detailed approach to illumination calculations by including:
+
+- Room surface reflectance values (ceiling, walls, floor)
+- Maintenance factor based on environment conditions
+- Work plane height configuration
+- Detailed utilization factor calculation based on room index
+- PEC Rule 1075 compliance checking for various room types
+
+### Features
+
+- **Tab-Based Interface**:
+  1. Room & Fixtures: Configure room dimensions, type, and lighting fixtures
+  2. Reflectance & Materials: Set reflectance values for room surfaces
+  3. Results: View calculated illuminance, compliance status, and recommendations
+
+- **Standards Compliance**:
+  - Automatically checks compliance with PEC Rule 1075 required illuminance levels
+  - Provides specific recommendations based on compliance status
+
+- **Advanced Analysis**:
+  - Calculates room index (K) based on room dimensions and work plane height
+  - Determines utilization factor from room index and reflectance values
+  - Evaluates uniformity ratio for lighting distribution quality
+
+- **Recommendations Engine**:
+  - Provides context-specific suggestions based on calculation results
+  - Offers guidance on improving illumination levels, energy efficiency, and compliance
+
+### Room Types and Required Illuminance
+
+The calculator includes standard illuminance requirements for various room types:
+
+| Room Type | Required Illuminance (lux) |
+|-----------|----------------------------|
+| Classroom | 300 |
+| Computer Laboratory | 500 |
+| Science Laboratory | 500 |
+| Library | 500 |
+| Office (General) | 500 |
+| Corridor | 100 |
+| Conference Room | 300 |
+| Auditorium | 200 |
+| Cafeteria | 200 |
+| Gymnasium | 300 |
+
+### Integration
+
+The calculator integrates with the platform's:
+- PDF report generation system
+- Calculation storage system
+- Standards reference system
 
 ## ROI Calculator
 
