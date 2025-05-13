@@ -1,6 +1,6 @@
 import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { CircularProgress, Box } from '@mui/material';
+import { CircularProgress, Box, Typography } from '@mui/material';
 import MainLayout from '../layouts/MainLayout';
 import Dashboard from '../pages/Dashboard';
 import ElectricalSystem from '../pages/ElectricalSystem';
@@ -13,6 +13,10 @@ import { useAuthContext } from '../contexts/AuthContext';
 import PageTransition from '../components/PageTransition';
 import { UserRole } from '../types';
 import EnergyAuditV2Router from '../pages/Energy Audit/Router';
+import StandardsReference from '../pages/Energy Audit/components/StandardsReference/StandardsReference';
+import IlluminationLevelCalculator from '../pages/Energy Audit/components/Calculators/IlluminationLevelCalculator';
+import SavedCalculationsViewer from '../pages/Energy Audit/components/Calculators/SavedCalculationsViewer';
+import StandardsManagement from '../pages/AdminSettings/StandardsManagement';
 
 // Report Management Components
 import { ReportList, ReportView, ReportEditor, ReportShare } from '../components/ReportManagement';
@@ -118,7 +122,7 @@ const AppRoutes: React.FC = () => {
         
         {/* Standards Reference Route - Redirect to Energy Audit */}
         <Route 
-          path="/standards-reference" 
+          path="/standards" 
           element={
             <Navigate to="/energy-audit/standards-reference" replace />
           } 
@@ -128,9 +132,7 @@ const AppRoutes: React.FC = () => {
         <Route 
           path="/reports" 
           element={
-            <PageTransition variant="fade">
-              <Reports />
-            </PageTransition>
+            <Navigate to="/energy-audit/reports" replace />
           } 
         />
         
@@ -224,6 +226,44 @@ const AppRoutes: React.FC = () => {
             <PageTransition variant="scale">
               <UserManagement />
             </PageTransition>
+          }
+        />
+        
+        {/* Admin routes */}
+        <Route 
+          path="/admin/standards-management" 
+          element={
+            <ProtectedRoute 
+              element={
+                <PageTransition variant="scale">
+                  <StandardsManagement />
+                </PageTransition>
+              }
+              requiredRole={UserRole.ADMIN}
+            />
+          }
+        />
+        
+        {/* Standards Reference Route */}
+        <Route 
+          path="/standards" 
+          element={
+            <Navigate to="/energy-audit/standards-reference" replace />
+          } 
+        />
+        
+        {/* Add a route for the SavedCalculations page */}
+        <Route 
+          path="/energy-audit/saved-calculations" 
+          element={
+            <MainLayout>
+              <Box sx={{ pt: 2, pb: 5, px: { xs: 2, md: 5 } }}>
+                <Typography variant="h4" component="h1" gutterBottom>
+                  Saved Calculations
+                </Typography>
+                <SavedCalculationsViewer />
+              </Box>
+            </MainLayout>
           }
         />
         

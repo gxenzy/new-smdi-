@@ -1,4 +1,150 @@
-# Energy Audit School Portal
+# Energy Audit Platform
+
+Energy Audit Platform is a web-based application for conducting comprehensive energy audits, with a focus on calculations, standards references, and manual values.
+
+## Features
+
+### 1. Calculation Tools
+- Energy consumption calculators (lighting, HVAC, equipment)
+- Power quality analysis tools (power factor, harmonic distortion)
+- Voltage regulation and conductor sizing tools
+- Illumination level calculators
+- ROI and financial calculators
+- Batch calculation support for multiple scenario analysis
+
+### 2. Standards Reference System
+- Philippine Electrical Code (PEC) 2017 searchable database
+- Illumination requirements lookup by room type
+- Standards compliance checking
+- Educational resources and annotations
+- Tag-based filtering and organization
+- Full-text search with advanced filtering options
+
+### 3. Report Management
+- Report generation for energy audit findings
+- PDF export with charts and tables
+- Collaborative editing and comments
+- Report templates and customization
+
+## Recent Implementations
+
+### Voltage Regulation Calculator
+- Implemented comprehensive Voltage Regulation Calculator based on PEC 2017 Section 2.30
+- Calculate voltage drop and power losses in electrical circuits
+- Support for different conductor types, materials, and configurations
+- Automatic conductor size optimization for compliance
+- Detailed recommendations for improving non-compliant circuits
+- Educational reference information on voltage regulation standards
+- Interactive voltage profile visualization along conductor length
+- Conductor size comparison visualization for optimal selection
+
+### Batch Calculation Feature
+- Implemented for Harmonic Distortion Calculator
+- Run multiple calculation scenarios in parallel
+- Compare results side-by-side to identify optimal solutions
+- Save all results at once for further analysis
+- Supports IEEE 519-2014 standards compliance for all scenarios
+
+### Standards Reference System
+- Implemented database schema for standards, sections, tables, and figures
+- Created API endpoints for accessing standards content
+- Built illumination requirements lookup tool with PEC 2017
+- Integrated with calculator components for standards compliance
+- Added comprehensive tag management system
+- Implemented full-text search with tag-based filtering
+- Enhanced error handling across the application
+
+### Illumination Level Calculator
+- Enhanced with standards-based requirements lookup
+- Added real-time validation and detailed recommendations
+- Improved calculation accuracy with environment factors
+- Added compliance status based on PEC 2017 Rule 1075
+
+## Getting Started
+
+### Prerequisites
+- Node.js 14+
+- MySQL 8.0+
+
+### Installation
+1. Clone the repository
+2. Install dependencies with `npm run install-all`
+3. Configure database settings by running `npm run setup:db`
+4. Verify database connection with `npm run verify:db`
+5. Run migrations with `npm run migrate`
+6. Start the server with `npm run server`
+7. Start the client with `npm run client`
+
+### Database Configuration
+The application uses MySQL for data storage. You can configure the database connection in two ways:
+
+1. **Using the Setup Script:**
+   ```
+   npm run setup:db
+   ```
+   This interactive script will prompt you for database credentials and save them to the `.env` file.
+
+2. **Manual Configuration:**
+   Create or edit the `.env` file in the project root with the following variables:
+   ```
+   PORT=8000
+   NODE_ENV=development
+   DB_HOST=localhost
+   DB_USER=sdmi
+   DB_PASS=SMD1SQLADM1N
+   DB_NAME=energyauditdb
+   JWT_SECRET=your_secret_key
+   CORS_ORIGIN=http://localhost:3000
+   ```
+
+### Database Verification and Troubleshooting
+You can verify your database connection by running:
+```
+npm run verify:db
+```
+
+This script will:
+1. Test the connection to your MySQL server
+2. Check if the specified database exists
+3. Offer to create the database if it doesn't exist
+4. Check for existing tables
+
+Common database issues and solutions:
+
+| Issue | Solution |
+|-------|----------|
+| Access denied error | Check your username and password in `.env` file |
+| Connection refused | Make sure MySQL is running on the specified host and port |
+| Database doesn't exist | Run `npm run verify:db` to create it |
+| Migration errors | Check the migration files in `server/src/database/migrations` |
+
+### Running Migrations
+To set up or update the database schema, run:
+```
+npm run migrate
+```
+
+To roll back migrations:
+```
+npm run migrate:down
+```
+
+## Development Roadmap
+
+### Phase 1: Core Framework (Completed)
+- Basic calculation tools
+- Standards database structure
+- Authentication system
+
+### Phase 2: Enhanced Features (In Progress)
+- Complete standards reference system
+- Advanced calculation modules
+- Report management system
+
+### Phase 3: Future Enhancements (Planned)
+- Building profile management
+- Mobile field data collection
+- AI-powered analysis
 
 ## Overview
 A modern, educational, and user-friendly Energy Audit system for the University of Cebu-Lapu-Lapu and Mandaue (UCLM), focused on manual inspection, reference-driven learning, and role-based access for students, faculty, maintenance, and admin.
@@ -49,12 +195,13 @@ A modern, educational, and user-friendly Energy Audit system for the University 
 | User Authentication | ✅ Complete | Role-based access implemented |
 | Energy Audit Wizard | ✅ Complete | Educational checklists with references |
 | Findings Management | ✅ Complete | Create, track, and approve findings |
-| Standards Reference | ✅ Complete | PEC 2017 and other standards |
+| Standards Reference | ✅ Complete | PEC 2017 with tagging and advanced search |
 | Electrical Inspection | ✅ Complete | PEC 2017-based checklist with categories |
 | Calculators | 🔄 In Progress | Energy calculations with educational components |
+| Voltage Regulation | ✅ Complete | PEC 2017 Section 2.30 compliance calculator |
 | Learning Center | 📅 Planned | Educational resources |
 | Reporting | ✅ Complete | PDF, CSV with checklist data |
-| Admin Tools | ✅ Complete | User management, workflow config |
+| Admin Tools | ✅ Complete | User management, workflow config, tag management |
 
 ---
 
@@ -64,6 +211,8 @@ A modern, educational, and user-friendly Energy Audit system for the University 
 - Energy load calculators
 - ROI/payback period tools
 - Electrical system calculators
+- ✅ Voltage Regulation Calculator
+- ✅ Harmonic Distortion Calculator with visualizations
 
 ---
 

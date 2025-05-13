@@ -11,6 +11,12 @@ import dashboardRouter from './dashboardRoutes';
 import auditLogRoutes from './auditLogRoutes';
 import reportRoutes from './reportRoutes';
 import standardsRoutes from './standardsRoutes';
+import searchRoutes from './searchRoutes';
+import complianceRoutes from './complianceRoutes';
+
+// Import JavaScript modules
+const complianceVerificationRoutes = require('./compliance-verification');
+const standardsApiRoutes = require('./standards-api');
 
 const router = express.Router();
 
@@ -26,6 +32,10 @@ router.use('/notifications', notificationsRouter);
 router.use('/dashboard', dashboardRouter);
 router.use('/audit-log', auditLogRoutes);
 router.use('/reports', reportRoutes);
-router.use('/standards-api', standardsRoutes);
+router.use('/standards', standardsRoutes);
+router.use('/standards-api', standardsApiRoutes);
+router.use('/search', searchRoutes);
+router.use('/compliance', complianceRoutes);
+router.use('/compliance-verification', complianceVerificationRoutes);
 
 export default router; 

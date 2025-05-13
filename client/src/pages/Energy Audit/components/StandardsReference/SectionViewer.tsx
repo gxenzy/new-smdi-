@@ -205,14 +205,21 @@ const SectionViewer: React.FC<{
 
   const fetchUserNotes = async (sectionId: number) => {
     try {
-      // In a real app, this would fetch from the API
+      // In a real app, this would fetch from the server API
+      // For demo purposes, use localStorage
+      const allNotes = JSON.parse(localStorage.getItem('standardNotes') || '[]');
+      const sectionNotes = allNotes.filter((note: NoteData) => note.section_id === sectionId);
+      
+      // Sort by updated_at (newest first)
+      sectionNotes.sort((a: NoteData, b: NoteData) => {
+        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+      });
+      
+      setUserNotes(sectionNotes);
+      
+      // With a real API, it would be:
       // const response = await axios.get(`/api/standards-api/users/${currentUserId}/sections/${sectionId}/notes`);
       // setUserNotes(response.data);
-      
-      // For now, we'll use mock data from localStorage
-      const allNotes = JSON.parse(localStorage.getItem('userSectionNotes') || '{}');
-      const sectionNotes = allNotes[sectionId] || [];
-      setUserNotes(sectionNotes);
     } catch (error) {
       console.error('Error fetching user notes:', error);
     }
@@ -223,67 +230,114 @@ const SectionViewer: React.FC<{
   };
 
   const toggleBookmark = async () => {
-    if (!sectionId) return;
-    
     try {
-      // In a real app, this would be a server API call
-      // if (bookmarked) {
-      //   await axios.delete(`/api/standards-api/bookmarks/${currentUserId}/${sectionId}`);
-      // } else {
-      //   await axios.post('/api/standards-api/bookmarks', { userId: currentUserId, sectionId });
-      // }
+      if (!section) return;
       
-      // For now, we'll simulate with localStorage
+      // In a real app, this would be a server API call
+      // For demo purposes, we'll use localStorage
       const bookmarks = JSON.parse(localStorage.getItem('standardBookmarks') || '[]');
+      const bookmarksDetails = JSON.parse(localStorage.getItem('standardBookmarksDetails') || '[]');
       
       if (bookmarked) {
-        const updatedBookmarks = bookmarks.filter((id: number) => id !== sectionId);
+        // Remove from bookmarks
+        const updatedBookmarks = bookmarks.filter((id: number) => id !== section.id);
         localStorage.setItem('standardBookmarks', JSON.stringify(updatedBookmarks));
+        
+        // Remove from bookmark details
+        const updatedDetails = bookmarksDetails.filter((b: any) => b.section_id !== section.id);
+        localStorage.setItem('standardBookmarksDetails', JSON.stringify(updatedDetails));
+        
+        setBookmarked(false);
         showSnackbar('Bookmark removed');
       } else {
-        bookmarks.push(sectionId);
+        // Add to bookmarks
+        bookmarks.push(section.id);
         localStorage.setItem('standardBookmarks', JSON.stringify(bookmarks));
-        showSnackbar('Section bookmarked');
+        
+        // Add to bookmark details - get standard info if available
+        const standardInfo = await getStandardInfo(section.standard_id);
+        
+        const newBookmark = {
+          id: Date.now(), // Generate a unique ID
+          section_id: section.id,
+          section_number: section.section_number,
+          title: section.title,
+          standard_id: section.standard_id,
+          code_name: standardInfo?.code_name || 'Unknown',
+          full_name: standardInfo?.full_name || 'Unknown Standard'
+        };
+        
+        bookmarksDetails.push(newBookmark);
+        localStorage.setItem('standardBookmarksDetails', JSON.stringify(bookmarksDetails));
+        
+        setBookmarked(true);
+        showSnackbar('Bookmark added');
       }
       
-      setBookmarked(!bookmarked);
+      // With a real API, it would be:
+      // if (bookmarked) {
+      //   await axios.delete(`/api/standards-api/users/${currentUserId}/bookmarks/${section.id}`);
+      // } else {
+      //   await axios.post(`/api/standards-api/users/${currentUserId}/bookmarks`, { section_id: section.id });
+      // }
+      // setBookmarked(!bookmarked);
     } catch (error) {
       console.error('Error toggling bookmark:', error);
-      showSnackbar('Failed to update bookmark');
+      showSnackbar('Error updating bookmark');
+    }
+  };
+  
+  // Helper function to get standard information by ID
+  const getStandardInfo = async (standardId: number) => {
+    try {
+      // In a real app, this would fetch from the server
+      // For demo, we'll check if we already have it in the response
+      if (section?.standard_id === standardId) {
+        const response = await axios.get(`/api/standards-api/standards/${standardId}`);
+        return response.data;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching standard info:', error);
+      return null;
     }
   };
 
   const addNote = async () => {
-    if (!sectionId || !newNoteText.trim()) return;
+    if (!section || !newNoteText.trim()) return;
     
     try {
+      // In a real app, this would be a server API call
+      // For demo purposes, use localStorage
+      const allNotes = JSON.parse(localStorage.getItem('standardNotes') || '[]');
+      
       const newNote: NoteData = {
-        id: Date.now(), // In a real app, this would be assigned by the server
+        id: Date.now(), // Generate a unique ID
         user_id: currentUserId,
-        section_id: sectionId,
+        section_id: section.id,
         note_text: newNoteText.trim(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
       
-      // In a real app, this would be a server API call
-      // const response = await axios.post('/api/standards-api/notes', newNote);
-      // const addedNote = response.data;
+      allNotes.push(newNote);
+      localStorage.setItem('standardNotes', JSON.stringify(allNotes));
       
-      // For now, we'll simulate with localStorage
-      const allNotes = JSON.parse(localStorage.getItem('userSectionNotes') || '{}');
-      const sectionNotes = allNotes[sectionId] || [];
-      sectionNotes.unshift(newNote);
-      allNotes[sectionId] = sectionNotes;
-      localStorage.setItem('userSectionNotes', JSON.stringify(allNotes));
-      
+      // Update the UI
       setUserNotes([newNote, ...userNotes]);
       setNewNoteText('');
       setIsAddingNote(false);
       showSnackbar('Note added successfully');
+      
+      // With a real API, it would be:
+      // const response = await axios.post(`/api/standards-api/users/${currentUserId}/sections/${section.id}/notes`, {
+      //   note_text: newNoteText.trim()
+      // });
+      // const newNote = response.data;
+      // setUserNotes([newNote, ...userNotes]);
     } catch (error) {
       console.error('Error adding note:', error);
-      showSnackbar('Failed to add note');
+      showSnackbar('Error adding note');
     }
   };
 
@@ -297,30 +351,47 @@ const SectionViewer: React.FC<{
     
     try {
       // In a real app, this would be a server API call
-      // await axios.put(`/api/standards-api/notes/${editingNoteId}`, {
-      //   note_text: editingNoteText.trim(),
-      //   user_id: currentUserId
-      // });
+      // For demo purposes, use localStorage
+      const allNotes = JSON.parse(localStorage.getItem('standardNotes') || '[]');
       
-      // For now, we'll simulate with localStorage
-      const allNotes = JSON.parse(localStorage.getItem('userSectionNotes') || '{}');
-      const sectionNotes = allNotes[sectionId as number] || [];
+      // Find and update the note
+      const updatedNotes = allNotes.map((note: NoteData) => {
+        if (note.id === editingNoteId) {
+          return {
+            ...note,
+            note_text: editingNoteText.trim(),
+            updated_at: new Date().toISOString()
+          };
+        }
+        return note;
+      });
       
-      const updatedNotes = sectionNotes.map((note: NoteData) => 
-        note.id === editingNoteId 
-          ? { ...note, note_text: editingNoteText.trim(), updated_at: new Date().toISOString() }
-          : note
-      );
+      localStorage.setItem('standardNotes', JSON.stringify(updatedNotes));
       
-      allNotes[sectionId as number] = updatedNotes;
-      localStorage.setItem('userSectionNotes', JSON.stringify(allNotes));
+      // Update the UI
+      const updatedUserNotes = userNotes.map(note => {
+        if (note.id === editingNoteId) {
+          return {
+            ...note,
+            note_text: editingNoteText.trim(),
+            updated_at: new Date().toISOString()
+          };
+        }
+        return note;
+      });
       
-      setUserNotes(updatedNotes);
+      setUserNotes(updatedUserNotes);
       setEditingNoteId(null);
+      setEditingNoteText('');
       showSnackbar('Note updated successfully');
+      
+      // With a real API, it would be:
+      // await axios.put(`/api/standards-api/users/${currentUserId}/notes/${editingNoteId}`, {
+      //   note_text: editingNoteText.trim()
+      // });
     } catch (error) {
       console.error('Error updating note:', error);
-      showSnackbar('Failed to update note');
+      showSnackbar('Error updating note');
     }
   };
 
@@ -330,28 +401,29 @@ const SectionViewer: React.FC<{
   };
 
   const deleteNote = async () => {
-    if (!noteToDelete || !sectionId) return;
+    if (!noteToDelete) return;
     
     try {
       // In a real app, this would be a server API call
-      // await axios.delete(`/api/standards-api/notes/${noteToDelete}/${currentUserId}`);
+      // For demo purposes, use localStorage
+      const allNotes = JSON.parse(localStorage.getItem('standardNotes') || '[]');
       
-      // For now, we'll simulate with localStorage
-      const allNotes = JSON.parse(localStorage.getItem('userSectionNotes') || '{}');
-      const sectionNotes = allNotes[sectionId] || [];
+      // Remove the note
+      const updatedNotes = allNotes.filter((note: NoteData) => note.id !== noteToDelete);
+      localStorage.setItem('standardNotes', JSON.stringify(updatedNotes));
       
-      const updatedNotes = sectionNotes.filter((note: NoteData) => note.id !== noteToDelete);
-      
-      allNotes[sectionId] = updatedNotes;
-      localStorage.setItem('userSectionNotes', JSON.stringify(allNotes));
-      
-      setUserNotes(updatedNotes);
+      // Update the UI
+      const updatedUserNotes = userNotes.filter(note => note.id !== noteToDelete);
+      setUserNotes(updatedUserNotes);
       setIsDeleteDialogOpen(false);
       setNoteToDelete(null);
       showSnackbar('Note deleted successfully');
+      
+      // With a real API, it would be:
+      // await axios.delete(`/api/standards-api/users/${currentUserId}/notes/${noteToDelete}`);
     } catch (error) {
       console.error('Error deleting note:', error);
-      showSnackbar('Failed to delete note');
+      showSnackbar('Error deleting note');
     }
   };
 
@@ -435,6 +507,181 @@ const SectionViewer: React.FC<{
     return new Date(dateString).toLocaleString();
   };
 
+  // Render Notes Tab
+  const renderNotesTab = () => {
+    return (
+      <Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6">My Notes</Typography>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            startIcon={<NoteAddIcon />}
+            onClick={() => setIsAddingNote(true)}
+            disabled={isAddingNote}
+          >
+            Add Note
+          </Button>
+        </Box>
+        
+        {isAddingNote && (
+          <Paper sx={{ p: 2, mb: 3, bgcolor: 'background.default' }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Add a New Note
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              rows={4}
+              placeholder="Enter your notes here..."
+              value={newNoteText}
+              onChange={(e) => setNewNoteText(e.target.value)}
+              sx={{ mb: 2 }}
+            />
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+              <Button 
+                variant="outlined" 
+                onClick={() => {
+                  setIsAddingNote(false);
+                  setNewNoteText('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="contained" 
+                color="primary" 
+                onClick={addNote}
+                disabled={!newNoteText.trim()}
+              >
+                Save Note
+              </Button>
+            </Box>
+          </Paper>
+        )}
+        
+        {userNotes.length === 0 ? (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            You haven't added any notes for this section yet. Click "Add Note" to create your first note.
+          </Alert>
+        ) : (
+          <Box>
+            {userNotes.map((note) => (
+              <Paper 
+                key={note.id} 
+                sx={{ 
+                  p: 2, 
+                  mb: 2, 
+                  bgcolor: editingNoteId === note.id ? 'action.hover' : 'background.paper',
+                  borderLeft: '4px solid',
+                  borderColor: 'primary.main'
+                }}
+              >
+                {editingNoteId === note.id ? (
+                  <>
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={4}
+                      value={editingNoteText}
+                      onChange={(e) => setEditingNoteText(e.target.value)}
+                      sx={{ mb: 2 }}
+                      autoFocus
+                    />
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                      <Button 
+                        variant="outlined" 
+                        onClick={() => {
+                          setEditingNoteId(null);
+                          setEditingNoteText('');
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        variant="contained" 
+                        color="primary" 
+                        onClick={updateNote}
+                        disabled={!editingNoteText.trim()}
+                      >
+                        Update Note
+                      </Button>
+                    </Box>
+                  </>
+                ) : (
+                  <>
+                    <Typography 
+                      variant="body1" 
+                      paragraph 
+                      sx={{ 
+                        whiteSpace: 'pre-wrap', 
+                        wordBreak: 'break-word'
+                      }}
+                    >
+                      {note.note_text}
+                    </Typography>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center',
+                      mt: 1,
+                      pt: 1,
+                      borderTop: '1px solid',
+                      borderColor: 'divider'
+                    }}>
+                      <Typography variant="caption" color="text.secondary">
+                        Last updated: {formatDate(note.updated_at)}
+                      </Typography>
+                      <Box>
+                        <Tooltip title="Edit Note">
+                          <IconButton 
+                            size="small" 
+                            color="primary"
+                            onClick={() => startEditingNote(note)}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete Note">
+                          <IconButton 
+                            size="small" 
+                            color="error"
+                            onClick={() => openDeleteDialog(note.id)}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </Box>
+                  </>
+                )}
+              </Paper>
+            ))}
+          </Box>
+        )}
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog
+          open={isDeleteDialogOpen}
+          onClose={() => setIsDeleteDialogOpen(false)}
+        >
+          <DialogTitle>Delete Note</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Are you sure you want to delete this note? This action cannot be undone.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+            <Button onClick={deleteNote} color="error" autoFocus>
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
+    );
+  };
+
   if (!sectionId) {
     return (
       <Paper sx={{ p: 4, height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -472,317 +719,235 @@ const SectionViewer: React.FC<{
   }
 
   return (
-    <Paper sx={{ p: 3, height: '100%', overflow: 'auto' }} id="section-viewer">
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="h5" component="h2">
-          {section.section_number} {section.title}
-        </Typography>
-        <Box>
-          <Tooltip title={bookmarked ? "Remove bookmark" : "Bookmark this section"}>
-            <IconButton onClick={toggleBookmark}>
-              {bookmarked ? <BookmarkIcon color="primary" /> : <BookmarkBorderIcon />}
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Copy link to this section">
-            <IconButton onClick={copyLinkToClipboard}>
-              <LinkIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Print this section">
-            <IconButton onClick={printSection}>
-              <PrintIcon />
-            </IconButton>
-          </Tooltip>
+    <Box>
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4 }}>
+          <CircularProgress />
         </Box>
-      </Box>
-      
-      <Divider sx={{ mb: 2 }} />
-      
-      <Tabs value={tabValue} onChange={handleTabChange} variant="scrollable" scrollButtons="auto">
-        <Tab label="Content" id="section-tab-0" aria-controls="section-tabpanel-0" />
-        {section.tables && section.tables.length > 0 && (
-          <Tab label={`Tables (${section.tables.length})`} id="section-tab-1" aria-controls="section-tabpanel-1" />
-        )}
-        {section.figures && section.figures.length > 0 && (
-          <Tab label={`Figures (${section.figures.length})`} id="section-tab-2" aria-controls="section-tabpanel-2" />
-        )}
-        {section.compliance_requirements && section.compliance_requirements.length > 0 && (
-          <Tab label="Compliance" id="section-tab-3" aria-controls="section-tabpanel-3" />
-        )}
-        {section.educational_resources && section.educational_resources.length > 0 && (
-          <Tab label="Resources" id="section-tab-4" aria-controls="section-tabpanel-4" />
-        )}
-        <Tab label={`Notes (${userNotes.length})`} id="section-tab-5" aria-controls="section-tabpanel-5" />
-      </Tabs>
-      
-      <TabPanel value={tabValue} index={0}>
-        <Typography component="div">
-          {section.content ? (
-            <div dangerouslySetInnerHTML={{ __html: section.content }} />
-          ) : (
-            <Typography color="text.secondary">No content available for this section.</Typography>
-          )}
-        </Typography>
-      </TabPanel>
-      
-      {section.tables && section.tables.length > 0 && (
-        <TabPanel value={tabValue} index={1}>
-          {section.tables.map(table => (
-            <Box key={table.id} sx={{ mb: 4 }}>
-              <Typography variant="h6" gutterBottom>
-                Table {table.table_number}: {table.title}
+      ) : error ? (
+        <Alert severity="error">{error}</Alert>
+      ) : section ? (
+        <Box>
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography variant="h5" component="h2" gutterBottom>
+                {section.section_number && (
+                  <Box component="span" sx={{ fontWeight: 'bold', mr: 1 }}>
+                    {section.section_number}
+                  </Box>
+                )}
+                {section.title}
               </Typography>
-              {renderTableContent(table.content)}
-              {table.notes && (
-                <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
-                  Note: {table.notes}
-                </Typography>
-              )}
             </Box>
-          ))}
-        </TabPanel>
-      )}
-      
-      {section.figures && section.figures.length > 0 && (
-        <TabPanel value={tabValue} index={2}>
-          <Grid container spacing={3}>
-            {section.figures.map(figure => (
-              <Grid item xs={12} md={6} key={figure.id}>
-                <Card>
+            <Box>
+              <Tooltip title={bookmarked ? "Remove Bookmark" : "Bookmark This Section"}>
+                <IconButton onClick={toggleBookmark} color={bookmarked ? "primary" : "default"}>
+                  {bookmarked ? <BookmarkIcon /> : <BookmarkBorderIcon />}
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Print Section">
+                <IconButton onClick={printSection}>
+                  <PrintIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Copy Link">
+                <IconButton onClick={copyLinkToClipboard}>
+                  <LinkIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Box>
+          
+          <Tabs value={tabValue} onChange={handleTabChange} variant="scrollable" scrollButtons="auto">
+            <Tab label="Content" icon={<InfoIcon fontSize="small" />} id="section-tab-0" aria-controls="section-tabpanel-0" />
+            {section.tables && section.tables.length > 0 && (
+              <Tab label={`Tables (${section.tables.length})`} id="section-tab-1" aria-controls="section-tabpanel-1" />
+            )}
+            {section.figures && section.figures.length > 0 && (
+              <Tab label={`Figures (${section.figures.length})`} id="section-tab-2" aria-controls="section-tabpanel-2" />
+            )}
+            {section.compliance_requirements && section.compliance_requirements.length > 0 && (
+              <Tab label="Compliance" id="section-tab-3" aria-controls="section-tabpanel-3" />
+            )}
+            {section.educational_resources && section.educational_resources.length > 0 && (
+              <Tab label="Resources" icon={<SchoolIcon fontSize="small" />} id="section-tab-4" aria-controls="section-tabpanel-4" />
+            )}
+            <Tab label={`Notes (${userNotes.length})`} icon={<NotesIcon fontSize="small" />} id="section-tab-5" aria-controls="section-tabpanel-5" />
+          </Tabs>
+          
+          <TabPanel value={tabValue} index={0}>
+            <Box sx={{ whiteSpace: 'pre-wrap' }}>
+              <Typography variant="body1" dangerouslySetInnerHTML={{ __html: section.content }} />
+            </Box>
+          </TabPanel>
+          
+          <TabPanel value={tabValue} index={1}>
+            {section.tables && section.tables.length > 0 ? (
+              section.tables.map((table) => (
+                <Box key={table.id} sx={{ mb: 4 }}>
+                  <Typography variant="h6" gutterBottom>
+                    {table.table_number}: {table.title}
+                  </Typography>
+                  {renderTableContent(table.content)}
+                  {table.notes && (
+                    <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
+                      Note: {table.notes}
+                    </Typography>
+                  )}
+                </Box>
+              ))
+            ) : (
+              <Typography>No tables available for this section.</Typography>
+            )}
+          </TabPanel>
+          
+          <TabPanel value={tabValue} index={2}>
+            {section.figures && section.figures.length > 0 ? (
+              section.figures.map((figure) => (
+                <Card key={figure.id} sx={{ mb: 4 }}>
                   <CardMedia
                     component="img"
-                    image={figure.image_path}
+                    image={figure.image_path || '/placeholder-image.png'}
                     alt={figure.title}
-                    sx={{ maxHeight: 300, objectFit: 'contain' }}
+                    sx={{ maxHeight: 400, objectFit: 'contain' }}
                   />
                   <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      Figure {figure.figure_number}: {figure.title}
+                    <Typography variant="subtitle1" gutterBottom>
+                      {figure.figure_number}: {figure.title}
                     </Typography>
                     {figure.caption && (
-                      <Typography variant="body2">
+                      <Typography variant="body2" color="text.secondary">
                         {figure.caption}
                       </Typography>
                     )}
                   </CardContent>
                 </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </TabPanel>
-      )}
-      
-      {section.compliance_requirements && section.compliance_requirements.length > 0 && (
-        <TabPanel value={tabValue} index={3}>
-          <List>
-            {section.compliance_requirements.map(requirement => (
-              <Box key={requirement.id} sx={{ mb: 2 }}>
-                <Alert 
-                  severity={getSeverityColor(requirement.severity) as any}
-                  icon={<InfoIcon />}
-                >
-                  <Box sx={{ mb: 1 }}>
-                    <Typography variant="subtitle1" component="div" sx={{ fontWeight: 'bold' }}>
-                      {requirement.requirement_type.toUpperCase()} Requirement
-                    </Typography>
-                  </Box>
-                  <Typography variant="body1">{requirement.description}</Typography>
-                  {requirement.verification_method && (
-                    <Typography variant="body2" sx={{ mt: 1 }}>
-                      <strong>Verification:</strong> {requirement.verification_method}
-                    </Typography>
-                  )}
-                </Alert>
-              </Box>
-            ))}
-          </List>
-        </TabPanel>
-      )}
-      
-      {section.educational_resources && section.educational_resources.length > 0 && (
-        <TabPanel value={tabValue} index={4}>
-          <List>
-            {section.educational_resources.map(resource => (
-              <ListItem
-                key={resource.id}
-                sx={{ 
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 1,
-                  mb: 2
-                }}
-              >
-                <ListItemIcon>
-                  <SchoolIcon />
-                </ListItemIcon>
-                <ListItemText
-                  primary={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {resource.title}
-                      {resource.tags && resource.tags.split(',').map(tag => (
-                        <Chip key={tag} label={tag.trim()} size="small" />
-                      ))}
-                    </Box>
-                  }
-                  secondary={
-                    <>
-                      <Typography component="span" variant="body2" color="text.primary">
-                        {resource.resource_type.charAt(0).toUpperCase() + resource.resource_type.slice(1)}
-                        {resource.difficulty && ` • ${resource.difficulty.charAt(0).toUpperCase() + resource.difficulty.slice(1)} level`}
-                        {resource.duration && ` • ${resource.duration}`}
+              ))
+            ) : (
+              <Typography>No figures available for this section.</Typography>
+            )}
+          </TabPanel>
+          
+          <TabPanel value={tabValue} index={3}>
+            {section.compliance_requirements && section.compliance_requirements.length > 0 ? (
+              <List>
+                {section.compliance_requirements.map((req) => (
+                  <ListItem key={req.id} sx={{ mb: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+                    <ListItemIcon>
+                      <Chip 
+                        label={req.requirement_type} 
+                        color={req.requirement_type === 'mandatory' ? 'error' : req.requirement_type === 'prescriptive' ? 'warning' : 'info'}
+                        size="small"
+                      />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={req.description}
+                      secondary={
+                        <>
+                          {req.verification_method && (
+                            <Typography variant="body2" component="span">
+                              <strong>Verification:</strong> {req.verification_method}
+                            </Typography>
+                          )}
+                          <Box sx={{ mt: 1 }}>
+                            <Chip
+                              size="small"
+                              label={req.severity}
+                              sx={{ 
+                                bgcolor: getSeverityColor(req.severity),
+                                color: 'white',
+                                fontSize: '0.75rem'
+                              }}
+                            />
+                          </Box>
+                        </>
+                      }
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            ) : (
+              <Typography>No compliance requirements defined for this section.</Typography>
+            )}
+          </TabPanel>
+          
+          <TabPanel value={tabValue} index={4}>
+            {section.educational_resources && section.educational_resources.length > 0 ? (
+              <Grid container spacing={3}>
+                {section.educational_resources.map((resource) => (
+                  <Grid item xs={12} md={6} key={resource.id}>
+                    <Paper sx={{ p: 2, height: '100%' }}>
+                      <Typography variant="h6" gutterBottom>
+                        {resource.title}
                       </Typography>
                       {resource.description && (
-                        <Typography component="p" variant="body2">
+                        <Typography variant="body2" paragraph>
                           {resource.description}
                         </Typography>
                       )}
-                    </>
-                  }
-                />
-                {resource.url && (
-                  <Box>
-                    <Button 
-                      variant="outlined" 
-                      size="small"
-                      href={resource.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      endIcon={<DownloadIcon />}
-                      sx={{ mr: 1 }}
-                    >
-                      Open
-                    </Button>
-                  </Box>
-                )}
-              </ListItem>
-            ))}
-          </List>
-        </TabPanel>
-      )}
-      
-      <TabPanel value={tabValue} index={5}>
-        <Box sx={{ mb: 3 }}>
-          {isAddingNote ? (
-            <Box sx={{ mb: 2 }}>
-              <TextField
-                fullWidth
-                multiline
-                rows={4}
-                label="New note"
-                value={newNoteText}
-                onChange={(e) => setNewNoteText(e.target.value)}
-                variant="outlined"
-                placeholder="Enter your notes about this section..."
-              />
-              <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                <Button onClick={() => setIsAddingNote(false)}>Cancel</Button>
-                <Button 
-                  variant="contained" 
-                  onClick={addNote}
-                  disabled={!newNoteText.trim()}
-                  startIcon={<SaveIcon />}
-                >
-                  Save
-                </Button>
-              </Box>
-            </Box>
-          ) : (
-            <Button 
-              variant="outlined" 
-              onClick={() => setIsAddingNote(true)}
-              startIcon={<NoteAddIcon />}
-            >
-              Add Note
-            </Button>
-          )}
-        </Box>
-        
-        {userNotes.length > 0 ? (
-          <List>
-            {userNotes.map(note => (
-              <Paper key={note.id} sx={{ p: 2, mb: 2 }}>
-                {editingNoteId === note.id ? (
-                  <Box>
-                    <TextField
-                      fullWidth
-                      multiline
-                      rows={4}
-                      label="Edit note"
-                      value={editingNoteText}
-                      onChange={(e) => setEditingNoteText(e.target.value)}
-                      variant="outlined"
-                    />
-                    <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                      <Button onClick={() => setEditingNoteId(null)}>Cancel</Button>
-                      <Button 
-                        variant="contained" 
-                        onClick={updateNote}
-                        disabled={!editingNoteText.trim()}
-                      >
-                        Update
-                      </Button>
-                    </Box>
-                  </Box>
-                ) : (
-                  <>
-                    <Typography variant="body1" sx={{ mb: 1 }}>
-                      {note.note_text}
-                    </Typography>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="caption" color="text.secondary">
-                        {formatDate(note.updated_at)}
-                      </Typography>
-                      <Box>
-                        <IconButton size="small" onClick={() => startEditingNote(note)}>
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" onClick={() => openDeleteDialog(note.id)}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box>
+                          <Chip 
+                            size="small" 
+                            label={resource.resource_type.replace('_', ' ')} 
+                            sx={{ mr: 1, textTransform: 'capitalize' }}
+                          />
+                          {resource.difficulty && (
+                            <Chip 
+                              size="small" 
+                              label={resource.difficulty} 
+                              color={
+                                resource.difficulty === 'beginner' ? 'success' :
+                                resource.difficulty === 'intermediate' ? 'warning' : 'error'
+                              }
+                            />
+                          )}
+                        </Box>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          endIcon={<DownloadIcon />}
+                          href={resource.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Open
+                        </Button>
                       </Box>
-                    </Box>
-                  </>
-                )}
-              </Paper>
-            ))}
-          </List>
-        ) : (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <NotesIcon sx={{ fontSize: 40, color: 'text.secondary', mb: 1 }} />
-            <Typography variant="body1" color="text.secondary">
-              You don't have any notes for this section yet.
-            </Typography>
-          </Box>
-        )}
-      </TabPanel>
-      
-      {/* Confirmation dialog for note deletion */}
-      <Dialog
-        open={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
-      >
-        <DialogTitle>Delete Note</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete this note? This action cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
-          <Button onClick={deleteNote} color="primary" variant="contained">
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-      
-      {/* Snackbar for notifications */}
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={4000}
-        onClose={handleCloseSnackbar}
-        message={snackbarMessage}
-      />
-    </Paper>
+                      {resource.duration && (
+                        <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                          Duration: {resource.duration}
+                        </Typography>
+                      )}
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            ) : (
+              <Typography>No educational resources available for this section.</Typography>
+            )}
+          </TabPanel>
+          
+          <TabPanel value={tabValue} index={5}>
+            {renderNotesTab()}
+          </TabPanel>
+          
+          {/* Snackbar for notifications */}
+          <Snackbar 
+            open={snackbarOpen} 
+            autoHideDuration={3000} 
+            onClose={handleCloseSnackbar}
+            message={snackbarMessage}
+          />
+        </Box>
+      ) : (
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Typography variant="h6" color="text.secondary">
+            Select a section to view its details
+          </Typography>
+        </Box>
+      )}
+    </Box>
   );
 };
 

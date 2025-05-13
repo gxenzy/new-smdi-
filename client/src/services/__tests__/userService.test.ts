@@ -31,7 +31,7 @@ describe('userService', () => {
       const result = await userService.getAllUsers();
 
       // Verify
-      expect(mockedAxios.get).toHaveBeenCalledWith('http://localhost:3001/api/users');
+      expect(mockedAxios.get).toHaveBeenCalledWith('http://localhost:8000/api/users');
       expect(result).toEqual(mockUsers);
     });
 
@@ -46,7 +46,7 @@ describe('userService', () => {
 
       // Execute and verify
       await expect(userService.getAllUsers()).rejects.toThrow('Failed to fetch users');
-      expect(mockedAxios.get).toHaveBeenCalledWith('http://localhost:3001/api/users');
+      expect(mockedAxios.get).toHaveBeenCalledWith('http://localhost:8000/api/users');
     });
 
     it('should handle network errors', async () => {
@@ -55,7 +55,7 @@ describe('userService', () => {
 
       // Execute and verify
       await expect(userService.getAllUsers()).rejects.toThrow('Network error');
-      expect(mockedAxios.get).toHaveBeenCalledWith('http://localhost:3001/api/users');
+      expect(mockedAxios.get).toHaveBeenCalledWith('http://localhost:8000/api/users');
     });
   });
 
@@ -82,7 +82,7 @@ describe('userService', () => {
       const result = await userService.getUserById(1);
 
       // Verify
-      expect(mockedAxios.get).toHaveBeenCalledWith('http://localhost:3001/api/users/1');
+      expect(mockedAxios.get).toHaveBeenCalledWith('http://localhost:8000/api/users/1');
       expect(result).toEqual(mockUser);
     });
 
@@ -97,7 +97,7 @@ describe('userService', () => {
 
       // Execute and verify
       await expect(userService.getUserById(999)).rejects.toThrow('User not found');
-      expect(mockedAxios.get).toHaveBeenCalledWith('http://localhost:3001/api/users/999');
+      expect(mockedAxios.get).toHaveBeenCalledWith('http://localhost:8000/api/users/999');
     });
 
     it('should handle network errors when fetching by ID', async () => {
@@ -106,7 +106,7 @@ describe('userService', () => {
 
       // Execute and verify
       await expect(userService.getUserById(1)).rejects.toThrow('Network error');
-      expect(mockedAxios.get).toHaveBeenCalledWith('http://localhost:3001/api/users/1');
+      expect(mockedAxios.get).toHaveBeenCalledWith('http://localhost:8000/api/users/1');
     });
   });
 }); 

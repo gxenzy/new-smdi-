@@ -34,7 +34,10 @@ import {
   List,
   ListItem,
   ListItemText,
-  SelectChangeEvent
+  SelectChangeEvent,
+  Collapse,
+  Chip,
+  Stack
 } from '@mui/material';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import InfoIcon from '@mui/icons-material/Info';
@@ -44,10 +47,18 @@ import ElectricalServicesIcon from '@mui/icons-material/ElectricalServices';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import SavedCalculationsViewer from './SavedCalculationsViewer';
 import { saveCalculation } from './utils/storage';
 import { enqueueSnackbar } from 'notistack';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
+import StandardValueSelector from '../../../../components/StandardsReference/StandardValueSelector';
+import axios from 'axios';
+import { useSnackbar } from 'notistack';
+import HarmonicVisualization from './HarmonicVisualization';
 
 interface HarmonicDistortionCalculatorProps {
   onSave?: (data: HarmonicDistortionResult) => void;
@@ -392,6 +403,14 @@ function QuickStartGuideDialog({ open, onClose }: { open: boolean, onClose: () =
   );
 }
 
+// Add new interface for batch scenario
+interface BatchScenario {
+  id: string;
+  name: string;
+  inputs: HarmonicDistortionInputs;
+  results?: HarmonicDistortionResult;
+}
+
 const HarmonicDistortionCalculator: React.FC<HarmonicDistortionCalculatorProps> = ({ onSave, onExportPdf }): React.ReactElement => {
   // Default harmonics to measure (3rd, 5th, 7th, 11th, 13th)
   const defaultHarmonics = [
@@ -418,15 +437,21 @@ const HarmonicDistortionCalculator: React.FC<HarmonicDistortionCalculatorProps> 
   const [standardsInfo, setStandardsInfo] = useState<boolean>(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState<boolean>(false);
   const [calculationName, setCalculationName] = useState<string>('');
+  const [errorHelpOpen, setErrorHelpOpen] = useState<boolean>(false);
+  const [quickStartOpen, setQuickStartOpen] = useState<boolean>(false);
   
   // Validation state
   const [errors, setErrors] = useState<{[key: string]: string} & {general?: string}>({});
   
-  // Add new state for error help dialog
-  const [errorHelpOpen, setErrorHelpOpen] = useState<boolean>(false);
+  // Add new state variables for batch processing
+  const [batchScenarios, setBatchScenarios] = useState<BatchScenario[]>([]);
+  const [showBatchPanel, setShowBatchPanel] = useState(false);
+  const [processingBatch, setProcessingBatch] = useState(false);
+  const [batchComparisonOpen, setBatchComparisonOpen] = useState(false);
+  const [showVisualization, setShowVisualization] = useState(false);
   
-  // Add new state for quick start guide
-  const [quickStartOpen, setQuickStartOpen] = useState<boolean>(false);
+  // Get snackbar from hook at component level
+  const snackbar = useSnackbar();
   
   // Handle input changes
   const handleInputChange = (field: keyof HarmonicDistortionInputs) => (
@@ -699,21 +724,79 @@ const HarmonicDistortionCalculator: React.FC<HarmonicDistortionCalculatorProps> 
     setErrors({});
   };
   
-  // Save calculation
+  // Handle save 
   const handleSave = () => {
     if (results) {
-      const id = saveCalculation('harmonic', calculationName || `Harmonic Distortion - ${new Date().toLocaleString()}`, results);
-      if (id) {
-        setSaveDialogOpen(false);
-        setCalculationName('');
+      try {
+        const calculationData = {
+          inputs,
+          results,
+          timestamp: Date.now()
+        };
+        
+        // Save to localStorage
+        const id = saveCalculation('harmonic-distortion', calculationName || `Harmonic Distortion Calculation - ${new Date().toLocaleString()}`, calculationData);
+        
+        if (id) {
+          snackbar.enqueueSnackbar('Harmonic distortion calculation saved successfully', { variant: 'success' });
+          setSaveDialogOpen(false);
+          setCalculationName('');
+          
+          // Log success for debugging
+          console.log('Successfully saved harmonic calculation with ID:', id);
+          console.log('Saved data:', calculationData);
+        } else {
+          snackbar.enqueueSnackbar('Error saving calculation: No ID returned', { variant: 'error' });
+        }
+      } catch (error) {
+        console.error('Error saving calculation:', error);
+        snackbar.enqueueSnackbar(`Error saving calculation: ${error instanceof Error ? error.message : 'Unknown error'}`, { 
+          variant: 'error' 
+        });
       }
+    } else {
+      snackbar.enqueueSnackbar('Please calculate results before saving', { variant: 'warning' });
     }
   };
   
   // Handle loading a saved calculation
-  const handleLoadCalculation = (data: HarmonicDistortionResult) => {
-    setResults(data);
-    setActiveTab(2);
+  const handleLoadCalculation = (data: any) => {
+    try {
+      console.log("Loading harmonic distortion calculation data:", data);
+      
+      // Extract the correct data structure
+      let resultsData = data;
+      
+      // Check if data has a nested structure and extract the results
+      if (data.data && data.data.results) {
+        resultsData = data.data.results;
+        
+        // If there are inputs, restore them too
+        if (data.data.inputs) {
+          setInputs(data.data.inputs);
+        }
+      } else if (data.results) {
+        resultsData = data.results;
+        
+        // If there are inputs, restore them too
+        if (data.inputs) {
+          setInputs(data.inputs);
+        }
+      }
+      
+      // Validate that we have the required properties
+      if (!resultsData.thdVoltage && typeof resultsData.thdVoltage !== 'number') {
+        throw new Error("Invalid calculation data format");
+      }
+      
+      setResults(resultsData);
+      setActiveTab(2);
+    } catch (error) {
+      console.error("Error loading calculation:", error);
+      enqueueSnackbar(`Error loading calculation: ${error instanceof Error ? error.message : 'Invalid data format'}`, {
+        variant: 'error'
+      });
+    }
   };
 
   // Determine voltage distortion limit based on system voltage
@@ -744,29 +827,337 @@ const HarmonicDistortionCalculator: React.FC<HarmonicDistortionCalculatorProps> 
     }
   };
   
+  // Add function to create a new batch scenario from current inputs
+  const addToBatchScenarios = () => {
+    const isValid = validateInputs();
+    
+    if (!isValid) {
+      enqueueSnackbar('Please fix input errors before adding to batch scenarios', { variant: 'error' });
+      return;
+    }
+    
+    const newScenario: BatchScenario = {
+      id: `scenario_${Date.now()}`,
+      name: `Scenario ${batchScenarios.length + 1}`,
+      inputs: {
+        systemVoltage: inputs.systemVoltage, 
+        fundamentalVoltage: inputs.fundamentalVoltage, 
+        fundamentalCurrent: inputs.fundamentalCurrent,
+        shortCircuitRatio: inputs.shortCircuitRatio,
+        systemType: inputs.systemType,
+        harmonics: [...inputs.harmonics]
+      }
+    };
+    
+    setBatchScenarios([...batchScenarios, newScenario]);
+    setShowBatchPanel(true);
+    enqueueSnackbar('Scenario added to batch processing', { variant: 'success' });
+  };
+
+  // Add function to rename a batch scenario
+  const renameBatchScenario = (id: string, newName: string) => {
+    setBatchScenarios(
+      batchScenarios.map(scenario => 
+        scenario.id === id ? { ...scenario, name: newName } : scenario
+      )
+    );
+  };
+
+  // Add function to remove a batch scenario
+  const removeBatchScenario = (id: string) => {
+    setBatchScenarios(batchScenarios.filter(scenario => scenario.id !== id));
+    
+    if (batchScenarios.length <= 1) {
+      setShowBatchPanel(false);
+    }
+  };
+
+  // Add function to process all batch scenarios
+  const processBatchScenarios = async () => {
+    setProcessingBatch(true);
+    
+    const processedScenarios = await Promise.all(
+      batchScenarios.map(async (scenario) => {
+        const result = calculateHarmonicDistortionFromInputs(scenario.inputs);
+        return {
+          ...scenario,
+          results: result
+        };
+      })
+    );
+    
+    setBatchScenarios(processedScenarios);
+    setProcessingBatch(false);
+    enqueueSnackbar('Batch processing complete', { variant: 'success' });
+  };
+
+  // Add function to save all batch scenarios
+  const saveBatchScenarios = () => {
+    batchScenarios.forEach((scenario) => {
+      if (scenario.results) {
+        saveCalculation('harmonic-distortion', `Batch - ${scenario.name}`, scenario.results);
+      }
+    });
+    
+    enqueueSnackbar(`Saved ${batchScenarios.filter(s => s.results).length} batch calculations`, { 
+      variant: 'success' 
+    });
+  };
+
+  // Add function to calculate results from a specific input set
+  const calculateHarmonicDistortionFromInputs = (inputs: HarmonicDistortionInputs): HarmonicDistortionResult => {
+    const systemVoltageVal = parseFloat(inputs.systemVoltage);
+    const fundamentalVoltageVal = parseFloat(inputs.fundamentalVoltage);
+    const fundamentalCurrentVal = parseFloat(inputs.fundamentalCurrent);
+    const shortCircuitRatioVal = parseFloat(inputs.shortCircuitRatio);
+    
+    // Calculate THD for voltage
+    let sumOfSquaresVoltage = 0;
+    
+    // Calculate THD for current
+    let sumOfSquaresCurrent = 0;
+    
+    const harmonicResults = inputs.harmonics.map(h => {
+      const order = h.order;
+      const voltageVal = typeof h.voltage === 'string' ? parseFloat(h.voltage) : h.voltage;
+      const currentVal = typeof h.current === 'string' ? parseFloat(h.current) : h.current;
+      
+      // Add to sum of squares
+      sumOfSquaresVoltage += Math.pow(voltageVal, 2);
+      sumOfSquaresCurrent += Math.pow(currentVal, 2);
+      
+      // Determine voltage limit based on system voltage
+      const voltageLimit = getVoltageDistortionLimit(systemVoltageVal);
+      
+      // Determine current limit based on harmonic order and Isc/IL ratio
+      const currentLimit = getCurrentDistortionLimit(order, shortCircuitRatioVal, inputs.systemType);
+      
+      // Calculate individual distortion percentages
+      const voltageDistortion = (voltageVal / fundamentalVoltageVal) * 100;
+      const currentDistortion = (currentVal / fundamentalCurrentVal) * 100;
+      
+      // Check compliance
+      const voltageCompliance = voltageDistortion <= voltageLimit ? 'compliant' as const : 'non-compliant' as const;
+      const currentCompliance = currentDistortion <= currentLimit ? 'compliant' as const : 'non-compliant' as const;
+      
+      return {
+        order,
+        voltageDistortion,
+        currentDistortion,
+        voltageLimit,
+        currentLimit,
+        voltageCompliance,
+        currentCompliance
+      };
+    });
+    
+    // Calculate THD
+    const thdVoltage = Math.sqrt(sumOfSquaresVoltage) / fundamentalVoltageVal * 100;
+    const thdCurrent = Math.sqrt(sumOfSquaresCurrent) / fundamentalCurrentVal * 100;
+    
+    // Determine the overall voltage limit
+    const voltageLimit = getVoltageDistortionLimit(systemVoltageVal);
+    
+    // Get worst-case current limit for recommendation purposes
+    const worstCurrentLimit = harmonicResults.length > 0 ? 
+      Math.min(...harmonicResults.map(h => h.currentLimit)) : 5.0;
+    
+    // Generate recommendations
+    const recommendations = generateRecommendations(thdVoltage, thdCurrent, voltageLimit, worstCurrentLimit);
+    
+    // Determine overall compliance
+    const voltageCompliant = thdVoltage <= voltageLimit;
+    const currentCompliant = harmonicResults.every(h => h.currentCompliance === 'compliant');
+    const overallCompliance = voltageCompliant && currentCompliant ? 'compliant' as const : 'non-compliant' as const;
+    
+    return {
+      thdVoltage,
+      thdCurrent,
+      systemVoltage: systemVoltageVal,
+      fundamentalVoltage: fundamentalVoltageVal,
+      fundamentalCurrent: fundamentalCurrentVal,
+      shortCircuitRatio: shortCircuitRatioVal,
+      systemType: inputs.systemType,
+      individualHarmonics: harmonicResults,
+      overallCompliance,
+      recommendations,
+      timestamp: Date.now()
+    };
+  };
+
+  // Add function to load a batch scenario into the current calculator
+  const loadBatchScenario = (scenario: BatchScenario) => {
+    setInputs({
+      systemVoltage: scenario.inputs.systemVoltage,
+      fundamentalVoltage: scenario.inputs.fundamentalVoltage,
+      fundamentalCurrent: scenario.inputs.fundamentalCurrent,
+      shortCircuitRatio: scenario.inputs.shortCircuitRatio,
+      systemType: scenario.inputs.systemType,
+      harmonics: [...scenario.inputs.harmonics]
+    });
+    setActiveTab(0); // Switch to the input tab
+    
+    enqueueSnackbar(`Loaded scenario "${scenario.name}" into calculator`, { variant: 'info' });
+  };
+
+  // Add function to get current distortion limit from IEEE 519-2014 based on order and ratio
+  const getCurrentDistortionLimit = (order: number, ratio: number, systemType: 'general' | 'special'): number => {
+    // Get the appropriate limit table based on system type
+    const limitsTable = currentLimits[systemType];
+    
+    // Find the appropriate row based on the Isc/IL ratio
+    let limitRow = limitsTable[limitsTable.length - 1]; // Default to highest ratio
+    
+    for (let i = 0; i < limitsTable.length; i++) {
+      if (ratio <= limitsTable[i].ratio) {
+        limitRow = limitsTable[i];
+        break;
+      }
+    }
+    
+    // Determine the limit based on the harmonic order
+    let limitIndex = 0;
+    if (order >= 11 && order < 17) limitIndex = 1;
+    else if (order >= 17 && order < 23) limitIndex = 2;
+    else if (order >= 23 && order < 35) limitIndex = 3;
+    else if (order >= 35) limitIndex = 4;
+    
+    return limitRow.limits[limitIndex];
+  };
+
+  // Add BatchComparisonDialog component
+  const BatchComparisonDialog = () => {
+    return (
+      <Dialog 
+        open={batchComparisonOpen} 
+        onClose={() => setBatchComparisonOpen(false)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>Batch Calculation Comparison</DialogTitle>
+        <DialogContent dividers>
+          {batchScenarios.filter(s => s.results).length === 0 ? (
+            <Alert severity="info">
+              Process batch calculations first to see comparison results.
+            </Alert>
+          ) : (
+            <>
+              <Typography variant="h6" gutterBottom>THD Comparison</Typography>
+              <TableContainer component={Paper} variant="outlined">
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Scenario</TableCell>
+                      <TableCell>Voltage THD (%)</TableCell>
+                      <TableCell>Current THD (%)</TableCell>
+                      <TableCell>System Voltage (V)</TableCell>
+                      <TableCell>Compliance Status</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {batchScenarios
+                      .filter(scenario => scenario.results)
+                      .map((scenario) => (
+                        <TableRow key={scenario.id}>
+                          <TableCell>{scenario.name}</TableCell>
+                          <TableCell>
+                            {scenario.results?.thdVoltage.toFixed(2)}%
+                          </TableCell>
+                          <TableCell>
+                            {scenario.results?.thdCurrent.toFixed(2)}%
+                          </TableCell>
+                          <TableCell>
+                            {scenario.results?.systemVoltage.toFixed(1)} V
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={scenario.results?.overallCompliance === 'compliant' ? 'Compliant' : 'Non-compliant'} 
+                              color={scenario.results?.overallCompliance === 'compliant' ? 'success' : 'error'} 
+                              size="small" 
+                            />
+                          </TableCell>
+                        </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              
+              <Typography variant="h6" sx={{ mt: 3 }} gutterBottom>Recommendation Summary</Typography>
+              <TableContainer component={Paper} variant="outlined">
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Scenario</TableCell>
+                      <TableCell>Recommendations</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {batchScenarios
+                      .filter(scenario => scenario.results)
+                      .map((scenario) => (
+                        <TableRow key={`${scenario.id}-rec`}>
+                          <TableCell>{scenario.name}</TableCell>
+                          <TableCell>
+                            <List dense>
+                              {scenario.results?.recommendations.map((rec, idx) => (
+                                <ListItem key={idx}>
+                                  <ListItemText primary={rec} />
+                                </ListItem>
+                              ))}
+                            </List>
+                          </TableCell>
+                        </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBatchComparisonOpen(false)}>Close</Button>
+          {batchScenarios.filter(s => s.results).length > 0 && (
+            <Button 
+              onClick={saveBatchScenarios}
+              startIcon={<SaveIcon />}
+              variant="contained"
+            >
+              Save All Results
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+    );
+  };
+
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5" component="h2">
           Harmonic Distortion Calculator (IEEE 519-2014)
         </Typography>
-        <Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Tooltip title="Quick Start Guide">
-            <IconButton onClick={() => setQuickStartOpen(true)} sx={{ mr: 1 }}>
+            <IconButton onClick={() => setQuickStartOpen(true)}>
               <HelpOutlineIcon />
             </IconButton>
           </Tooltip>
           {results && (
             <Tooltip title="Save calculation">
-              <IconButton onClick={() => setSaveDialogOpen(true)} sx={{ mr: 1 }}>
+              <IconButton onClick={() => setSaveDialogOpen(true)}>
                 <SaveIcon />
               </IconButton>
             </Tooltip>
           )}
           <SavedCalculationsViewer 
-            calculationType="harmonic"
+            calculationType="harmonic-distortion"
             onLoadCalculation={handleLoadCalculation}
           />
+          <Tooltip title="Learn more about IEEE 519-2014 Harmonic Distortion Standards">
+            <IconButton onClick={() => window.location.href = '/energy-audit/standards-reference?standard=IEEE-519&section=5.1'}>
+              <MenuBookIcon />
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Learn more about IEEE 519-2014 Standards">
             <IconButton onClick={() => setStandardsInfo(!standardsInfo)}>
               <InfoIcon />
@@ -829,6 +1220,7 @@ const HarmonicDistortionCalculator: React.FC<HarmonicDistortionCalculatorProps> 
         <Tab label="System Parameters" />
         <Tab label="Harmonic Measurements" />
         <Tab label="Results" disabled={!results} />
+        <Tab label="Visualization" disabled={!results} />
       </Tabs>
       
       {/* System Parameters Tab */}
@@ -953,6 +1345,24 @@ const HarmonicDistortionCalculator: React.FC<HarmonicDistortionCalculatorProps> 
                 </Grid>
               </CardContent>
             </Card>
+          </Grid>
+          
+          {/* System Voltage & Standards Selector */}
+          <Grid item xs={12} md={6}>
+            <StandardValueSelector
+              type="harmonic-distortion"
+              label="IEEE 519-2014 Harmonic Limits"
+              helperText="Select IEEE standard limits for harmonic distortion"
+              onValueSelect={(value) => {
+                if (value && value.value) {
+                  // Use the component-level snackbar instead of calling useSnackbar() inside callback
+                  snackbar.enqueueSnackbar(
+                    `Selected IEEE 519-2014 standard: ${value.description || ''} - ${value.value}${value.unit || ''} (${value.reference || ''})`, 
+                    { variant: 'info' }
+                  );
+                }
+              }}
+            />
           </Grid>
         </Grid>
         
@@ -1259,6 +1669,60 @@ const HarmonicDistortionCalculator: React.FC<HarmonicDistortionCalculatorProps> 
         </Box>
       </TabPanel>
       
+      {/* Visualization Tab */}
+      <TabPanel value={activeTab} index={3}>
+        {results ? (
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                <Typography variant="body2">
+                  Interactive visualization of harmonic distortion data based on IEEE 519-2014 standards.
+                  Use the controls below to customize the visualization and explore harmonic components.
+                </Typography>
+              </Alert>
+            </Grid>
+            
+            <Grid item xs={12}>
+              <HarmonicVisualization
+                harmonics={inputs.harmonics.map(h => ({
+                  order: h.order,
+                  voltage: parseFloat(h.voltage),
+                  current: parseFloat(h.current)
+                }))}
+                fundamentalValues={{
+                  voltage: parseFloat(inputs.fundamentalVoltage),
+                  current: parseFloat(inputs.fundamentalCurrent)
+                }}
+                thdValues={{
+                  voltage: results.thdVoltage,
+                  current: results.thdCurrent
+                }}
+                limits={{
+                  voltageLimit: getVoltageDistortionLimit(parseFloat(inputs.systemVoltage)),
+                  currentLimits: inputs.harmonics.map(h => 
+                    getCurrentDistortionLimit(
+                      h.order, 
+                      parseFloat(inputs.shortCircuitRatio), 
+                      inputs.systemType
+                    )
+                  ),
+                  thdVoltageLimit: getVoltageDistortionLimit(parseFloat(inputs.systemVoltage)),
+                  thdCurrentLimit: getCurrentDistortionLimit(
+                    5, // Using a common harmonic order (5th) for the THD limit example
+                    parseFloat(inputs.shortCircuitRatio),
+                    inputs.systemType
+                  )
+                }}
+              />
+            </Grid>
+          </Grid>
+        ) : (
+          <Typography variant="body1">
+            No results to visualize. Please calculate harmonic distortion first.
+          </Typography>
+        )}
+      </TabPanel>
+      
       {/* Save Dialog */}
       <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)}>
         <DialogTitle>Save Calculation</DialogTitle>
@@ -1292,6 +1756,130 @@ const HarmonicDistortionCalculator: React.FC<HarmonicDistortionCalculatorProps> 
         open={quickStartOpen} 
         onClose={() => setQuickStartOpen(false)} 
       />
+      
+      {/* Add button to add current configuration to batch scenarios */}
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 2 }}>
+        <Button
+          variant="outlined"
+          color="primary"
+          startIcon={<AddCircleOutlineIcon />}
+          onClick={addToBatchScenarios}
+          sx={{ mr: 1 }}
+        >
+          Add to Batch Scenarios
+        </Button>
+        
+        {batchScenarios.length > 0 && (
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={showBatchPanel ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            onClick={() => setShowBatchPanel(!showBatchPanel)}
+          >
+            {showBatchPanel ? 'Hide' : 'Show'} Batch Panel ({batchScenarios.length})
+          </Button>
+        )}
+      </Box>
+      
+      {/* Add batch processing panel */}
+      <Collapse in={showBatchPanel}>
+        <Box sx={{ px: 3, pb: 3 }}>
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Batch Processing ({batchScenarios.length} scenarios)
+            </Typography>
+            
+            <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell>System Voltage</TableCell>
+                    <TableCell>Harmonics</TableCell>
+                    <TableCell>Type</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {batchScenarios.map((scenario) => (
+                    <TableRow key={scenario.id}>
+                      <TableCell>
+                        <TextField
+                          value={scenario.name}
+                          onChange={(e) => renameBatchScenario(scenario.id, e.target.value)}
+                          variant="standard"
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>{scenario.inputs.systemVoltage} V</TableCell>
+                      <TableCell>{scenario.inputs.harmonics.length} harmonics</TableCell>
+                      <TableCell>{scenario.inputs.systemType === 'general' ? 'General' : 'Special'}</TableCell>
+                      <TableCell>
+                        <IconButton 
+                          size="small" 
+                          onClick={() => loadBatchScenario(scenario)} 
+                          title="Load scenario"
+                        >
+                          <ElectricalServicesIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton 
+                          size="small" 
+                          onClick={() => removeBatchScenario(scenario.id)} 
+                          title="Remove scenario"
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<CalculateIcon />}
+                onClick={processBatchScenarios}
+                disabled={batchScenarios.length === 0 || processingBatch}
+              >
+                {processingBatch ? (
+                  <>
+                    <CircularProgress size={24} color="inherit" sx={{ mr: 1 }} />
+                    Processing...
+                  </>
+                ) : (
+                  'Process All'
+                )}
+              </Button>
+              
+              <Button
+                variant="outlined"
+                color="primary"
+                startIcon={<CompareArrowsIcon />}
+                onClick={() => setBatchComparisonOpen(true)}
+                disabled={batchScenarios.filter(s => s.results).length < 1}
+              >
+                Compare Results
+              </Button>
+              
+              <Button
+                variant="outlined"
+                color="secondary"
+                startIcon={<SaveIcon />}
+                onClick={saveBatchScenarios}
+                disabled={batchScenarios.filter(s => s.results).length === 0}
+              >
+                Save All Results
+              </Button>
+            </Box>
+          </Paper>
+        </Box>
+      </Collapse>
+      
+      {/* Add the batch comparison dialog */}
+      <BatchComparisonDialog />
     </Paper>
   );
 };

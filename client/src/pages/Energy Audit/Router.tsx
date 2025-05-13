@@ -34,6 +34,7 @@ import ROICalculatorComponent from './components/ROICalculator/ROICalculatorComp
 import InspectionChecklistComponent from './components/InspectionChecklist/InspectionChecklistComponent';
 import AuditWorkflowComponent from './components/AuditWorkflow/AuditWorkflowComponent';
 import BasicEnergyCalculator from './components/EnergyCalculators/BasicEnergyCalculator';
+import ChecklistDetail from './components/StandardsReference/Compliance/ChecklistDetail';
 
 // For placeholder components that haven't been fully implemented yet,
 // create simple functional components directly in this file
@@ -228,6 +229,10 @@ const EnergyAuditRouter: React.FC = () => {
           {tabs.map((tab) => (
             <Route key={tab.value} path={`/${tab.value}`} element={tab.component} />
           ))}
+          
+          {/* Add new routes for compliance checker components */}
+          <Route path="/standards-reference/compliance/checklist/:id" element={<ChecklistDetail />} />
+          
           {/* Redirect to dashboard if no route matches */}
           <Route path="*" element={<Navigate to="/energy-audit/dashboard" replace />} />
         </Routes>

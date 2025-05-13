@@ -126,20 +126,20 @@ CREATE TABLE IF NOT EXISTS standard_notes (
 -- Create standard metadata table
 CREATE TABLE IF NOT EXISTS standard_metadata (
   standard_id INT UNSIGNED NOT NULL,
-  key VARCHAR(100) NOT NULL,
+  `key` VARCHAR(100) NOT NULL,
   value TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (standard_id, key),
+  PRIMARY KEY (standard_id, `key`),
   FOREIGN KEY (standard_id) REFERENCES standards(id) ON DELETE CASCADE
 );
 
--- Create indexes for better performance
-CREATE INDEX idx_standards_code_name ON standards(code_name);
-CREATE INDEX idx_sections_standard_id ON standard_sections(standard_id);
-CREATE INDEX idx_sections_parent_id ON standard_sections(parent_section_id);
-CREATE INDEX idx_sections_number ON standard_sections(section_number);
-CREATE INDEX idx_keywords_keyword ON standard_keywords(keyword);
-CREATE INDEX idx_compliance_section_id ON compliance_requirements(section_id);
-CREATE INDEX idx_resources_section_id ON educational_resources(section_id);
-CREATE INDEX idx_resources_type ON educational_resources(resource_type); 
+
+
+
+
+
+
+
+
+

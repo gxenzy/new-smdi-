@@ -2,6 +2,27 @@ const express = require('express');
 const router = express.Router();
 const Standard = require('../models/Standard');
 
+// Root route handler to avoid 404
+router.get('/', async (req, res) => {
+  try {
+    // Either redirect to standards list or return a basic info response
+    res.json({
+      message: 'Standards API is running',
+      endpoints: [
+        '/standards', 
+        '/standards/:id',
+        '/standards/:standardId/sections',
+        '/sections/:id',
+        '/search/sections',
+        '/lookup/illumination'
+      ]
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 /**
  * @route   GET /api/standards-api/standards
  * @desc    Get all standards

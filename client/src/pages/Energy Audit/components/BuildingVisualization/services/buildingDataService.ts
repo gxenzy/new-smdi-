@@ -9,11 +9,18 @@ class BuildingDataService {
    */
   async fetchBuildingData(): Promise<BuildingData> {
     try {
-      const response = await fetch('/api/building-data');
-      if (!response.ok) {
-        throw new Error(`Failed to fetch building data: ${response.statusText}`);
+      // First try to fetch from API
+      try {
+        const response = await fetch('/api/building-data');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch building data: ${response.statusText}`);
+        }
+        return await response.json();
+      } catch (apiError) {
+        console.warn('API fetch failed, using default building data:', apiError);
+        // Return default data as fallback
+        return this.getDefaultBuildingData();
       }
-      return await response.json();
     } catch (error) {
       console.error('Error fetching building data:', error);
       return this.getDefaultBuildingData();

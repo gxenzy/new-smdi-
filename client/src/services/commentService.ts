@@ -2,7 +2,7 @@ import axios from 'axios';
 import { ReportComment, CommentsApiResponse, CommentApiResponse } from '../types/reports';
 
 // API base URL
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 /**
  * Service for managing report comments

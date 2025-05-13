@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -24,10 +24,12 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogContentText,
   DialogActions,
   List,
   ListItem,
-  ListItemText
+  ListItemText,
+  ListItemIcon
 } from '@mui/material';
 import {
   Calculate as CalculateIcon,
@@ -40,7 +42,18 @@ import {
   Waves as WavesIcon,
   HelpOutline as HelpOutlineIcon,
   PictureAsPdf as PdfIcon,
-  ViewList as ViewListIcon
+  ViewList as ViewListIcon,
+  Delete as DeleteIcon,
+  Add as AddIcon,
+  ErrorOutline as ErrorOutlineIcon,
+  Save as SaveIcon,
+  LooksOne as LooksOneIcon,
+  LooksTwo as LooksTwoIcon,
+  Looks3 as Looks3Icon,
+  Looks4 as Looks4Icon,
+  MenuBook as MenuBookIcon,
+  VerifiedUser as VerifiedUserIcon,
+  Code as CodeIcon
 } from '@mui/icons-material';
 import EnergyCalculator from '../../../../pages/Energy Audit/components/Calculators/EnergyCalculator';
 import { generateReport } from '../../../../utils/reportGenerator/pdfGenerator';
@@ -49,6 +62,10 @@ import IlluminationCalculator from '../Calculators/IlluminationCalculator';
 import PowerFactorCalculator from '../Calculators/PowerFactorCalculator';
 import HarmonicDistortionCalculator from '../Calculators/HarmonicDistortionCalculator';
 import { ScheduleOfLoadsCalculator } from '../Calculators/ScheduleOfLoads';
+import SavedCalculationsViewer from '../Calculators/SavedCalculationsViewer';
+import { saveCalculation } from '../Calculators/utils/storage';
+import ComplianceCalculatorIntegration from '../Calculators/ComplianceCalculatorIntegration';
+import ComplianceApiTest from '../Calculators/ComplianceApiTest';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -267,23 +284,26 @@ function LightingErrorHelpDialog({ open, onClose, errors }: { open: boolean, onC
 // Lighting Calculator Component
 const LightingCalculator: React.FC = () => {
   const [inputs, setInputs] = useState({
-    fixtureCount: '50',
+    fixtureCount: '10',
     fixtureWattage: '36',
     hoursPerDay: '8',
-    daysPerYear: '260',
-    electricityRate: '9.50'
+    daysPerYear: '250',
+    electricityRate: '10.50'
   });
-  
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [results, setResults] = useState<{
     dailyConsumption: number;
     annualConsumption: number;
     annualCost: number;
   } | null>(null);
+  const [calculating, setCalculating] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [calculationName, setCalculationName] = useState('');
+  const [quickStartOpen, setQuickStartOpen] = useState(false);
+  const [errorHelpOpen, setErrorHelpOpen] = useState(false);
+  const [standardsInfo, setStandardsInfo] = useState(false);
   
-  const [calculating, setCalculating] = useState<boolean>(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [quickStartOpen, setQuickStartOpen] = useState<boolean>(false);
-  const [errorHelpOpen, setErrorHelpOpen] = useState<boolean>(false);
+  const { enqueueSnackbar } = useSnackbar();
   
   const handleInputChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
@@ -387,6 +407,34 @@ const LightingCalculator: React.FC = () => {
     }, 800);
   };
   
+  const handleSaveCalculation = () => {
+    if (!results) {
+      setErrors({ ...errors, general: 'Please calculate results before saving' });
+      return;
+    }
+    
+    const calculationData = {
+      fixtureCount: parseFloat(inputs.fixtureCount),
+      fixtureWattage: parseFloat(inputs.fixtureWattage),
+      hoursPerDay: parseFloat(inputs.hoursPerDay),
+      daysPerYear: parseFloat(inputs.daysPerYear),
+      electricityRate: parseFloat(inputs.electricityRate),
+      dailyConsumption: results.dailyConsumption,
+      annualConsumption: results.annualConsumption,
+      annualCost: results.annualCost
+    };
+    
+    // Create a descriptive default name if none is provided
+    const defaultName = `Lighting Calculation - ${inputs.fixtureCount} fixtures at ${inputs.fixtureWattage}W - ${new Date().toLocaleDateString()}`;
+    
+    // Save calculation using the correct function signature
+    const uniqueId = saveCalculation('lighting', calculationName || defaultName, calculationData);
+    
+    enqueueSnackbar('Calculation saved successfully', { variant: 'success' });
+    setSaveDialogOpen(false);
+    setCalculationName(''); // Reset the calculation name for next save
+  };
+  
   const handleExportPdf = async () => {
     if (!results) {
       setErrors({ ...errors, general: 'Please calculate results before generating a report' });
@@ -426,13 +474,56 @@ const LightingCalculator: React.FC = () => {
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-      <Typography variant="h6" gutterBottom>Lighting Energy Calculator</Typography>
-        <Tooltip title="Quick Start Guide">
-          <IconButton onClick={() => setQuickStartOpen(true)}>
-            <HelpOutlineIcon />
-          </IconButton>
-        </Tooltip>
+        <Typography variant="h6" gutterBottom>Lighting Energy Calculator</Typography>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <SavedCalculationsViewer 
+            calculationType="lighting"
+            onLoadCalculation={(data) => {
+              if (data) {
+                setInputs({
+                  fixtureCount: data.fixtureCount.toString(),
+                  fixtureWattage: data.fixtureWattage.toString(),
+                  hoursPerDay: data.hoursPerDay.toString(),
+                  daysPerYear: data.daysPerYear.toString(),
+                  electricityRate: data.electricityRate.toString()
+                });
+                setResults({
+                  dailyConsumption: data.dailyConsumption,
+                  annualConsumption: data.annualConsumption,
+                  annualCost: data.annualCost
+                });
+              }
+            }}
+          />
+          <Tooltip title="Learn more about PEC 2017 Lighting Requirements">
+            <IconButton onClick={() => window.location.href = '/energy-audit/standards-reference?standard=PEC-2017&section=4.6'}>
+              <MenuBookIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Quick Start Guide">
+            <IconButton onClick={() => setQuickStartOpen(true)}>
+              <HelpOutlineIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="About Lighting Energy Calculation">
+            <IconButton onClick={() => setStandardsInfo(!standardsInfo)}>
+              <InfoIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
+      
+      {standardsInfo && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <Typography variant="subtitle2">
+            PEC 2017 Lighting Energy Requirements
+          </Typography>
+          <Typography variant="body2">
+            The Philippine Electrical Code (PEC) 2017 provides guidelines for energy-efficient lighting design and installation. 
+            This calculator helps estimate energy consumption based on fixture specifications and usage patterns.
+          </Typography>
+        </Alert>
+      )}
       
       <Typography variant="body2" paragraph color="text.secondary">
         Calculate energy consumption and costs for lighting systems based on actual fixture data and usage patterns.
@@ -519,26 +610,38 @@ const LightingCalculator: React.FC = () => {
       </Grid>
       
       <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={calculateEnergy}
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={calculateEnergy}
           startIcon={calculating ? <CircularProgress size={24} color="inherit" /> : <CalculateIcon />}
           disabled={calculating}
-      >
+        >
           {calculating ? 'Calculating...' : 'Calculate Energy'}
-      </Button>
+        </Button>
         
         {results && (
-          <Button
-            variant="outlined"
-            color="primary"
-            onClick={handleExportPdf}
-            startIcon={<PdfIcon />}
-            disabled={calculating}
-          >
-            Export PDF Report
-          </Button>
+          <Box>
+            <Button
+              variant="outlined"
+              color="primary"
+              onClick={() => setSaveDialogOpen(true)}
+              startIcon={<SaveIcon />}
+              sx={{ mr: 1 }}
+              disabled={calculating}
+            >
+              Save Calculation
+            </Button>
+            <Button
+              variant="outlined"
+              color="primary"
+              onClick={handleExportPdf}
+              startIcon={<PdfIcon />}
+              disabled={calculating}
+            >
+              Export PDF Report
+            </Button>
+          </Box>
         )}
       </Box>
       
@@ -600,6 +703,27 @@ const LightingCalculator: React.FC = () => {
         onClose={() => setErrorHelpOpen(false)} 
         errors={errors} 
       />
+      
+      {/* Save Dialog */}
+      <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)}>
+        <DialogTitle>Save Calculation</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Calculation Name"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={calculationName}
+            onChange={(e) => setCalculationName(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleSaveCalculation} color="primary">Save</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
@@ -802,6 +926,9 @@ const HVACCalculator: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [quickStartOpen, setQuickStartOpen] = useState<boolean>(false);
   const [errorHelpOpen, setErrorHelpOpen] = useState<boolean>(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState<boolean>(false);
+  const [calculationName, setCalculationName] = useState<string>('HVAC Calculation');
+  const { enqueueSnackbar } = useSnackbar();
   
   const handleInputChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
@@ -921,6 +1048,35 @@ const HVACCalculator: React.FC = () => {
     }, 800);
   };
   
+  const handleSaveCalculation = () => {
+    if (!results) {
+      setErrors({ ...errors, general: 'Please calculate results before saving' });
+      return;
+    }
+    
+    const calculationData = {
+      floorArea: parseFloat(inputs.floorArea),
+      coolingLoad: parseFloat(inputs.coolingLoad),
+      cop: parseFloat(inputs.cop),
+      hoursPerDay: parseFloat(inputs.hoursPerDay),
+      daysPerYear: parseFloat(inputs.daysPerYear),
+      electricityRate: parseFloat(inputs.electricityRate),
+      dailyConsumption: results.dailyConsumption,
+      annualConsumption: results.annualConsumption,
+      annualCost: results.annualCost
+    };
+    
+    // Create a descriptive default name if none is provided
+    const defaultName = `HVAC Calculation - ${inputs.floorArea}m² at COP ${inputs.cop} - ${new Date().toLocaleDateString()}`;
+    
+    // Save calculation using the correct function signature
+    const uniqueId = saveCalculation('hvac', calculationName || defaultName, calculationData);
+    
+    enqueueSnackbar('Calculation saved successfully', { variant: 'success' });
+    setSaveDialogOpen(false);
+    setCalculationName(''); // Reset the calculation name for next save
+  };
+  
   const handleExportPdf = async () => {
     if (!results) {
       setErrors({ ...errors, general: 'Please calculate results before generating a report' });
@@ -961,17 +1117,44 @@ const HVACCalculator: React.FC = () => {
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-      <Typography variant="h6" gutterBottom>HVAC Energy Calculator</Typography>
-        <Tooltip title="Quick Start Guide">
-          <IconButton onClick={() => setQuickStartOpen(true)}>
-            <HelpOutlineIcon />
-          </IconButton>
-        </Tooltip>
+        <Typography variant="h6" gutterBottom>HVAC Energy Calculator</Typography>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <SavedCalculationsViewer 
+            calculationType="hvac"
+            onLoadCalculation={(data) => {
+              if (data) {
+                setInputs({
+                  floorArea: data.floorArea.toString(),
+                  coolingLoad: data.coolingLoad.toString(),
+                  hoursPerDay: data.hoursPerDay.toString(),
+                  daysPerYear: data.daysPerYear.toString(),
+                  electricityRate: data.electricityRate.toString(),
+                  cop: data.cop.toString()
+                });
+                setResults({
+                  dailyConsumption: data.dailyConsumption,
+                  annualConsumption: data.annualConsumption,
+                  annualCost: data.annualCost
+                });
+              }
+            }}
+          />
+          <Tooltip title="Learn more about ASHRAE 90.1 HVAC Standards">
+            <IconButton onClick={() => window.location.href = '/energy-audit/standards-reference?standard=ASHRAE-90.1&section=6.5'}>
+              <MenuBookIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Quick Start Guide">
+            <IconButton onClick={() => setQuickStartOpen(true)}>
+              <HelpOutlineIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
       
       <Typography variant="body2" paragraph color="text.secondary">
-        Calculate energy consumption and costs for HVAC systems based on cooling load and efficiency metrics.
-        This calculator follows ASHRAE guidelines for educational buildings.
+        Calculate energy consumption for HVAC systems based on floor area, cooling load, and system efficiency.
+        This calculator helps estimate HVAC energy usage in educational facilities.
       </Typography>
       
       {/* Display validation errors */}
@@ -1004,7 +1187,7 @@ const HVACCalculator: React.FC = () => {
             value={inputs.floorArea}
             onChange={handleInputChange('floorArea')}
             error={!!errors.floorArea}
-            helperText={errors.floorArea || "Conditioned floor area"}
+            helperText={errors.floorArea || "Total conditioned floor area"}
           />
         </Grid>
         <Grid item xs={12} sm={6}>
@@ -1015,7 +1198,7 @@ const HVACCalculator: React.FC = () => {
             value={inputs.coolingLoad}
             onChange={handleInputChange('coolingLoad')}
             error={!!errors.coolingLoad}
-            helperText={errors.coolingLoad || "Typical range: 150-250 W/m² for educational buildings"}
+            helperText={errors.coolingLoad || "Typical range: 150-250 W/m²"}
           />
         </Grid>
         <Grid item xs={12} sm={4}>
@@ -1026,7 +1209,7 @@ const HVACCalculator: React.FC = () => {
             value={inputs.cop}
             onChange={handleInputChange('cop')}
             error={!!errors.cop}
-            helperText={errors.cop || "Coefficient of Performance (higher is better)"}
+            helperText={errors.cop || "Coefficient of Performance"}
           />
         </Grid>
         <Grid item xs={12} sm={4}>
@@ -1051,7 +1234,8 @@ const HVACCalculator: React.FC = () => {
             helperText={errors.daysPerYear || "Operating days per year"}
           />
         </Grid>
-        <Grid item xs={12}>
+        
+        <Grid item xs={12} sm={4}>
           <TextField
             label="Electricity Rate (₱/kWh)"
             type="number"
@@ -1065,26 +1249,38 @@ const HVACCalculator: React.FC = () => {
       </Grid>
       
       <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={calculateEnergy}
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={calculateEnergy}
           startIcon={calculating ? <CircularProgress size={24} color="inherit" /> : <CalculateIcon />}
           disabled={calculating}
-      >
+        >
           {calculating ? 'Calculating...' : 'Calculate Energy'}
-      </Button>
+        </Button>
         
         {results && (
-          <Button
-            variant="outlined"
-            color="primary"
-            onClick={handleExportPdf}
-            startIcon={<PdfIcon />}
-            disabled={calculating}
-          >
-            Export PDF Report
-          </Button>
+          <Box>
+            <Button
+              variant="outlined"
+              color="primary"
+              onClick={() => setSaveDialogOpen(true)}
+              startIcon={<SaveIcon />}
+              sx={{ mr: 1 }}
+              disabled={calculating}
+            >
+              Save Calculation
+            </Button>
+            <Button
+              variant="outlined"
+              color="primary"
+              onClick={handleExportPdf}
+              startIcon={<PdfIcon />}
+              disabled={calculating}
+            >
+              Export PDF Report
+            </Button>
+          </Box>
         )}
       </Box>
       
@@ -1125,8 +1321,8 @@ const HVACCalculator: React.FC = () => {
             <Box sx={{ mt: 2 }}>
               <Alert severity="info">
                 <Typography variant="body2">
-                  <strong>Reference:</strong> Calculation based on ASHRAE 90.1 methodology. 
-                  For educational buildings in the Philippines, cooling loads typically range from 150-250 W/m².
+                  <strong>Reference:</strong> Calculation based on ASHRAE methods. 
+                  Energy consumption will vary based on climate, building envelope, internal loads, and system operation.
                 </Typography>
               </Alert>
             </Box>
@@ -1146,115 +1342,113 @@ const HVACCalculator: React.FC = () => {
         onClose={() => setErrorHelpOpen(false)} 
         errors={errors} 
       />
+      
+      {/* Save Dialog */}
+      <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)}>
+        <DialogTitle>Save Calculation</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Calculation Name"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={calculationName}
+            onChange={(e) => setCalculationName(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleSaveCalculation} color="primary">Save</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
 
-// Quick Start Guide for Equipment Calculator
+// Helper function to get user-friendly field labels for error messages
+const getFieldLabel = (field: string): string => {
+  const fieldLabels: Record<string, string> = {
+    equipmentType: 'Equipment Type',
+    quantity: 'Quantity',
+    powerRating: 'Power Rating',
+    hoursPerDay: 'Hours per Day',
+    daysPerYear: 'Days per Year',
+    electricityRate: 'Electricity Rate',
+    general: 'General Error'
+  };
+  
+  return fieldLabels[field] || field;
+};
+
+// Equipment Quick Start Guide Dialog
 function EquipmentQuickStartGuideDialog({ open, onClose }: { open: boolean, onClose: () => void }) {
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="md"
-      fullWidth
-    >
+    <Dialog open={open} onClose={onClose} scroll="paper" maxWidth="md">
       <DialogTitle>
-        Equipment Energy Calculator Quick Start Guide
+        <Typography variant="h6">
+          Equipment Energy Calculator Quick Start Guide
+        </Typography>
       </DialogTitle>
       <DialogContent dividers>
-        <Alert severity="info" sx={{ mb: 3 }}>
-          <Typography variant="body2">
-            This calculator helps you track and analyze energy consumption of various equipment in educational facilities.
-          </Typography>
-        </Alert>
-        
-        <Typography variant="h6" gutterBottom>Getting Started</Typography>
-        
+        <Typography variant="subtitle1" gutterBottom>
+          This calculator helps you analyze energy consumption and costs for various equipment in educational buildings.
+        </Typography>
+        <Typography variant="body2" paragraph>
+          Follow these steps to use the calculator effectively:
+        </Typography>
         <List>
           <ListItem>
-            <Box>
-              <Typography variant="subtitle1">1. Enter Equipment Details</Typography>
-              <Typography variant="body2" sx={{ mt: 0.5 }}>
-                Enter the equipment type, quantity, and power rating in watts per unit.
-              </Typography>
-            </Box>
+            <ListItemIcon>
+              <LooksOneIcon color="primary" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Enter Equipment Details"
+              secondary="Specify the equipment type, quantity, and power rating in watts."
+            />
           </ListItem>
           <ListItem>
-            <Box>
-              <Typography variant="subtitle1">2. Enter Usage Pattern</Typography>
-              <Typography variant="body2" sx={{ mt: 0.5 }}>
-                Specify the operating hours per day and days per year for each equipment type.
-              </Typography>
-            </Box>
+            <ListItemIcon>
+              <LooksTwoIcon color="primary" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Enter Usage Pattern"
+              secondary="Specify how many hours per day and days per year the equipment operates."
+            />
           </ListItem>
           <ListItem>
-            <Box>
-              <Typography variant="subtitle1">3. Add Multiple Equipment</Typography>
-              <Typography variant="body2" sx={{ mt: 0.5 }}>
-                Click "Add Equipment" to include each item in your energy analysis. Continue to build a complete equipment list.
-              </Typography>
-            </Box>
+            <ListItemIcon>
+              <Looks3Icon color="primary" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Add Equipment"
+              secondary="Click 'Add Equipment' to add the item to your energy analysis."
+            />
           </ListItem>
           <ListItem>
-            <Box>
-              <Typography variant="subtitle1">4. Review Summary</Typography>
-              <Typography variant="body2" sx={{ mt: 0.5 }}>
-                The calculator will display a comprehensive summary of energy usage and costs for all equipment.
-              </Typography>
-            </Box>
+            <ListItemIcon>
+              <Looks4Icon color="primary" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Generate Reports"
+              secondary="Use the 'Export PDF Report' button to create a detailed report of your energy analysis."
+            />
           </ListItem>
         </List>
-        
-        <Divider sx={{ my: 2 }} />
-        
-        <Typography variant="h6" gutterBottom>Common Equipment Power Ratings</Typography>
-        
-        <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Equipment Type</TableCell>
-                <TableCell align="right">Typical Power (W)</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              <TableRow>
-                <TableCell>Desktop Computer</TableCell>
-                <TableCell align="right">65-250 W</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Laptop</TableCell>
-                <TableCell align="right">15-60 W</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Projector</TableCell>
-                <TableCell align="right">150-350 W</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Printer/Copier</TableCell>
-                <TableCell align="right">30-300 W</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Water Dispenser</TableCell>
-                <TableCell align="right">100-500 W</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Refrigerator</TableCell>
-                <TableCell align="right">150-400 W</TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </TableContainer>
-        
-        <Typography variant="body2">
-          Note: Actual power consumption may vary. For precise calculations, refer to equipment nameplates or use a power meter.
-        </Typography>
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            Technical References:
+          </Typography>
+          <Typography variant="body2">
+            • IEEE 739-1995 (Bronze Book)<br />
+            • ASHRAE Advanced Energy Design Guide for Educational Buildings<br />
+            • DOE Building Energy Data Book
+          </Typography>
+        </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} color="primary">
-          Close
-        </Button>
+        <Button onClick={onClose} color="primary">Close</Button>
       </DialogActions>
     </Dialog>
   );
@@ -1263,96 +1457,53 @@ function EquipmentQuickStartGuideDialog({ open, onClose }: { open: boolean, onCl
 // Error Help Dialog for Equipment Calculator
 function EquipmentErrorHelpDialog({ open, onClose, errors }: { open: boolean, onClose: () => void, errors: Record<string, string> }) {
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="md"
-      fullWidth
-    >
+    <Dialog open={open} onClose={onClose} maxWidth="sm">
       <DialogTitle>
-        How to Fix Input Errors
+        <Typography variant="subtitle1">
+          Input Error Help
+        </Typography>
       </DialogTitle>
       <DialogContent dividers>
-        <Alert severity="info" sx={{ mb: 3 }}>
-          <Typography variant="body2">
-            Please review the guidance below to fix input errors in your equipment entry.
+        <Typography variant="body2" paragraph>
+          Please review the guidance below to fix input errors in your equipment energy calculation.
+        </Typography>
+        <List dense>
+          {Object.entries(errors).map(([field, message]) => (
+            <ListItem key={field} sx={{ py: 1 }}>
+              <ListItemIcon>
+                <ErrorOutlineIcon color="error" />
+              </ListItemIcon>
+              <ListItemText
+                primary={field === 'general' ? 'General Error' : field === 'equipmentType' ? 'Equipment Type' : 
+                         field === 'quantity' ? 'Quantity' : field === 'powerRating' ? 'Power Rating' :
+                         field === 'hoursPerDay' ? 'Hours per Day' : field === 'daysPerYear' ? 'Days per Year' :
+                         field === 'electricityRate' ? 'Electricity Rate' : field}
+                secondary={message}
+              />
+            </ListItem>
+          ))}
+        </List>
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            Input Guidelines:
           </Typography>
-        </Alert>
-        
-        {Object.keys(errors).length > 0 ? (
-          <>
-            <Typography variant="h6" gutterBottom>Current Errors</Typography>
-            <List>
-              {Object.entries(errors).map(([field, message]) => (
-                <ListItem key={field} sx={{ py: 1 }}>
-                  <Box>
-                    <Typography variant="subtitle2" color="error.main">
-                      {field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, ' $1')}
-                    </Typography>
-                    <Typography variant="body2">{message}</Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                      {field === 'equipmentType' && 'Enter a descriptive name for the equipment (e.g., "Desktop Computer", "Projector").'}
-                      {field === 'quantity' && 'Enter the number of identical equipment items.'}
-                      {field === 'powerRating' && 'Enter the power consumption per unit in watts.'}
-                      {field === 'hoursPerDay' && 'Enter the number of hours the equipment operates per day (1-24).'}
-                      {field === 'daysPerYear' && 'Enter the number of days the equipment operates per year (1-365).'}
-                      {field === 'electricityRate' && 'Enter the cost of electricity per kilowatt-hour.'}
-                    </Typography>
-                  </Box>
-                </ListItem>
-              ))}
-            </List>
-          </>
-        ) : (
-          <Typography>No current errors to fix.</Typography>
-        )}
-        
-        <Divider sx={{ my: 2 }} />
-        
-        <Typography variant="h6" gutterBottom>Field Requirements</Typography>
-        <TableContainer component={Paper} variant="outlined">
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Field</TableCell>
-                <TableCell>Valid Range</TableCell>
-                <TableCell>Description</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              <TableRow>
-                <TableCell>Equipment Type</TableCell>
-                <TableCell>Non-empty text</TableCell>
-                <TableCell>Descriptive name of equipment</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Quantity</TableCell>
-                <TableCell>1 - 10,000</TableCell>
-                <TableCell>Number of identical items</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Power Rating</TableCell>
-                <TableCell>1 - 10,000 W</TableCell>
-                <TableCell>Power consumption per unit</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Hours per Day</TableCell>
-                <TableCell>1 - 24 hours</TableCell>
-                <TableCell>Daily operating hours</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Days per Year</TableCell>
-                <TableCell>1 - 365 days</TableCell>
-                <TableCell>Annual operating days</TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </TableContainer>
+          <Typography variant="body2" paragraph>
+            {Object.keys(errors).map((field) => (
+              <React.Fragment key={field}>
+                {field === 'equipmentType' && 'Enter a descriptive name for the equipment type.'}
+                {field === 'quantity' && 'Enter a positive number for the quantity of equipment units (1-1000).'}
+                {field === 'powerRating' && 'Enter the power consumption in watts (1-10000).'}
+                {field === 'hoursPerDay' && 'Enter the number of hours the equipment operates per day (1-24).'}
+                {field === 'daysPerYear' && 'Enter the number of days the equipment operates per year (1-365).'}
+                {field === 'electricityRate' && 'Enter a valid electricity rate in ₱/kWh (typically 8-12).'}
+                <br />
+              </React.Fragment>
+            ))}
+          </Typography>
+        </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} color="primary">
-          Close
-        </Button>
+        <Button onClick={onClose} color="primary">Close</Button>
       </DialogActions>
     </Dialog>
   );
@@ -1360,16 +1511,8 @@ function EquipmentErrorHelpDialog({ open, onClose, errors }: { open: boolean, on
 
 // Equipment Calculator Component
 const EquipmentCalculator: React.FC = () => {
-  const [inputs, setInputs] = useState({
-    equipmentType: '',
-    quantity: '',
-    powerRating: '',
-    hoursPerDay: '',
-    daysPerYear: '',
-    electricityRate: '9.50'
-  });
-  
-  const [equipmentList, setEquipmentList] = useState<Array<{
+  // Define equipment item type
+  type EquipmentItem = {
     type: string;
     quantity: number;
     power: number;
@@ -1378,13 +1521,27 @@ const EquipmentCalculator: React.FC = () => {
     dailyConsumption: number;
     annualConsumption: number;
     annualCost: number;
-  }>>([]);
-  
-  const [adding, setAdding] = useState<boolean>(false);
+  };
+
+  const [inputs, setInputs] = useState({
+    equipmentType: '',
+    quantity: '1',
+    powerRating: '100',
+    hoursPerDay: '8',
+    daysPerYear: '200',
+    electricityRate: '9.50'
+  });
+  const [equipmentList, setEquipmentList] = useState<EquipmentItem[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [quickStartOpen, setQuickStartOpen] = useState<boolean>(false);
-  const [errorHelpOpen, setErrorHelpOpen] = useState<boolean>(false);
+  const [adding, setAdding] = useState(false);
+  const [quickStartOpen, setQuickStartOpen] = useState(false);
+  const [errorHelpOpen, setErrorHelpOpen] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [calculationName, setCalculationName] = useState<string>('Equipment Energy Calculation');
   
+  const { enqueueSnackbar } = useSnackbar();
+  
+  // Input change handler
   const handleInputChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     
@@ -1417,10 +1574,8 @@ const EquipmentCalculator: React.FC = () => {
       newErrors.quantity = 'Please enter a valid quantity';
     } else if (parseFloat(inputs.quantity) <= 0) {
       newErrors.quantity = 'Quantity must be greater than 0';
-    } else if (parseFloat(inputs.quantity) > 10000) {
-      newErrors.quantity = 'Quantity seems too high. Please verify.';
-    } else if (!Number.isInteger(parseFloat(inputs.quantity))) {
-      newErrors.quantity = 'Quantity must be a whole number';
+    } else if (parseFloat(inputs.quantity) > 1000) {
+      newErrors.quantity = 'Quantity seems too large. Please verify.';
     }
     
     // Validate power rating
@@ -1429,7 +1584,7 @@ const EquipmentCalculator: React.FC = () => {
     } else if (parseFloat(inputs.powerRating) <= 0) {
       newErrors.powerRating = 'Power rating must be greater than 0';
     } else if (parseFloat(inputs.powerRating) > 10000) {
-      newErrors.powerRating = 'Power rating seems too high for typical equipment. Please verify.';
+      newErrors.powerRating = 'Power rating seems too high. Please verify.';
     }
     
     // Validate hours per day
@@ -1463,6 +1618,7 @@ const EquipmentCalculator: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
   
+  // Add equipment to list
   const addEquipment = () => {
     if (!validateInputs()) {
       window.scrollTo(0, 0);
@@ -1473,20 +1629,19 @@ const EquipmentCalculator: React.FC = () => {
     
     // Simulate a calculation delay for UX
     setTimeout(() => {
-    const quantity = parseFloat(inputs.quantity);
-    const powerRating = parseFloat(inputs.powerRating);
-    const hoursPerDay = parseFloat(inputs.hoursPerDay);
-    const daysPerYear = parseFloat(inputs.daysPerYear);
-    const electricityRate = parseFloat(inputs.electricityRate);
-    
-    // Calculate energy consumption
-    const dailyConsumption = (quantity * powerRating * hoursPerDay) / 1000; // kWh/day
-    const annualConsumption = dailyConsumption * daysPerYear; // kWh/year
-    const annualCost = annualConsumption * electricityRate; // PHP/year
-    
-    setEquipmentList([
-      ...equipmentList,
-      {
+      const quantity = parseFloat(inputs.quantity);
+      const powerRating = parseFloat(inputs.powerRating); // W
+      const hoursPerDay = parseFloat(inputs.hoursPerDay);
+      const daysPerYear = parseFloat(inputs.daysPerYear);
+      const electricityRate = parseFloat(inputs.electricityRate);
+      
+      // Calculate energy consumption
+      const totalPower = quantity * powerRating; // Watts
+      const dailyConsumption = (totalPower * hoursPerDay) / 1000; // kWh/day
+      const annualConsumption = dailyConsumption * daysPerYear; // kWh/year
+      const annualCost = annualConsumption * electricityRate; // PHP/year
+      
+      const newEquipment: EquipmentItem = {
         type: inputs.equipmentType,
         quantity,
         power: powerRating,
@@ -1495,27 +1650,26 @@ const EquipmentCalculator: React.FC = () => {
         dailyConsumption,
         annualConsumption,
         annualCost
-      }
-    ]);
-    
-    // Reset inputs
-    setInputs({
-      ...inputs,
-      equipmentType: '',
-      quantity: '',
-      powerRating: '',
-      hoursPerDay: '',
-      daysPerYear: ''
-    });
+      };
       
+      setEquipmentList([...equipmentList, newEquipment]);
+      
+      // Reset equipment type field but keep other settings
+      setInputs({
+        ...inputs,
+        equipmentType: ''
+      });
+      
+      enqueueSnackbar('Equipment added successfully', { variant: 'success' });
       setAdding(false);
-    }, 800);
+    }, 600);
   };
   
+  // Calculate totals
   const calculateTotals = () => {
-    const totalDailyConsumption = equipmentList.reduce((sum, item) => sum + item.dailyConsumption, 0);
-    const totalAnnualConsumption = equipmentList.reduce((sum, item) => sum + item.annualConsumption, 0);
-    const totalAnnualCost = equipmentList.reduce((sum, item) => sum + item.annualCost, 0);
+    const totalDailyConsumption = equipmentList.reduce((acc, item) => acc + item.dailyConsumption, 0);
+    const totalAnnualConsumption = equipmentList.reduce((acc, item) => acc + item.annualConsumption, 0);
+    const totalAnnualCost = equipmentList.reduce((acc, item) => acc + item.annualCost, 0);
     
     return {
       totalDailyConsumption,
@@ -1524,48 +1678,105 @@ const EquipmentCalculator: React.FC = () => {
     };
   };
   
+  // Handle save calculation
+  const handleSaveCalculation = () => {
+    try {
+      if (equipmentList.length === 0) {
+        enqueueSnackbar('Please add at least one equipment item before saving', { variant: 'error' });
+        return;
+      }
+
+      // Prepare calculation data
+      const calculationData = {
+        equipmentList: equipmentList,
+        summary: calculateTotals(),
+        electricityRate: parseFloat(inputs.electricityRate)
+      };
+
+      // Create a descriptive default name if none is provided
+      const defaultName = `Equipment Energy Calculation - ${equipmentList.length} items - ${new Date().toLocaleDateString()}`;
+
+      // Save calculation
+      const uniqueId = saveCalculation('equipment', calculationName || defaultName, calculationData);
+
+      enqueueSnackbar('Calculation saved successfully', { variant: 'success' });
+      setSaveDialogOpen(false);
+      setCalculationName('');
+    } catch (error) {
+      console.error('Error saving calculation:', error);
+      enqueueSnackbar('Error saving calculation', { variant: 'error' });
+    }
+  };
+  
+  // Handle export PDF
   const handleExportPdf = async () => {
     if (equipmentList.length === 0) {
-      setErrors({ ...errors, general: 'Please add at least one equipment before generating a report' });
+      setErrors({ general: 'Please add at least one equipment item before generating a report' });
       return;
     }
     
     setAdding(true);
     
     try {
-      // Prepare data for report
-      const summary = calculateTotals();
-      const reportData = {
-        equipmentList: equipmentList,
-        summary: summary,
-        electricityRate: parseFloat(inputs.electricityRate)
-      };
+      // Get the totals
+      const totals = calculateTotals();
+      
+      // Create properly formatted equipment list for PDF generation
+      const formattedEquipmentList = equipmentList.map(item => ({
+        name: item.type,
+        quantity: item.quantity,
+        wattage: item.power,
+        hoursPerDay: item.hours,
+        daysPerYear: item.days,
+        dailyConsumption: item.dailyConsumption,
+        annualConsumption: item.annualConsumption,
+        annualCost: item.annualCost
+      }));
       
       // Generate and open the report
-      const report = await generateReport('equipment', reportData, {
-        title: 'Equipment Energy Calculation Report',
-        fileName: 'equipment-energy-report.pdf',
-        orientation: 'landscape'
+      const report = await generateReport('equipment', {
+        equipmentList: formattedEquipmentList,
+        summary: totals,
+        electricityRate: parseFloat(inputs.electricityRate)
+      }, {
+        title: 'Equipment Energy Analysis Report',
+        fileName: 'equipment-energy-report.pdf'
       });
       
       report.openInNewTab();
     } catch (error) {
       console.error('Error generating PDF report:', error);
-      setErrors({ ...errors, general: 'Error generating PDF report' });
+      setErrors({ general: 'Error generating PDF report' });
     } finally {
       setAdding(false);
     }
   };
-  
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-      <Typography variant="h6" gutterBottom>Equipment Energy Calculator</Typography>
-        <Tooltip title="Quick Start Guide">
-          <IconButton onClick={() => setQuickStartOpen(true)}>
-            <HelpOutlineIcon />
-          </IconButton>
-        </Tooltip>
+        <Typography variant="h6" gutterBottom>Equipment Energy Calculator</Typography>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <SavedCalculationsViewer 
+            calculationType="equipment"
+            onLoadCalculation={(data) => {
+              if (data && data.equipmentList) {
+                setEquipmentList(data.equipmentList);
+                enqueueSnackbar('Equipment calculation loaded successfully', { variant: 'success' });
+              }
+            }}
+          />
+          <Tooltip title="Learn more about IEEE 739 Equipment Energy Standards">
+            <IconButton onClick={() => window.location.href = '/energy-audit/standards-reference?standard=IEEE-739&section=5.4'}>
+              <MenuBookIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Quick Start Guide">
+            <IconButton onClick={() => setQuickStartOpen(true)}>
+              <HelpOutlineIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
       
       <Typography variant="body2" paragraph color="text.secondary">
@@ -1605,6 +1816,7 @@ const EquipmentCalculator: React.FC = () => {
             helperText={errors.equipmentType || "e.g., Computers, Projectors, etc."}
           />
         </Grid>
+        
         <Grid item xs={12} sm={6}>
           <TextField
             label="Quantity"
@@ -1616,6 +1828,7 @@ const EquipmentCalculator: React.FC = () => {
             helperText={errors.quantity || "Number of equipment units"}
           />
         </Grid>
+        
         <Grid item xs={12} sm={4}>
           <TextField
             label="Power Rating (W)"
@@ -1627,6 +1840,7 @@ const EquipmentCalculator: React.FC = () => {
             helperText={errors.powerRating || "Watts per unit"}
           />
         </Grid>
+        
         <Grid item xs={12} sm={4}>
           <TextField
             label="Hours per Day"
@@ -1638,6 +1852,7 @@ const EquipmentCalculator: React.FC = () => {
             helperText={errors.hoursPerDay || "Operating hours per day"}
           />
         </Grid>
+        
         <Grid item xs={12} sm={4}>
           <TextField
             label="Days per Year"
@@ -1706,6 +1921,16 @@ const EquipmentCalculator: React.FC = () => {
             <Button
               variant="outlined"
               color="primary"
+              onClick={() => setSaveDialogOpen(true)}
+              startIcon={<SaveIcon />}
+              sx={{ mr: 1 }}
+              disabled={adding}
+            >
+              Save Calculation
+            </Button>
+            <Button
+              variant="outlined"
+              color="primary"
               onClick={handleExportPdf}
               startIcon={<PdfIcon />}
               disabled={adding}
@@ -1735,8 +1960,29 @@ const EquipmentCalculator: React.FC = () => {
       <EquipmentErrorHelpDialog 
         open={errorHelpOpen} 
         onClose={() => setErrorHelpOpen(false)} 
-        errors={errors} 
+        errors={errors}
       />
+      
+      {/* Save Dialog */}
+      <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)}>
+        <DialogTitle>Save Calculation</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Calculation Name"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={calculationName}
+            onChange={(e) => setCalculationName(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleSaveCalculation} color="primary">Save</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
@@ -1751,182 +1997,230 @@ const BasicEnergyCalculator: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>Energy Consumption Calculators</Typography>
-      <Typography variant="subtitle1" gutterBottom color="text.secondary">
-        Educational tools for calculating energy consumption in building systems based on industry standards
-      </Typography>
-
-      <Paper sx={{ mt: 3 }}>
+    <Box sx={{ width: '100%' }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs
           value={tabValue}
           onChange={handleTabChange}
           variant="scrollable"
           scrollButtons="auto"
-          aria-label="energy calculator tabs"
+          aria-label="calculator tabs"
         >
-          <Tab icon={<LightbulbIcon />} label="Lighting" {...a11yProps(0)} />
-          <Tab icon={<AcUnitIcon />} label="HVAC" {...a11yProps(1)} />
-          <Tab icon={<DevicesIcon />} label="Equipment" {...a11yProps(2)} />
-          <Tab icon={<IlluminationIcon />} label="Illumination" {...a11yProps(3)} />
-          <Tab icon={<ElectricalServicesIcon />} label="Power Factor" {...a11yProps(4)} />
-          <Tab icon={<WavesIcon />} label="Harmonic Distortion" {...a11yProps(5)} />
-          <Tab icon={<ViewListIcon />} label="Schedule of Loads" {...a11yProps(6)} />
+          <Tab 
+            icon={<LightbulbIcon />} 
+            label="Lighting" 
+            {...a11yProps(0)} 
+          />
+          <Tab 
+            icon={<AcUnitIcon />}
+            label="HVAC" 
+            {...a11yProps(1)} 
+          />
+          <Tab 
+            icon={<DevicesIcon />} 
+            label="Equipment" 
+            {...a11yProps(2)} 
+          />
+          <Tab 
+            icon={<IlluminationIcon />} 
+            label="Illumination Calculator" 
+            {...a11yProps(3)} 
+          />
+          <Tab 
+            icon={<ElectricalServicesIcon />} 
+            label="Power Factor" 
+            {...a11yProps(4)} 
+          />
+          <Tab 
+            icon={<WavesIcon />} 
+            label="Harmonic Distortion" 
+            {...a11yProps(5)} 
+          />
+          <Tab 
+            icon={<ViewListIcon />} 
+            label="Schedule of Loads" 
+            {...a11yProps(6)} 
+          />
+          <Tab 
+            icon={<ViewListIcon />} 
+            label="Saved Calculations" 
+            {...a11yProps(7)} 
+          />
+          <Tab 
+            icon={<VerifiedUserIcon />} 
+            label="Compliance Verification" 
+            {...a11yProps(8)} 
+          />
+          <Tab 
+            icon={<CodeIcon />} 
+            label="Compliance API Test" 
+            {...a11yProps(9)} 
+          />
         </Tabs>
+      </Box>
 
-        <TabPanel value={tabValue} index={0}>
-          <LightingCalculator />
-        </TabPanel>
+      <TabPanel value={tabValue} index={0}>
+        <LightingCalculator />
+      </TabPanel>
 
-        <TabPanel value={tabValue} index={1}>
-          <HVACCalculator />
-        </TabPanel>
+      <TabPanel value={tabValue} index={1}>
+        <HVACCalculator />
+      </TabPanel>
 
-        <TabPanel value={tabValue} index={2}>
-          <EquipmentCalculator />
-        </TabPanel>
+      <TabPanel value={tabValue} index={2}>
+        <EquipmentCalculator />
+      </TabPanel>
 
-        <TabPanel value={tabValue} index={3}>
-          <IlluminationCalculator />
-        </TabPanel>
+      <TabPanel value={tabValue} index={3}>
+        <IlluminationCalculator />
+      </TabPanel>
 
-        <TabPanel value={tabValue} index={4}>
-          <PowerFactorCalculator onSave={(result: any) => {
-            // Handle power factor calculation result
-            // Add functionality to show success notification or handle savedData
-            enqueueSnackbar?.('Power factor calculation saved', { variant: 'success' });
-          }} onExportPdf={async (data: any) => {
-            try {
-              // Generate and open the report
-              const report = await generateReport('power-factor', data, {
-                title: 'Power Factor Analysis Report',
-                fileName: 'power-factor-report.pdf'
-              });
-              
-              report.openInNewTab();
-              enqueueSnackbar?.('PDF report generated successfully', { variant: 'success' });
-            } catch (error) {
-              console.error('Error generating PDF report:', error);
-              enqueueSnackbar?.('Error generating PDF report', { variant: 'error' });
-            }
-          }} />
-        </TabPanel>
+      <TabPanel value={tabValue} index={4}>
+        <PowerFactorCalculator onSave={(result: any) => {
+          // Handle power factor calculation result
+          // Add functionality to show success notification or handle savedData
+          enqueueSnackbar?.('Power factor calculation saved', { variant: 'success' });
+        }} onExportPdf={async (data: any) => {
+          try {
+            // Generate and open the report
+            const report = await generateReport('power-factor', data, {
+              title: 'Power Factor Analysis Report',
+              fileName: 'power-factor-report.pdf'
+            });
+            
+            report.openInNewTab();
+            enqueueSnackbar?.('PDF report generated successfully', { variant: 'success' });
+          } catch (error) {
+            console.error('Error generating PDF report:', error);
+            enqueueSnackbar?.('Error generating PDF report', { variant: 'error' });
+          }
+        }} />
+      </TabPanel>
 
-        <TabPanel value={tabValue} index={5}>
-          <HarmonicDistortionCalculator onSave={(result: any) => {
-            // Handle harmonic distortion calculation result
-            // Add functionality to show success notification or handle savedData
-            enqueueSnackbar?.('Harmonic distortion calculation saved', { variant: 'success' });
-          }} onExportPdf={async (data: any) => {
-            try {
-              // Generate and open the report
-              const report = await generateReport('harmonic-distortion', data, {
-                title: 'Harmonic Distortion Analysis Report',
-                fileName: 'harmonic-distortion-report.pdf',
-                orientation: 'landscape'
-              });
-              
-              report.openInNewTab();
-              enqueueSnackbar?.('PDF report generated successfully', { variant: 'success' });
-            } catch (error) {
-              console.error('Error generating PDF report:', error);
-              enqueueSnackbar?.('Error generating PDF report', { variant: 'error' });
-            }
-          }} />
-        </TabPanel>
+      <TabPanel value={tabValue} index={5}>
+        <HarmonicDistortionCalculator onSave={(result: any) => {
+          // Handle harmonic distortion calculation result
+          // Add functionality to show success notification or handle savedData
+          enqueueSnackbar?.('Harmonic distortion calculation saved', { variant: 'success' });
+        }} onExportPdf={async (data: any) => {
+          try {
+            // Generate and open the report
+            const report = await generateReport('harmonic-distortion', data, {
+              title: 'Harmonic Distortion Analysis Report',
+              fileName: 'harmonic-distortion-report.pdf',
+              orientation: 'landscape'
+            });
+            
+            report.openInNewTab();
+            enqueueSnackbar?.('PDF report generated successfully', { variant: 'success' });
+          } catch (error) {
+            console.error('Error generating PDF report:', error);
+            enqueueSnackbar?.('Error generating PDF report', { variant: 'error' });
+          }
+        }} />
+      </TabPanel>
 
-        <TabPanel value={tabValue} index={6}>
-          <ScheduleOfLoadsCalculator onSave={(result: any) => {
-            // Handle schedule of loads calculation result
-            enqueueSnackbar?.('Schedule of Loads saved', { variant: 'success' });
-          }} onExportPdf={async (data: any) => {
-            try {
-              // Generate and open the report
-              const report = await generateReport('schedule-of-loads', data, {
-                title: 'Schedule of Loads Report',
-                fileName: 'schedule-of-loads-report.pdf',
-                orientation: 'landscape'
-              });
-              
-              report.openInNewTab();
-              enqueueSnackbar?.('PDF report generated successfully', { variant: 'success' });
-            } catch (error) {
-              console.error('Error generating PDF report:', error);
-              enqueueSnackbar?.('Error generating PDF report', { variant: 'error' });
-            }
-          }} />
-        </TabPanel>
-      </Paper>
-      
-      <Card sx={{ mt: 3 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            Educational Notes
+      <TabPanel value={tabValue} index={6}>
+        <ScheduleOfLoadsCalculator onSave={(result: any) => {
+          // Handle schedule of loads calculation result
+          enqueueSnackbar?.('Schedule of Loads saved', { variant: 'success' });
+        }} onExportPdf={async (data: any) => {
+          try {
+            // Generate and open the report
+            const report = await generateReport('schedule-of-loads', data, {
+              title: 'Schedule of Loads Report',
+              fileName: 'schedule-of-loads-report.pdf',
+              orientation: 'landscape'
+            });
+            
+            report.openInNewTab();
+            enqueueSnackbar?.('PDF report generated successfully', { variant: 'success' });
+          } catch (error) {
+            console.error('Error generating PDF report:', error);
+            enqueueSnackbar?.('Error generating PDF report', { variant: 'error' });
+          }
+        }} />
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={7}>
+        <Box sx={{ p: 2 }}>
+          <Typography variant="h6" gutterBottom>Saved Calculations</Typography>
+          <Typography variant="body2" color="text.secondary" paragraph>
+            View and load your previously saved calculations. Select any calculation to load it into the appropriate calculator.
           </Typography>
-          <Typography variant="body2" paragraph>
-            These calculators are designed for educational purposes to help students understand energy consumption patterns
-            and power quality in building systems. The calculations follow industry-standard methodologies from:
-          </Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={2}>
-              <Typography variant="subtitle2">Lighting</Typography>
-              <Typography variant="body2">
-                • PEC 2017 Section 4.6<br />
-                • IES Lighting Handbook<br />
-                • DOE Lighting Guidelines
-              </Typography>
+          
+          <Divider sx={{ my: 2 }} />
+          
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <Typography variant="subtitle1" gutterBottom>Lighting Calculations</Typography>
+              <SavedCalculationsViewer 
+                calculationType="lighting"
+                onLoadCalculation={(data) => {
+                  if (data) {
+                    // Switch to lighting calculator tab and pass data
+                    setTabValue(0);
+                    enqueueSnackbar('Lighting calculation loaded. Switched to Lighting calculator.', { variant: 'success' });
+                  }
+                }}
+              />
             </Grid>
-            <Grid item xs={12} md={2}>
-              <Typography variant="subtitle2">HVAC</Typography>
-              <Typography variant="body2">
-                • ASHRAE 90.1-2019<br />
-                • ASHRAE Fundamentals<br />
-                • ACCA Manual J
-              </Typography>
+            
+            <Grid item xs={12} md={6}>
+              <Typography variant="subtitle1" gutterBottom>HVAC Calculations</Typography>
+              <SavedCalculationsViewer 
+                calculationType="hvac"
+                onLoadCalculation={(data) => {
+                  if (data) {
+                    // Switch to HVAC calculator tab and pass data
+                    setTabValue(1);
+                    enqueueSnackbar('HVAC calculation loaded. Switched to HVAC calculator.', { variant: 'success' });
+                  }
+                }}
+              />
             </Grid>
-            <Grid item xs={12} md={2}>
-              <Typography variant="subtitle2">Equipment</Typography>
-              <Typography variant="body2">
-                • IEEE 739-1995<br />
-                • ASHRAE Advanced Energy Design Guides<br />
-                • DOE Building Energy Data Book
-              </Typography>
+            
+            <Grid item xs={12} md={6}>
+              <Typography variant="subtitle1" gutterBottom>Equipment Calculations</Typography>
+              <SavedCalculationsViewer 
+                calculationType="equipment"
+                onLoadCalculation={(data) => {
+                  if (data) {
+                    // Switch to Equipment calculator tab and pass data
+                    setTabValue(2);
+                    enqueueSnackbar('Equipment calculation loaded. Switched to Equipment calculator.', { variant: 'success' });
+                  }
+                }}
+              />
             </Grid>
-            <Grid item xs={12} md={2}>
-              <Typography variant="subtitle2">Illumination</Typography>
-              <Typography variant="body2">
-                • PEC 2017 Rule 1075<br />
-                • IES Lighting Handbook<br />
-                • Philippine Lighting Code
-              </Typography>
-            </Grid>
-            <Grid item xs={12} md={2}>
-              <Typography variant="subtitle2">Power Factor</Typography>
-              <Typography variant="body2">
-                • PEC 2017 Section 4.30<br />
-                • IEEE 1459-2010<br />
-                • Power Quality Standards
-              </Typography>
-            </Grid>
-            <Grid item xs={12} md={2}>
-              <Typography variant="subtitle2">Harmonic Distortion</Typography>
-              <Typography variant="body2">
-                • IEEE 519-2014<br />
-                • IEC 61000-3-2<br />
-                • Philippine Distribution Code
-              </Typography>
-            </Grid>
-            <Grid item xs={12} md={2}>
-              <Typography variant="subtitle2">Schedule of Loads</Typography>
-              <Typography variant="body2">
-                • PEC 2017 Section 2.4<br />
-                • IEEE 241-1990<br />
-                • Philippine Distribution Code
-              </Typography>
+            
+            <Grid item xs={12} md={6}>
+              <Typography variant="subtitle1" gutterBottom>Other Calculations</Typography>
+              <SavedCalculationsViewer 
+                calculationType="all"
+                onLoadCalculation={(data) => {
+                  if (data) {
+                    // Switch to appropriate calculator tab based on type
+                    const tabIndex = data.type === 'power_factor' ? 4 : 
+                                     data.type === 'harmonic_distortion' ? 5 :
+                                     data.type === 'schedule_of_loads' ? 6 : 3;
+                    setTabValue(tabIndex);
+                    enqueueSnackbar(`${data.name} loaded. Switched to appropriate calculator.`, { variant: 'success' });
+                  }
+                }}
+              />
             </Grid>
           </Grid>
-        </CardContent>
-      </Card>
+        </Box>
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={8}>
+        <ComplianceCalculatorIntegration />
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={9}>
+        <ComplianceApiTest />
+      </TabPanel>
     </Box>
   );
 };

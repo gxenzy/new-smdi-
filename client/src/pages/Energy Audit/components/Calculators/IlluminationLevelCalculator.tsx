@@ -68,15 +68,15 @@ interface IlluminationLevelResult {
 
 // Room types with required illuminance levels per PEC Rule 1075
 const roomTypes = [
-  { value: 'classroom', label: 'Classroom', requiredLux: 300 },
+  { value: 'classroom', label: 'Classroom', requiredLux: 500 },
   { value: 'computerLab', label: 'Computer Laboratory', requiredLux: 500 },
-  { value: 'scienceLab', label: 'Science Laboratory', requiredLux: 500 },
+  { value: 'scienceLab', label: 'Science Laboratory', requiredLux: 750 },
   { value: 'library', label: 'Library', requiredLux: 500 },
   { value: 'officeGeneral', label: 'Office (General)', requiredLux: 500 },
   { value: 'corridor', label: 'Corridor', requiredLux: 100 },
   { value: 'conferenceRoom', label: 'Conference Room', requiredLux: 300 },
   { value: 'auditorium', label: 'Auditorium', requiredLux: 200 },
-  { value: 'cafeteria', label: 'Cafeteria', requiredLux: 200 },
+  { value: 'cafeteria', label: 'Cafeteria', requiredLux: 300 },
   { value: 'gymnasium', label: 'Gymnasium', requiredLux: 300 }
 ];
 
@@ -150,6 +150,13 @@ const IlluminationLevelCalculator: React.FC<IlluminationLevelCalculatorProps> = 
   
   // State for calculation status
   const [calculating, setCalculating] = useState(false);
+  
+  // State for API-fetched illumination requirements
+  const [illuminationStandard, setIlluminationStandard] = useState<{
+    requiredIlluminance: number;
+    notes: string;
+    standard: string;
+  } | null>(null);
   
   // Handle input changes
   const handleInputChange = (field: keyof IlluminationLevelInputs) => (
@@ -291,99 +298,128 @@ const IlluminationLevelCalculator: React.FC<IlluminationLevelCalculatorProps> = 
     return Math.max(0.3, Math.min(0.85, adjustedUF));
   };
 
-  // Calculate illuminance level
+  // Function to fetch illumination requirements from the API
+  const fetchIlluminationRequirements = async (roomType: string) => {
+    try {
+      // Find the room type label for the API query
+      const roomTypeObj = roomTypes.find(rt => rt.value === roomType);
+      if (!roomTypeObj) return;
+      
+      const response = await fetch(`/api/lookup/illumination?roomType=${encodeURIComponent(roomTypeObj.label)}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setIlluminationStandard({
+          requiredIlluminance: data.requiredIlluminance,
+          notes: data.notes,
+          standard: data.standard
+        });
+      } else {
+        console.log('Using default illumination requirements');
+        // If API fails, use the default values from the roomTypes array
+        setIlluminationStandard(null);
+      }
+    } catch (error) {
+      console.error('Error fetching illumination requirements:', error);
+      setIlluminationStandard(null);
+    }
+  };
+
+  // Effect to fetch illumination requirements when room type changes
+  React.useEffect(() => {
+    fetchIlluminationRequirements(inputs.roomType);
+  }, [inputs.roomType]);
+
+  // Calculate illuminance level and check compliance
   const calculateIlluminanceLevel = () => {
     if (!validateInputs()) {
-      setTabValue(0); // Go back to inputs tab if there are errors
       return;
     }
     
     setCalculating(true);
     
-    // Simulating a calculation delay for better UX
+    // Using setTimeout to show the loading state
     setTimeout(() => {
       try {
-        // Get room index
-        const roomIndex = calculateRoomIndex();
-        
-        // Calculate utilization factor
-        const utilizationFactor = calculateUtilizationFactor(roomIndex);
-        
-        // Calculate total lumens
-        const lumensPerLamp = parseFloat(inputs.lampLumens);
-        const lampsPerFixture = parseFloat(inputs.numberOfLamps);
-        const numberOfFixtures = parseFloat(inputs.numberOfFixtures);
-        const totalLumens = lumensPerLamp * lampsPerFixture * numberOfFixtures;
-        
-        // Calculate room area
-        const roomArea = parseFloat(inputs.roomLength) * parseFloat(inputs.roomWidth);
-        
-        // Get maintenance factor
+        // Parse inputs
+        const roomLength = parseFloat(inputs.roomLength);
+        const roomWidth = parseFloat(inputs.roomWidth);
+        const roomHeight = parseFloat(inputs.roomHeight);
+        const workPlaneHeight = parseFloat(inputs.workPlaneHeight);
+        const lampLumens = parseFloat(inputs.lampLumens);
+        const numberOfLamps = parseInt(inputs.numberOfLamps);
+        const numberOfFixtures = parseInt(inputs.numberOfFixtures);
         const maintenanceFactor = parseFloat(inputs.maintenanceFactor);
         
-        // Calculate illuminance level using the formula:
-        // E = (Φ × n × UF × MF) / A
-        const illuminanceLevel = (totalLumens * utilizationFactor * maintenanceFactor) / roomArea;
+        // Calculate room index (K)
+        const roomArea = roomLength * roomWidth;
+        const mountingHeight = roomHeight - workPlaneHeight;
+        const roomIndex = (roomLength * roomWidth) / (mountingHeight * (roomLength + roomWidth));
+        
+        // Get utilization factor based on room index and reflectance values
+        const utilizationFactor = calculateUtilizationFactor(roomIndex);
+        
+        // Calculate total luminous flux
+        const totalLuminousFlux = lampLumens * numberOfLamps * numberOfFixtures;
+        
+        // Calculate illuminance level (E)
+        const illuminanceLevel = (totalLuminousFlux * utilizationFactor * maintenanceFactor) / roomArea;
         
         // Get required illuminance for the selected room type
-        const roomType = roomTypes.find(rt => rt.value === inputs.roomType);
-        const requiredIlluminance = roomType ? roomType.requiredLux : 300; // Default to 300 lux
+        const roomTypeObj = roomTypes.find(rt => rt.value === inputs.roomType);
+        // Use API-provided value or fallback to hardcoded value
+        const requiredIlluminance = illuminationStandard?.requiredIlluminance || roomTypeObj?.requiredLux || 500;
         
-        // Determine compliance
-        const complianceStatus = illuminanceLevel >= requiredIlluminance ? 'compliant' : 'non-compliant';
+        // Check compliance
+        const isCompliant = illuminanceLevel >= requiredIlluminance;
         
-        // Calculate uniformity ratio (simplified approximation)
-        // Typically this would require a more complex calculation with point-by-point analysis
-        const uniformityRatio = 0.7; // Simplified assumption
+        // Calculate uniformity ratio (approximated as 0.6 for a well-designed layout)
+        const uniformityRatio = 0.6;
         
         // Generate recommendations
-        const recommendations = [];
+        const recommendations: string[] = [];
         
-        if (complianceStatus === 'non-compliant') {
-          const shortfall = requiredIlluminance - illuminanceLevel;
-          const percentShortfall = (shortfall / requiredIlluminance) * 100;
+        if (!isCompliant) {
+          // Calculate how many more fixtures would be needed
+          const requiredFixtures = Math.ceil(
+            (requiredIlluminance * roomArea) / (lampLumens * numberOfLamps * utilizationFactor * maintenanceFactor)
+          );
+          const additionalFixtures = requiredFixtures - numberOfFixtures;
           
-          if (percentShortfall < 10) {
-            recommendations.push('Slightly increase the number of fixtures or use higher lumen lamps to meet the required illuminance level.');
-          } else if (percentShortfall < 30) {
-            recommendations.push('Consider adding more fixtures or upgrading to higher efficiency lamps to improve illuminance levels.');
-          } else {
-            recommendations.push('Significant improvement needed. Redesign the lighting layout with more fixtures or higher output lamps.');
-          }
+          recommendations.push(`Increase the number of fixtures by at least ${additionalFixtures} to meet the required illuminance level.`);
+          recommendations.push('Consider using lamps with higher lumen output.');
+          recommendations.push('Implement a regular cleaning schedule to maintain fixture efficiency.');
+          recommendations.push('Use light-colored finishes on walls and ceiling to increase reflectance.');
         } else {
-          const surplus = illuminanceLevel - requiredIlluminance;
-          const percentSurplus = (surplus / requiredIlluminance) * 100;
-          
-          if (percentSurplus > 50) {
-            recommendations.push('The current design significantly exceeds requirements. Consider reducing the number of fixtures or using lower wattage lamps to save energy.');
-          } else if (percentSurplus > 20) {
-            recommendations.push('Illuminance level is higher than required. Consider minor adjustments to improve energy efficiency.');
+          if (illuminanceLevel > requiredIlluminance * 1.5) {
+            recommendations.push('The space is over-illuminated. Consider reducing the number of fixtures or using lower wattage lamps to save energy.');
           } else {
-            recommendations.push('Illuminance level meets requirements. No immediate changes necessary.');
+            recommendations.push('The illumination level is adequate. Maintain regular cleaning of fixtures to preserve performance.');
           }
         }
         
-        if (parseFloat(inputs.maintenanceFactor) < 0.7) {
-          recommendations.push('The low maintenance factor indicates a challenging environment. Implement a regular cleaning schedule to maintain illumination levels.');
+        // Add note from standard if available
+        if (illuminationStandard?.notes) {
+          recommendations.push(`Note from ${illuminationStandard.standard || 'PEC 2017'}: ${illuminationStandard.notes}`);
         }
         
         // Set results
-        setResults({
+        const result: IlluminationLevelResult = {
           roomIndex,
           utilizationFactor,
           illuminanceLevel,
           requiredIlluminance,
-          complianceStatus,
+          complianceStatus: isCompliant ? 'compliant' : 'non-compliant',
           uniformityRatio,
           recommendations,
           timestamp: Date.now()
-        });
+        };
         
-        // Switch to results tab
-        setTabValue(2);
+        setResults(result);
+        setTabValue(1); // Switch to results tab
       } catch (error) {
         console.error('Calculation error:', error);
-        setErrors({ general: 'An error occurred during calculation. Please check your inputs.' });
+        enqueueSnackbar('Error in calculation. Please check your inputs.', { variant: 'error' });
       } finally {
         setCalculating(false);
       }

@@ -32,24 +32,26 @@ import {
   School as SchoolIcon,
   Info as InfoIcon
 } from '@mui/icons-material';
-import axios from 'axios';
+import standardsService from '../../services/StandardsService';
+import TagManagement from './TagManagement';
 
 interface SectionData {
-  id: number;
-  standard_id: number;
+  id: string;
+  standard_id: string;
   section_number: string;
   title: string;
   content: string;
+  parent_section_id: string | null;
   has_tables: boolean;
   has_figures: boolean;
-  tables: TableData[];
-  figures: FigureData[];
-  compliance_requirements: RequirementData[];
-  educational_resources: ResourceData[];
+  tables?: TableData[];
+  figures?: FigureData[];
+  compliance_requirements?: RequirementData[];
+  educational_resources?: ResourceData[];
 }
 
 interface TableData {
-  id: number;
+  id: string;
   table_number: string;
   title: string;
   content: any;
@@ -57,7 +59,7 @@ interface TableData {
 }
 
 interface FigureData {
-  id: number;
+  id: string;
   figure_number: string;
   title: string;
   image_path: string;
@@ -65,7 +67,7 @@ interface FigureData {
 }
 
 interface RequirementData {
-  id: number;
+  id: string;
   requirement_type: 'mandatory' | 'prescriptive' | 'performance';
   description: string;
   verification_method?: string;
@@ -73,7 +75,7 @@ interface RequirementData {
 }
 
 interface ResourceData {
-  id: number;
+  id: string;
   resource_type: 'video' | 'article' | 'case_study' | 'guide';
   title: string;
   description?: string;
@@ -109,14 +111,28 @@ const TabPanel: React.FC<TabPanelProps> = (props) => {
   );
 };
 
-const SectionViewer: React.FC<{
-  sectionId: number | null;
-}> = ({ sectionId }) => {
+interface SectionViewerProps {
+  sectionId: string | null;
+  bookmarks: string[];
+  onBookmarkToggle: (sectionId: string) => void;
+}
+
+const SectionViewer: React.FC<SectionViewerProps> = ({ 
+  sectionId, 
+  bookmarks = [],
+  onBookmarkToggle 
+}) => {
   const [section, setSection] = useState<SectionData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
-  const [bookmarked, setBookmarked] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+
+  // Check authentication status
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    setIsAuthenticated(!!token);
+  }, []);
 
   // Fetch section data when ID changes
   useEffect(() => {
@@ -127,20 +143,12 @@ const SectionViewer: React.FC<{
     }
   }, [sectionId]);
 
-  // Check if section is bookmarked
-  useEffect(() => {
-    if (sectionId) {
-      const bookmarks = JSON.parse(localStorage.getItem('standardBookmarks') || '[]');
-      setBookmarked(bookmarks.includes(sectionId));
-    }
-  }, [sectionId]);
-
-  const fetchSection = async (id: number) => {
+  const fetchSection = async (id: string) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get(`/api/standards-api/sections/${id}`);
-      setSection(response.data);
+      const data = await standardsService.getSectionById(id);
+      setSection(data);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching section:', error);
@@ -153,20 +161,10 @@ const SectionViewer: React.FC<{
     setTabValue(newValue);
   };
 
-  const toggleBookmark = () => {
-    if (!sectionId) return;
-    
-    const bookmarks = JSON.parse(localStorage.getItem('standardBookmarks') || '[]');
-    
-    if (bookmarked) {
-      const updatedBookmarks = bookmarks.filter((id: number) => id !== sectionId);
-      localStorage.setItem('standardBookmarks', JSON.stringify(updatedBookmarks));
-    } else {
-      bookmarks.push(sectionId);
-      localStorage.setItem('standardBookmarks', JSON.stringify(bookmarks));
+  const handleBookmarkToggle = () => {
+    if (sectionId) {
+      onBookmarkToggle(sectionId);
     }
-    
-    setBookmarked(!bookmarked);
   };
 
   const printSection = () => {
@@ -249,42 +247,47 @@ const SectionViewer: React.FC<{
   if (!section) {
     return (
       <Paper sx={{ p: 4, height: '100%' }}>
-        <Typography variant="h6" color="text.secondary">
-          Section not found
-        </Typography>
+        <Alert severity="info">Section not found</Alert>
       </Paper>
     );
   }
 
+  const isBookmarked = bookmarks.includes(sectionId);
+
   return (
-    <Paper sx={{ p: 3, height: '100%', overflow: 'auto' }} id="section-viewer">
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="h5" component="h2">
-          {section.section_number} {section.title}
-        </Typography>
+    <Paper sx={{ p: 3, height: '100%', overflow: 'auto' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
         <Box>
-          <Tooltip title={bookmarked ? "Remove bookmark" : "Bookmark this section"}>
-            <IconButton onClick={toggleBookmark}>
-              {bookmarked ? <BookmarkIcon color="primary" /> : <BookmarkBorderIcon />}
+          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+            Section {section.section_number}
+          </Typography>
+          <Typography variant="h5" component="h2" gutterBottom>
+            {section.title}
+          </Typography>
+        </Box>
+        <Box>
+          <Tooltip title={isBookmarked ? "Remove bookmark" : "Add bookmark"}>
+            <IconButton onClick={handleBookmarkToggle}>
+              {isBookmarked ? <BookmarkIcon color="primary" /> : <BookmarkBorderIcon />}
             </IconButton>
           </Tooltip>
-          <Tooltip title="Print this section">
+          <Tooltip title="Print section">
             <IconButton onClick={printSection}>
               <PrintIcon />
             </IconButton>
           </Tooltip>
         </Box>
       </Box>
-      
+
       <Divider sx={{ mb: 2 }} />
-      
-      <Tabs value={tabValue} onChange={handleTabChange} variant="scrollable" scrollButtons="auto">
+
+      <Tabs value={tabValue} onChange={handleTabChange} aria-label="section tabs">
         <Tab label="Content" id="section-tab-0" aria-controls="section-tabpanel-0" />
         {section.tables && section.tables.length > 0 && (
-          <Tab label={`Tables (${section.tables.length})`} id="section-tab-1" aria-controls="section-tabpanel-1" />
+          <Tab label="Tables" id="section-tab-1" aria-controls="section-tabpanel-1" />
         )}
         {section.figures && section.figures.length > 0 && (
-          <Tab label={`Figures (${section.figures.length})`} id="section-tab-2" aria-controls="section-tabpanel-2" />
+          <Tab label="Figures" id="section-tab-2" aria-controls="section-tabpanel-2" />
         )}
         {section.compliance_requirements && section.compliance_requirements.length > 0 && (
           <Tab label="Compliance" id="section-tab-3" aria-controls="section-tabpanel-3" />
@@ -293,53 +296,50 @@ const SectionViewer: React.FC<{
           <Tab label="Resources" id="section-tab-4" aria-controls="section-tabpanel-4" />
         )}
       </Tabs>
-      
+
       <TabPanel value={tabValue} index={0}>
-        <Typography component="div">
-          {section.content ? (
-            <div dangerouslySetInnerHTML={{ __html: section.content }} />
-          ) : (
-            <Typography color="text.secondary">No content available for this section.</Typography>
-          )}
-        </Typography>
+        <div dangerouslySetInnerHTML={{ __html: section.content }} />
+        <TagManagement sectionId={section.id} />
       </TabPanel>
-      
+
+      {/* Tables panel */}
       {section.tables && section.tables.length > 0 && (
         <TabPanel value={tabValue} index={1}>
-          {section.tables.map(table => (
+          {section.tables.map((table) => (
             <Box key={table.id} sx={{ mb: 4 }}>
               <Typography variant="h6" gutterBottom>
                 Table {table.table_number}: {table.title}
               </Typography>
               {renderTableContent(table.content)}
               {table.notes && (
-                <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
-                  Note: {table.notes}
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  <strong>Notes:</strong> {table.notes}
                 </Typography>
               )}
             </Box>
           ))}
         </TabPanel>
       )}
-      
+
+      {/* Figures panel */}
       {section.figures && section.figures.length > 0 && (
         <TabPanel value={tabValue} index={2}>
           <Grid container spacing={3}>
-            {section.figures.map(figure => (
+            {section.figures.map((figure) => (
               <Grid item xs={12} md={6} key={figure.id}>
                 <Card>
                   <CardMedia
                     component="img"
+                    height="240"
                     image={figure.image_path}
                     alt={figure.title}
-                    sx={{ maxHeight: 300, objectFit: 'contain' }}
                   />
                   <CardContent>
-                    <Typography variant="h6" gutterBottom>
+                    <Typography variant="subtitle1" gutterBottom>
                       Figure {figure.figure_number}: {figure.title}
                     </Typography>
                     {figure.caption && (
-                      <Typography variant="body2">
+                      <Typography variant="body2" color="text.secondary">
                         {figure.caption}
                       </Typography>
                     )}
@@ -350,78 +350,113 @@ const SectionViewer: React.FC<{
           </Grid>
         </TabPanel>
       )}
-      
+
+      {/* Compliance requirements panel */}
       {section.compliance_requirements && section.compliance_requirements.length > 0 && (
         <TabPanel value={tabValue} index={3}>
           <List>
-            {section.compliance_requirements.map(requirement => (
-              <Box key={requirement.id} sx={{ mb: 2 }}>
-                <Alert 
-                  severity={getSeverityColor(requirement.severity) as any}
-                  icon={<InfoIcon />}
-                >
-                  <Box sx={{ mb: 1 }}>
-                    <Typography variant="subtitle1" component="div" sx={{ fontWeight: 'bold' }}>
-                      {requirement.requirement_type.toUpperCase()} Requirement
-                    </Typography>
-                  </Box>
-                  <Typography variant="body1">{requirement.description}</Typography>
-                  {requirement.verification_method && (
-                    <Typography variant="body2" sx={{ mt: 1 }}>
-                      <strong>Verification:</strong> {requirement.verification_method}
-                    </Typography>
-                  )}
-                </Alert>
-              </Box>
-            ))}
-          </List>
-        </TabPanel>
-      )}
-      
-      {section.educational_resources && section.educational_resources.length > 0 && (
-        <TabPanel value={tabValue} index={4}>
-          <List>
-            {section.educational_resources.map(resource => (
-              <ListItem
-                key={resource.id}
-                sx={{ 
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 1,
-                  mb: 2
-                }}
-              >
+            {section.compliance_requirements.map((requirement) => (
+              <ListItem key={requirement.id} alignItems="flex-start">
                 <ListItemIcon>
-                  <SchoolIcon />
+                  <InfoIcon color={getSeverityColor(requirement.severity) as any} />
                 </ListItemIcon>
                 <ListItemText
-                  primary={resource.title}
+                  primary={
+                    <Typography variant="subtitle1">
+                      {requirement.requirement_type.charAt(0).toUpperCase() + requirement.requirement_type.slice(1)} Requirement
+                    </Typography>
+                  }
                   secondary={
                     <>
-                      <Typography component="span" variant="body2" color="text.primary">
-                        {resource.resource_type.charAt(0).toUpperCase() + resource.resource_type.slice(1)}
-                        {resource.difficulty && ` • ${resource.difficulty.charAt(0).toUpperCase() + resource.difficulty.slice(1)} level`}
-                        {resource.duration && ` • ${resource.duration}`}
+                      <Typography variant="body2" paragraph>
+                        {requirement.description}
                       </Typography>
-                      {resource.description && (
-                        <Typography component="p" variant="body2">
-                          {resource.description}
+                      {requirement.verification_method && (
+                        <Typography variant="body2">
+                          <strong>Verification:</strong> {requirement.verification_method}
                         </Typography>
                       )}
                     </>
                   }
                 />
-                {resource.url && (
-                  <Button 
-                    variant="outlined" 
-                    size="small"
-                    href={resource.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    View
-                  </Button>
-                )}
+              </ListItem>
+            ))}
+          </List>
+        </TabPanel>
+      )}
+
+      {/* Educational resources panel */}
+      {section.educational_resources && section.educational_resources.length > 0 && (
+        <TabPanel value={tabValue} index={4}>
+          <List>
+            {section.educational_resources.map((resource) => (
+              <ListItem key={resource.id} alignItems="flex-start">
+                <ListItemIcon>
+                  <SchoolIcon />
+                </ListItemIcon>
+                <ListItemText
+                  primary={
+                    <Typography variant="subtitle1">
+                      {resource.title}
+                    </Typography>
+                  }
+                  secondary={
+                    <>
+                      <Typography variant="body2" paragraph>
+                        {resource.description}
+                      </Typography>
+                      {resource.difficulty && (
+                        <Typography
+                          component="span"
+                          variant="body2"
+                          sx={{
+                            backgroundColor:
+                              resource.difficulty === 'beginner'
+                                ? 'success.light'
+                                : resource.difficulty === 'intermediate'
+                                ? 'warning.light'
+                                : 'error.light',
+                            px: 1,
+                            py: 0.25,
+                            borderRadius: 1,
+                            mr: 1,
+                          }}
+                        >
+                          {resource.difficulty.charAt(0).toUpperCase() + resource.difficulty.slice(1)} level
+                        </Typography>
+                      )}
+                      {resource.duration && (
+                        <Typography
+                          component="span"
+                          variant="body2"
+                          sx={{
+                            backgroundColor: 'default.light',
+                            px: 1,
+                            py: 0.25,
+                            borderRadius: 1,
+                            mr: 1,
+                          }}
+                        >
+                          Duration: {resource.duration}
+                        </Typography>
+                      )}
+                      {resource.url && (
+                        <Box sx={{ mt: 1 }}>
+                          <Button 
+                            component="a" 
+                            href={resource.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            variant="outlined" 
+                            size="small"
+                          >
+                            View Resource
+                          </Button>
+                        </Box>
+                      )}
+                    </>
+                  }
+                />
               </ListItem>
             ))}
           </List>

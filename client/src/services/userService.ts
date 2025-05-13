@@ -2,7 +2,7 @@ import axios from 'axios';
 import { User } from '../types/users';
 
 // API base URL
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 /**
  * Service for user-related API operations

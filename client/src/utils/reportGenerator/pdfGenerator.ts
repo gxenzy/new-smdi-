@@ -286,7 +286,65 @@ abstract class PDFGenerator {
     color?: string,
     options: { width?: number, height?: number, caption?: string } = {}
   ): Promise<number> {
-    const chartUrl = await ChartGenerator.generateBarChart(labels, data, title, color);
+    // Using generateChartForPDF instead of generateBarChart for better PDF rendering with visible axes
+    const chartUrl = await ChartGenerator.generateChartForPDF({
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: title || '',
+          data,
+          backgroundColor: color || '#2196F3',
+          borderColor: color || '#2196F3',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: {
+              display: true,
+              color: 'rgba(0, 0, 0, 0.1)',
+              lineWidth: 1
+            },
+            ticks: {
+              color: 'rgba(0, 0, 0, 0.7)',
+              font: { size: 10 }
+            },
+            title: {
+              display: true,
+              text: 'Value',
+              color: 'rgba(0, 0, 0, 0.9)',
+              font: { size: 10, weight: 'bold' }
+            }
+          },
+          x: {
+            grid: {
+              display: true,
+              color: 'rgba(0, 0, 0, 0.05)',
+              lineWidth: 1
+            },
+            ticks: {
+              color: 'rgba(0, 0, 0, 0.7)',
+              font: { size: 10 }
+            }
+          }
+        },
+        plugins: {
+          title: {
+            display: !!title,
+            text: title || '',
+            font: { size: 14, weight: 'bold' },
+            color: 'rgba(0, 0, 0, 0.9)'
+          },
+          legend: {
+            display: false
+          }
+        }
+      }
+    }, 'default', options.width || 500, options.height || 250);
+    
     return this.addChart(chartUrl, y, options);
   }
 
@@ -299,7 +357,54 @@ abstract class PDFGenerator {
     colors?: string[],
     options: { width?: number, height?: number, caption?: string } = {}
   ): Promise<number> {
-    const chartUrl = await ChartGenerator.generatePieChart(labels, data, title, colors);
+    // Using generateChartForPDF for better PDF rendering
+    const pieColors = colors || ChartGenerator.getThemeColors(data.length);
+    
+    const chartUrl = await ChartGenerator.generateChartForPDF({
+      type: 'pie',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          backgroundColor: pieColors.slice(0, data.length),
+          borderWidth: 1,
+          borderColor: 'white'
+        }]
+      },
+      options: {
+        plugins: {
+          title: {
+            display: !!title,
+            text: title || '',
+            font: { size: 14, weight: 'bold' },
+            color: 'rgba(0, 0, 0, 0.9)'
+          },
+          legend: {
+            position: 'right',
+            labels: {
+              color: 'rgba(0, 0, 0, 0.8)',
+              font: { size: 10, weight: 'bold' },
+              padding: 15
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: (context: any) => {
+                const label = context.label || '';
+                const value = context.formattedValue;
+                const total = context.dataset.data.reduce(
+                  (sum: number, val: any) => sum + (typeof val === 'number' ? val : 0), 
+                  0
+                );
+                const percentage = Math.round((context.raw / total) * 100);
+                return `${label}: ${value} (${percentage}%)`;
+              }
+            }
+          }
+        }
+      }
+    }, 'default', options.width || 500, options.height || 250);
+    
     return this.addChart(chartUrl, y, options);
   }
 
@@ -311,7 +416,77 @@ abstract class PDFGenerator {
     title?: string,
     options: { width?: number, height?: number, caption?: string } = {}
   ): Promise<number> {
-    const chartUrl = await ChartGenerator.generateLineChart(labels, datasets, title);
+    // Using generateChartForPDF for better PDF rendering
+    const themeColors = ChartGenerator.getThemeColors(datasets.length);
+    
+    const chartUrl = await ChartGenerator.generateChartForPDF({
+      type: 'line',
+      data: {
+        labels,
+        datasets: datasets.map((ds, index) => ({
+          label: ds.label,
+          data: ds.data,
+          borderColor: ds.color || themeColors[index],
+          backgroundColor: 'rgba(0, 0, 0, 0)',
+          borderWidth: 2,
+          pointRadius: 4,
+          pointBackgroundColor: ds.color || themeColors[index],
+          tension: 0.1
+        }))
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: {
+              display: true,
+              color: 'rgba(0, 0, 0, 0.1)',
+              lineWidth: 1
+            },
+            ticks: {
+              color: 'rgba(0, 0, 0, 0.7)',
+              font: { size: 10 }
+            },
+            title: {
+              display: true,
+              text: 'Value',
+              color: 'rgba(0, 0, 0, 0.9)',
+              font: { size: 10, weight: 'bold' }
+            }
+          },
+          x: {
+            grid: {
+              display: true,
+              color: 'rgba(0, 0, 0, 0.05)',
+              lineWidth: 1
+            },
+            ticks: {
+              color: 'rgba(0, 0, 0, 0.7)',
+              font: { size: 10 }
+            }
+          }
+        },
+        plugins: {
+          title: {
+            display: !!title,
+            text: title || '',
+            font: { size: 14, weight: 'bold' },
+            color: 'rgba(0, 0, 0, 0.9)'
+          },
+          legend: {
+            display: true,
+            position: 'top',
+            labels: {
+              color: 'rgba(0, 0, 0, 0.8)',
+              font: { size: 10 },
+              boxWidth: 12,
+              padding: 10
+            }
+          }
+        }
+      }
+    }, 'default', options.width || 500, options.height || 250);
+    
     return this.addChart(chartUrl, y, options);
   }
 
@@ -324,7 +499,79 @@ abstract class PDFGenerator {
     title?: string,
     options: { width?: number, height?: number, caption?: string } = {}
   ): Promise<number> {
-    const chartUrl = await ChartGenerator.generateComparisonChart(labels, beforeData, afterData, title);
+    // Using generateChartForPDF for better PDF rendering
+    const chartUrl = await ChartGenerator.generateChartForPDF({
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Before',
+            data: beforeData,
+            backgroundColor: 'rgba(255, 99, 132, 0.8)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 1
+          },
+          {
+            label: 'After',
+            data: afterData,
+            backgroundColor: 'rgba(54, 162, 235, 0.8)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+          }
+        ]
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: {
+              display: true,
+              color: 'rgba(0, 0, 0, 0.1)',
+              lineWidth: 1
+            },
+            ticks: {
+              color: 'rgba(0, 0, 0, 0.7)',
+              font: { size: 10 }
+            },
+            title: {
+              display: true,
+              text: 'Value',
+              color: 'rgba(0, 0, 0, 0.9)',
+              font: { size: 10, weight: 'bold' }
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            },
+            ticks: {
+              color: 'rgba(0, 0, 0, 0.7)',
+              font: { size: 10 }
+            }
+          }
+        },
+        plugins: {
+          title: {
+            display: !!title,
+            text: title || 'Before/After Comparison',
+            font: { size: 14, weight: 'bold' },
+            color: 'rgba(0, 0, 0, 0.9)'
+          },
+          legend: {
+            display: true,
+            position: 'top',
+            labels: {
+              color: 'rgba(0, 0, 0, 0.8)',
+              font: { size: 10 },
+              boxWidth: 12,
+              padding: 10
+            }
+          }
+        }
+      }
+    }, 'default', options.width || 500, options.height || 250);
+    
     return this.addChart(chartUrl, y, options);
   }
 
@@ -737,10 +984,15 @@ export class EquipmentReportGenerator extends PDFGenerator {
     // Add summary section
     yPos = this.addSectionHeading('Equipment Energy Summary', yPos);
     
+    // Ensure summary data has expected properties
+    const totalDailyConsumption = this.summaryData.totalDailyConsumption || this.summaryData.dailyTotal || 0;
+    const totalAnnualConsumption = this.summaryData.totalAnnualConsumption || this.summaryData.annualTotal || 0;
+    const totalAnnualCost = this.summaryData.totalAnnualCost || this.summaryData.costTotal || 0;
+    
     const summary = [
-      { key: 'Total Daily Energy Consumption', value: `${this.summaryData.totalDailyConsumption.toFixed(2)} kWh/day` },
-      { key: 'Total Annual Energy Consumption', value: `${this.summaryData.totalAnnualConsumption.toFixed(2)} kWh/year` },
-      { key: 'Total Annual Energy Cost', value: `₱${this.summaryData.totalAnnualCost.toFixed(2)}/year` },
+      { key: 'Total Daily Energy Consumption', value: `${totalDailyConsumption.toFixed(2)} kWh/day` },
+      { key: 'Total Annual Energy Consumption', value: `${totalAnnualConsumption.toFixed(2)} kWh/year` },
+      { key: 'Total Annual Energy Cost', value: `₱${totalAnnualCost.toFixed(2)}/year` },
       { key: 'Number of Equipment Types', value: this.data.length.toString() },
       { key: 'Electricity Rate', value: `₱${this.electricityRate}/kWh` }
     ];
@@ -753,15 +1005,15 @@ export class EquipmentReportGenerator extends PDFGenerator {
     // Create table headers
     const tableHeaders = ['Equipment', 'Quantity', 'Power (W)', 'Hours/Day', 'Daily (kWh)', 'Annual (kWh)', 'Annual Cost (₱)'];
     
-    // Create table rows
+    // Create table rows - handle both field name variations
     const tableData = this.data.map(item => [
-      item.name,
-      item.quantity.toString(),
-      item.wattage.toString(),
-      item.hoursPerDay.toString(),
-      item.dailyConsumption.toFixed(2),
-      item.annualConsumption.toFixed(2),
-      item.annualCost.toFixed(2)
+      item.name || item.type,
+      (item.quantity || 0).toString(),
+      (item.wattage || item.power || 0).toString(),
+      (item.hoursPerDay || item.hours || 0).toString(),
+      (item.dailyConsumption || 0).toFixed(2),
+      (item.annualConsumption || 0).toFixed(2),
+      (item.annualCost || 0).toFixed(2)
     ]);
     
     // Customize table options for better readability
@@ -789,8 +1041,8 @@ export class EquipmentReportGenerator extends PDFGenerator {
     yPos = this.addSectionHeading('Energy Distribution', yPos);
     
     // Prepare data for pie chart - show distribution by equipment type
-    const equipmentLabels = this.data.map(item => item.name);
-    const energyConsumption = this.data.map(item => item.annualConsumption);
+    const equipmentLabels = this.data.map(item => item.name || item.type);
+    const energyConsumption = this.data.map(item => item.annualConsumption || 0);
     
     yPos = await this.addPieChart(
       equipmentLabels,
@@ -800,7 +1052,7 @@ export class EquipmentReportGenerator extends PDFGenerator {
     );
     
     // Add cost distribution chart - Bar chart showing cost by equipment type
-    const annualCosts = this.data.map(item => item.annualCost);
+    const annualCosts = this.data.map(item => item.annualCost || 0);
     
     yPos = await this.addBarChart(
       equipmentLabels,
@@ -832,13 +1084,13 @@ export class EquipmentReportGenerator extends PDFGenerator {
     yPos = this.addSectionHeading('Estimated Savings Potential', yPos);
     
     // Calculate potential savings with power management (assume 15% savings)
-    const powerMgmtSavings = this.summaryData.totalAnnualCost * 0.15;
+    const powerMgmtSavings = totalAnnualCost * 0.15;
     
     // Calculate potential savings with Energy Star equipment (assume 25% savings)
-    const energyStarSavings = this.summaryData.totalAnnualCost * 0.25;
+    const energyStarSavings = totalAnnualCost * 0.25;
     
     // Calculate potential savings with equipment scheduling (assume 10% savings)
-    const schedulingSavings = this.summaryData.totalAnnualCost * 0.10;
+    const schedulingSavings = totalAnnualCost * 0.10;
     
     // Add savings comparison chart
     const savingsLabels = ['Power Management', 'Energy Star Equipment', 'Equipment Scheduling'];
@@ -856,6 +1108,12 @@ export class EquipmentReportGenerator extends PDFGenerator {
     yPos = this.addSectionHeading('Reference Notes', yPos);
     yPos = this.addParagraph(
       'Equipment power ratings should be verified from nameplate data or manufacturer specifications. For educational energy audits, consider diversity and utilization factors.', 
+      yPos
+    );
+    
+    // Add reference to standard - new information about IEEE 739
+    yPos = this.addParagraph(
+      'The IEEE 739 (Bronze Book) provides recommendations for energy-efficient equipment selection and operation in educational facilities.', 
       yPos
     );
     
@@ -1159,6 +1417,59 @@ export class ScheduleOfLoadsReportGenerator extends PDFGenerator {
     this.doc.setFontSize(10);
     this.doc.setFont('helvetica', 'normal');
     
+    // Add title page
+    this.doc.setFontSize(24);
+    this.doc.setFont('helvetica', 'bold');
+    this.doc.text('Schedule of Loads Report', this.pageWidth / 2, 60, { align: 'center' });
+    
+    // Add report date
+    this.doc.setFontSize(12);
+    this.doc.setFont('helvetica', 'normal');
+    this.doc.text(`Generated on: ${new Date().toLocaleDateString()}`, this.pageWidth / 2, 75, { align: 'center' });
+    
+    // Add panel name
+    this.doc.setFontSize(18);
+    this.doc.text(`Panel: ${this.data.panelName || 'Main Panel'}`, this.pageWidth / 2, 100, { align: 'center' });
+    
+    // Add location info if available
+    if (this.data.floorName || this.data.roomId) {
+      this.doc.setFontSize(14);
+      const locationText = `Location: ${this.data.floorName || ''} ${this.data.roomId ? `, ${this.data.roomId}` : ''}`;
+      this.doc.text(locationText, this.pageWidth / 2, 115, { align: 'center' });
+    }
+    
+    // Add panel summary in a box
+    this.doc.setDrawColor(70, 130, 180); // Steel blue
+    this.doc.setFillColor(240, 248, 255); // Alice blue
+    
+    const boxWidth = 250;
+    const boxHeight = 70;
+    const boxX = (this.pageWidth - boxWidth) / 2;
+    const boxY = 130;
+    
+    this.doc.roundedRect(boxX, boxY, boxWidth, boxHeight, 3, 3, 'FD');
+    
+    this.doc.setFontSize(12);
+    this.doc.setTextColor(0, 0, 0);
+    this.doc.text(`Total Connected Load: ${this.data.totalConnectedLoad.toFixed(0)} W (${(this.data.totalConnectedLoad/1000).toFixed(2)} kW)`, boxX + 20, boxY + 20);
+    this.doc.text(`Total Demand Load: ${this.data.totalDemandLoad.toFixed(0)} W (${(this.data.totalDemandLoad/1000).toFixed(2)} kW)`, boxX + 20, boxY + 35);
+    this.doc.text(`Main Circuit Breaker: ${this.data.circuitBreaker || 'Not specified'}`, boxX + 20, boxY + 50);
+    
+    // Add PEC compliance note
+    this.doc.setFontSize(10);
+    this.doc.setTextColor(100, 100, 100);
+    this.doc.text('This Schedule of Loads complies with Philippine Electrical Code (PEC) 2017 requirements.', 
+      this.pageWidth / 2, this.pageHeight - 30, { align: 'center' });
+    
+    // Add page break after title page
+    this.addPageBreak();
+    yPos = 35;
+    
+    // Reset text properties
+    this.doc.setFontSize(10);
+    this.doc.setFont('helvetica', 'normal');
+    this.doc.setTextColor(0, 0, 0);
+    
     // Add title and panel information
     yPos = this.addSectionHeading('Schedule of Loads - ' + this.data.name, yPos);
     
@@ -1168,7 +1479,9 @@ export class ScheduleOfLoadsReportGenerator extends PDFGenerator {
       { key: 'Voltage', value: `${this.data.voltage} V` },
       { key: 'Power Factor', value: this.data.powerFactor.toFixed(2) },
       { key: 'Total Connected Load', value: `${this.data.totalConnectedLoad.toFixed(0)} W (${(this.data.totalConnectedLoad/1000).toFixed(2)} kW)` },
-      { key: 'Total Demand Load', value: `${this.data.totalDemandLoad.toFixed(0)} W (${(this.data.totalDemandLoad/1000).toFixed(2)} kW)` }
+      { key: 'Total Demand Load', value: `${this.data.totalDemandLoad.toFixed(0)} W (${(this.data.totalDemandLoad/1000).toFixed(2)} kW)` },
+      { key: 'Main Circuit Breaker', value: this.data.circuitBreaker || 'Not specified' },
+      { key: 'Main Conductor Size', value: this.data.conductorSize || 'Not specified' }
     ];
     
     yPos = this.addKeyValueSection(panelDetails, yPos, 3);
@@ -1210,13 +1523,61 @@ export class ScheduleOfLoadsReportGenerator extends PDFGenerator {
       '',
       this.data.totalConnectedLoad.toFixed(0),
       this.data.totalDemandLoad.toFixed(0),
-      this.data.current.toFixed(2),
-      (this.data.totalDemandLoad / this.data.powerFactor).toFixed(0),
+      this.data.current ? this.data.current.toFixed(2) : '-',
+      this.data.totalDemandLoad && this.data.powerFactor ? 
+        (this.data.totalDemandLoad / this.data.powerFactor).toFixed(0) : '-',
       this.data.circuitBreaker || '-',
       this.data.conductorSize || '-'
     ]);
     
-    yPos = this.addTable(tableHeaders, tableData, yPos);
+    // Customize table options for better readability
+    const tableOptions = {
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+        lineWidth: 0.1,
+        lineColor: [80, 80, 80]
+      },
+      columnStyles: {
+        0: { cellWidth: 'auto' },  // Description
+        1: { halign: 'center' },   // Qty
+        2: { halign: 'center' },   // Rating
+        3: { halign: 'center' },   // D.F.
+        4: { halign: 'right' },    // Connected
+        5: { halign: 'right' },    // Demand
+        6: { halign: 'right' },    // Current
+        7: { halign: 'right' },    // VA
+      }
+    };
+    
+    yPos = this.addTable(tableHeaders, tableData, yPos, tableOptions);
+    
+    // Add chart showing connected vs demand load for top items
+    yPos = this.addSectionHeading('Load Distribution', yPos);
+    
+    // Prepare top 5 loads (or fewer if there are less items)
+    const sortedLoads = [...this.data.loads].sort((a, b) => b.connectedLoad - a.connectedLoad);
+    const topLoads = sortedLoads.slice(0, Math.min(5, sortedLoads.length));
+    
+    // Prepare data for chart
+    const loadLabels = topLoads.map((item: any) => item.description);
+    const connectedValues = topLoads.map((item: any) => item.connectedLoad / 1000); // Convert to kW
+    const demandValues = topLoads.map((item: any) => item.demandLoad / 1000); // Convert to kW
+    
+    // Add a comparison chart showing connected vs demand load
+    if (loadLabels.length > 0) {
+      yPos = await this.addComparisonChart(
+        loadLabels,
+        connectedValues,
+        demandValues,
+        yPos,
+        'Connected vs Demand Load (kW) - Top Loads',
+        { 
+          height: 160,
+          caption: 'The difference between connected and demand load shows the effect of demand factors.'
+        }
+      );
+    }
     
     // If we have energy consumption data
     if (this.data.energyConsumption) {
@@ -1227,30 +1588,102 @@ export class ScheduleOfLoadsReportGenerator extends PDFGenerator {
         { key: 'Monthly Consumption', value: `${this.data.energyConsumption.monthlyEnergyConsumption.toFixed(2)} kWh` },
         { key: 'Annual Consumption', value: `${this.data.energyConsumption.annualEnergyConsumption.toFixed(2)} kWh` },
         { key: 'Monthly Cost', value: `PHP ${this.data.energyConsumption.monthlyCost.toFixed(2)}` },
-        { key: 'Annual Cost', value: `PHP ${this.data.energyConsumption.annualCost.toFixed(2)}` }
+        { key: 'Annual Cost', value: `PHP ${this.data.energyConsumption.annualCost.toFixed(2)}` },
+        { key: 'Electricity Rate', value: `PHP ${this.data.energyConsumption.electricityRate.toFixed(2)}/kWh` }
       ];
       
       yPos = this.addKeyValueSection(energyDetails, yPos, 3);
+      
+      // Add cost projection chart if we have at least 2 items
+      if (this.data.loads.length >= 2) {
+        // Create data for energy consumption pie chart
+        const consumptionLabels = this.data.loads.map((item: any) => item.description);
+        const consumptionData = this.data.loads.map((item: any) => {
+          // Calculate kWh for each load item based on its demand load
+          const hourlyConsumption = item.demandLoad / 1000; // kW
+          const dailyConsumption = hourlyConsumption * this.data.energyConsumption.dailyOperatingHours;
+          const monthlyConsumption = dailyConsumption * 30; // Approximate
+          return monthlyConsumption;
+        });
+        
+        yPos = await this.addPieChart(
+          consumptionLabels,
+          consumptionData,
+          yPos,
+          'Monthly Energy Consumption Distribution (kWh)',
+          undefined,
+          { height: 180 }
+        );
+      }
     }
     
+    // Add a page break before technical details
+    this.addPageBreak();
+    yPos = 35;
+    
+    // Add sizing calculations section
+    yPos = this.addSectionHeading('Technical Calculations', yPos);
+    
+    // Add explanation of calculations
+    yPos = this.addParagraph(
+      'The following technical calculations are based on the Philippine Electrical Code (PEC) 2017 and standard electrical engineering practices:',
+      yPos
+    );
+    
+    // Current calculation explanation
+    yPos = this.addParagraph(
+      `• Current Calculation (Single Phase): I = P / (V × PF) = ${this.data.totalDemandLoad.toFixed(0)} W / (${this.data.voltage} V × ${this.data.powerFactor.toFixed(2)}) = ${this.data.current ? this.data.current.toFixed(2) : '-'} A`,
+      yPos + 5
+    );
+    
+    // Circuit breaker sizing
+    yPos = this.addParagraph(
+      `• Circuit Breaker Sizing: Circuit breakers are sized based on the calculated current with appropriate safety factors according to PEC Article 2.40.`,
+      yPos + 5
+    );
+    
+    // Conductor sizing
+    yPos = this.addParagraph(
+      `• Conductor Sizing: Conductors are sized based on ampacity requirements per PEC Tables 2.2 to 2.6, with consideration for voltage drop and ambient temperature.`,
+      yPos + 5
+    );
+    
     // Add notes
-    yPos = this.addSectionHeading('Notes', yPos);
+    yPos = this.addSectionHeading('Notes', yPos + 10);
     yPos = this.addParagraph('1. D.F. = Demand Factor', yPos);
-    yPos = this.addParagraph(`2. Power factor used for calculations: ${this.data.powerFactor.toFixed(2)}`, yPos);
-    yPos = this.addParagraph(`3. Voltage: ${this.data.voltage} V`, yPos);
+    yPos = this.addParagraph(`2. Power factor used for calculations: ${this.data.powerFactor.toFixed(2)}`, yPos + 5);
+    yPos = this.addParagraph(`3. Voltage: ${this.data.voltage} V (${this.data.voltage > 200 ? 'Three' : 'Single'}-Phase)`, yPos + 5);
+    yPos = this.addParagraph(`4. All calculations comply with PEC 2017 requirements for electrical installations.`, yPos + 5);
     
     // Add reference to standards
-    yPos = this.addSectionHeading('Reference Standards', yPos);
+    yPos = this.addSectionHeading('Reference Standards', yPos + 10);
     yPos = this.addParagraph(
-      'This Schedule of Loads is prepared in accordance with PEC 2017 Section 2.4 requirements. ' +
+      'This Schedule of Loads is prepared in accordance with Philippine Electrical Code (PEC) 2017 Section 2.4 requirements. ' +
       'Load calculations comply with standard electrical engineering practices for power distribution systems.',
       yPos
+    );
+    
+    // Add specific code references
+    yPos = this.addParagraph(
+      '• PEC 2017 Article 2.10 - Calculations',
+      yPos + 10
+    );
+    
+    yPos = this.addParagraph(
+      '• PEC 2017 Article 2.40 - Overcurrent Protection',
+      yPos + 5
+    );
+    
+    yPos = this.addParagraph(
+      '• PEC 2017 Article 2.50 - Grounding',
+      yPos + 5
     );
     
     // Add footer
     this.doc.setFontSize(8);
     this.doc.setTextColor(100, 100, 100);
     this.doc.text('Energy Audit Platform | Schedule of Loads Report', this.pageWidth / 2, this.pageHeight - 10, { align: 'center' });
+    this.doc.text(`Page ${this.doc.getNumberOfPages()}`, this.pageWidth - 20, this.pageHeight - 10);
   }
 }
 

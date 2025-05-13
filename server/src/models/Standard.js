@@ -223,40 +223,102 @@ class Standard {
    */
   static async searchSections(filters) {
     try {
-      let sql = `
-        SELECT s.*, st.code_name, st.full_name
-        FROM standard_sections s
-        JOIN standards st ON s.standard_id = st.id
-      `;
-      
+      let sql;
       const params = [];
       const conditions = [];
       
-      if (filters.query) {
+      // Base query depends on whether we're doing a keyword search or normal search
+      if (filters.query && filters.useKeywords) {
+        // Search using keywords for better relevance
+        sql = `
+          SELECT s.*, st.code_name, st.full_name,
+          SUM(sk.weight * k.weight) as relevance_score
+          FROM standard_sections s
+          JOIN standards st ON s.standard_id = st.id
+          LEFT JOIN section_keywords sk ON s.id = sk.section_id
+          LEFT JOIN standard_keywords k ON sk.keyword_id = k.id
+        `;
+        
+        // Match keywords or use LIKE for direct matches
         conditions.push(`(
-          s.title LIKE ? OR
-          s.content LIKE ? OR
-          s.section_number LIKE ?
+          k.keyword LIKE ? OR
+          (${this.buildFieldConditions(filters)})
         )`);
-        const searchTerm = `%${filters.query}%`;
-        params.push(searchTerm, searchTerm, searchTerm);
+        
+        params.push(`%${filters.query}%`);
+        
+        // Add parameters for the field conditions
+        if (filters.fields && filters.fields.includes('title')) {
+          params.push(filters.exactMatch ? filters.query : `%${filters.query}%`);
+        }
+        if (filters.fields && filters.fields.includes('content')) {
+          params.push(filters.exactMatch ? `% ${filters.query} %` : `%${filters.query}%`);
+        }
+        if (filters.fields && filters.fields.includes('section_number')) {
+          params.push(filters.exactMatch ? filters.query : `%${filters.query}%`);
+        }
+      } else {
+        // Regular search without using keywords
+        sql = `
+          SELECT s.*, st.code_name, st.full_name
+          FROM standard_sections s
+          JOIN standards st ON s.standard_id = st.id
+        `;
+        
+        // Build normal search conditions
+        if (filters.query) {
+          // Build search condition based on selected fields
+          conditions.push(`(${this.buildFieldConditions(filters)})`);
+          
+          // Add parameters for the field conditions
+          if (filters.fields && filters.fields.includes('title')) {
+            params.push(filters.exactMatch ? filters.query : `%${filters.query}%`);
+          }
+          if (filters.fields && filters.fields.includes('content')) {
+            params.push(filters.exactMatch ? `% ${filters.query} %` : `%${filters.query}%`);
+          }
+          if (filters.fields && filters.fields.includes('section_number')) {
+            params.push(filters.exactMatch ? filters.query : `%${filters.query}%`);
+          }
+        }
       }
       
+      // Add standard filter if specified
       if (filters.standard_id) {
         conditions.push(`s.standard_id = ?`);
         params.push(filters.standard_id);
       }
       
+      // Add section number filter if specified
       if (filters.section_number) {
         conditions.push(`s.section_number LIKE ?`);
         params.push(`%${filters.section_number}%`);
       }
       
+      // Add tags filter if specified
+      if (filters.tags && filters.tags.length > 0) {
+        const tagPlaceholders = filters.tags.map(() => '?').join(',');
+        conditions.push(`
+          EXISTS (
+            SELECT 1 FROM section_tags st 
+            JOIN standard_tags t ON st.tag_id = t.id
+            WHERE st.section_id = s.id AND t.name IN (${tagPlaceholders})
+          )
+        `);
+        params.push(...filters.tags);
+      }
+      
+      // Combine all conditions
       if (conditions.length > 0) {
         sql += ` WHERE ${conditions.join(' AND ')}`;
       }
       
-      sql += ` ORDER BY st.code_name ASC, s.section_number ASC`;
+      // Group by and order by relevance for keyword search, otherwise by standard and section
+      if (filters.query && filters.useKeywords) {
+        sql += ` GROUP BY s.id ORDER BY relevance_score DESC, st.code_name ASC, s.section_number ASC`;
+      } else {
+        sql += ` ORDER BY st.code_name ASC, s.section_number ASC`;
+      }
       
       const result = await query(sql, params);
       return result;
@@ -264,6 +326,38 @@ class Standard {
       console.error('Error searching sections:', error);
       throw error;
     }
+  }
+  
+  // Helper method to build field conditions
+  static buildFieldConditions(filters) {
+    const fieldConditions = [];
+    const fields = filters.fields || ['title', 'content', 'section_number'];
+    
+    if (fields.includes('title')) {
+      if (filters.exactMatch) {
+        fieldConditions.push(`s.title = ?`);
+      } else {
+        fieldConditions.push(`s.title LIKE ?`);
+      }
+    }
+    
+    if (fields.includes('content')) {
+      if (filters.exactMatch) {
+        fieldConditions.push(`s.content LIKE ?`);
+      } else {
+        fieldConditions.push(`s.content LIKE ?`);
+      }
+    }
+    
+    if (fields.includes('section_number')) {
+      if (filters.exactMatch) {
+        fieldConditions.push(`s.section_number = ?`);
+      } else {
+        fieldConditions.push(`s.section_number LIKE ?`);
+      }
+    }
+    
+    return fieldConditions.join(' OR ');
   }
   
   /**
@@ -698,6 +792,160 @@ class Standard {
       return true;
     } catch (error) {
       console.error('Error adding section keyword:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Add a tag or get existing tag ID
+   * @param {string} tagName Tag name
+   * @returns {Promise<number>} Tag ID
+   */
+  static async addTag(tagName) {
+    try {
+      // Check if tag exists
+      const existingTag = await query(
+        `SELECT id FROM standard_tags
+        WHERE name = ?`,
+        [tagName]
+      );
+      
+      if (existingTag.length > 0) {
+        return existingTag[0].id;
+      }
+      
+      // Insert new tag
+      const result = await query(
+        `INSERT INTO standard_tags
+        (name, created_at)
+        VALUES (?, NOW())`,
+        [tagName]
+      );
+      
+      return result.insertId;
+    } catch (error) {
+      console.error('Error adding tag:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Associate a tag with a section
+   * @param {number} sectionId Section ID
+   * @param {number} tagId Tag ID
+   * @returns {Promise<boolean>} Success flag
+   */
+  static async addSectionTag(sectionId, tagId) {
+    try {
+      // Check if association already exists
+      const existingAssociation = await query(
+        `SELECT 1 FROM section_tags
+        WHERE section_id = ? AND tag_id = ?`,
+        [sectionId, tagId]
+      );
+      
+      if (existingAssociation.length > 0) {
+        return true; // Already exists
+      }
+      
+      // Create association
+      await query(
+        `INSERT INTO section_tags
+        (section_id, tag_id, created_at)
+        VALUES (?, ?, NOW())`,
+        [sectionId, tagId]
+      );
+      
+      return true;
+    } catch (error) {
+      console.error('Error adding section tag:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Remove a tag from a section
+   * @param {number} sectionId Section ID
+   * @param {number} tagId Tag ID
+   * @returns {Promise<boolean>} Success flag
+   */
+  static async removeSectionTag(sectionId, tagId) {
+    try {
+      const result = await query(
+        `DELETE FROM section_tags
+        WHERE section_id = ? AND tag_id = ?`,
+        [sectionId, tagId]
+      );
+      
+      return result.affectedRows > 0;
+    } catch (error) {
+      console.error('Error removing section tag:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get all tags for a section
+   * @param {number} sectionId Section ID
+   * @returns {Promise<Array>} Array of tags
+   */
+  static async getSectionTags(sectionId) {
+    try {
+      const result = await query(
+        `SELECT t.id, t.name, t.created_at
+        FROM section_tags st
+        JOIN standard_tags t ON st.tag_id = t.id
+        WHERE st.section_id = ?
+        ORDER BY t.name ASC`,
+        [sectionId]
+      );
+      
+      return result;
+    } catch (error) {
+      console.error('Error getting section tags:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get all available tags
+   * @returns {Promise<Array>} Array of tags
+   */
+  static async getAllTags() {
+    try {
+      const result = await query(
+        `SELECT id, name, created_at
+        FROM standard_tags
+        ORDER BY name ASC`
+      );
+      
+      return result;
+    } catch (error) {
+      console.error('Error getting all tags:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get sections by tag
+   * @param {number|string} tagId Tag ID
+   * @returns {Promise<Array>} Array of sections
+   */
+  static async getSectionsByTag(tagId) {
+    try {
+      const result = await query(
+        `SELECT s.*, st.code_name, st.full_name
+        FROM standard_sections s
+        JOIN standards st ON s.standard_id = st.id
+        JOIN section_tags stg ON s.id = stg.section_id
+        WHERE stg.tag_id = ?
+        ORDER BY st.code_name ASC, s.section_number ASC`,
+        [tagId]
+      );
+      
+      return result;
+    } catch (error) {
+      console.error('Error getting sections by tag:', error);
       throw error;
     }
   }

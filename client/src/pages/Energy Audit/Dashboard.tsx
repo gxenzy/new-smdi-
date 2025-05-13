@@ -89,6 +89,12 @@ const Dashboard = (): ReactElement => {
       description: 'Step-by-step workflow guide for conducting energy audits.',
       icon: <WorkIcon />,
       path: '/energy-audit/audit-workflow'
+    },
+    {
+      title: 'Saved Calculations',
+      description: 'View and manage your saved energy calculations and reports.',
+      icon: <DescriptionIcon />,
+      path: '/energy-audit/saved-calculations'
     }
   ];
 

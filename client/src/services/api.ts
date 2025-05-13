@@ -23,6 +23,8 @@ interface RetryConfig extends InternalAxiosRequestConfig {
 interface ErrorResponse {
   message?: string;
   error?: string;
+  code?: string;
+  expiredAt?: Date;
 }
 
 const api = axios.create({
@@ -48,7 +50,7 @@ api.interceptors.request.use(
   }
 );
 
-// Add a response interceptor to handle errors
+// Single comprehensive response interceptor
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ErrorResponse>) => {
@@ -71,11 +73,28 @@ api.interceptors.response.use(
       }
     }
 
-    // Handle unauthorized access
+    // Handle token expiration
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('authUser');
-      window.location.href = '/login';
+      const isExpiredToken = error.response.data && 
+        (error.response.data.code === 'TOKEN_EXPIRED' || 
+         error.response.data.message === 'Session expired');
+      
+      // Only redirect for token expiration, not missing token
+      if (isExpiredToken && localStorage.getItem('token')) {
+        console.warn('Session expired, redirecting to login');
+        
+        // Clear the token from localStorage
+        localStorage.removeItem('token');
+        localStorage.removeItem('authUser');
+        
+        // Show a message to the user
+        alert('Your session has expired. Please login again.');
+        
+        // Redirect to login page - prevent loop by checking current URL
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
+      }
     }
 
     // Format error message

@@ -71,12 +71,12 @@ CREATE TABLE IF NOT EXISTS report_templates (
   FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
--- Create indexes for better performance
-CREATE INDEX idx_reports_created_by ON reports(created_by);
-CREATE INDEX idx_reports_type ON reports(type);
-CREATE INDEX idx_reports_status ON reports(status);
-CREATE INDEX idx_report_contents_report_id ON report_contents(report_id);
-CREATE INDEX idx_report_metadata_report_id ON report_metadata(report_id);
-CREATE INDEX idx_report_sharing_report_id ON report_sharing(report_id);
-CREATE INDEX idx_report_sharing_user_id ON report_sharing(user_id);
-CREATE INDEX idx_report_templates_report_type ON report_templates(report_type); 
+
+
+
+
+
+
+
+
+

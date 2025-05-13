@@ -20,12 +20,14 @@ import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import WbIncandescentIcon from '@mui/icons-material/WbIncandescent';
 import WavesIcon from '@mui/icons-material/Waves';
 import SquareFootIcon from '@mui/icons-material/SquareFoot';
+import ElectricMeterIcon from '@mui/icons-material/ElectricMeter';
 import EnergyCalculator from '../EnergyCalculators';
 import ROICalculator from './ROICalculator';
 import IlluminationCalculator from './IlluminationCalculator';
 import IlluminationLevelCalculator from './IlluminationLevelCalculator';
 import PowerFactorCalculator from './PowerFactorCalculator';
 import HarmonicDistortionCalculator from './HarmonicDistortionCalculator';
+import VoltageRegulationCalculator from './VoltageRegulationCalculator';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -91,6 +93,7 @@ const Calculators: React.FC = () => {
             <Tab icon={<MonetizationOnIcon />} label="ROI Calculator" {...a11yProps(6)} />
             <Tab icon={<CalculateIcon />} label="Power Factor" {...a11yProps(7)} />
             <Tab icon={<WavesIcon />} label="Harmonic Distortion" {...a11yProps(8)} />
+            <Tab icon={<ElectricMeterIcon />} label="Voltage Regulation" {...a11yProps(9)} />
           </Tabs>
           
           {/* Overview Tab */}
@@ -233,6 +236,23 @@ const Calculators: React.FC = () => {
                   </CardActionArea>
                 </Card>
               </Grid>
+              
+              <Grid item xs={12} sm={6} md={4}>
+                <Card>
+                  <CardActionArea onClick={() => setTabValue(9)}>
+                    <CardContent>
+                      <ElectricMeterIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
+                      <Typography variant="h6" gutterBottom>
+                        Voltage Regulation Calculator
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Calculate voltage drop and regulation in electrical circuits and verify
+                        compliance with PEC 2017 Section 2.30 standards.
+                      </Typography>
+                    </CardContent>
+                  </CardActionArea>
+                </Card>
+              </Grid>
             </Grid>
             
             <Box sx={{ mt: 4 }}>
@@ -328,6 +348,11 @@ const Calculators: React.FC = () => {
           {/* Harmonic Distortion Tab */}
           <TabPanel value={tabValue} index={8}>
             <HarmonicDistortionCalculator />
+          </TabPanel>
+          
+          {/* Voltage Regulation Tab */}
+          <TabPanel value={tabValue} index={9}>
+            <VoltageRegulationCalculator />
           </TabPanel>
         </Paper>
         

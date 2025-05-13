@@ -32,16 +32,23 @@ import {
   ListItemIcon,
   ListItemText
 } from '@mui/material';
-import CalculateIcon from '@mui/icons-material/Calculate';
-import InfoIcon from '@mui/icons-material/Info';
-import SaveIcon from '@mui/icons-material/Save';
+import {
+  Calculate as CalculateIcon,
+  Help as HelpIcon,
+  HelpOutline as HelpOutlineIcon,
+  Info as InfoIcon,
+  Save as SaveIcon,
+  Description as DescriptionIcon,
+  PictureAsPdf as PdfIcon,
+  MenuBook as MenuBookIcon
+} from '@mui/icons-material';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
-import PdfIcon from '@mui/icons-material/PictureAsPdf';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { useSnackbar } from 'notistack';
 import { IlluminationStandardsLookup } from '../../../../components/StandardsReference';
+import StandardValueSelector from '../../../../components/StandardsReference/StandardValueSelector';
+import axios from 'axios';
 
 import SavedCalculationsViewer from './SavedCalculationsViewer';
 import { saveCalculation } from './utils/storage';
@@ -796,14 +803,16 @@ const IlluminationCalculator: React.FC<IlluminationCalculatorProps> = ({ onSave 
   // Save calculation to local storage
   const handleSaveToStorage = () => {
     if (results) {
-      const id = saveCalculation('illumination', saveName, {
+      const id = saveCalculation('illumination', saveName || `Illumination Calculation - ${new Date().toLocaleString()}`, {
         inputs,
-        results
+        results,
+        timestamp: Date.now()
       });
       
       if (id) {
-        enqueueSnackbar('Calculation saved successfully', { variant: 'success' });
+        enqueueSnackbar('Illumination calculation saved successfully', { variant: 'success' });
         setSaveDialogOpen(false);
+        setSaveName('');
       } else {
         enqueueSnackbar('Error saving calculation', { variant: 'error' });
       }
@@ -918,15 +927,20 @@ const IlluminationCalculator: React.FC<IlluminationCalculatorProps> = ({ onSave 
         <Typography variant="h5" component="h2">
           Illumination Calculator (PEC Rule 1075)
         </Typography>
-        <Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Tooltip title="Quick Start Guide">
-            <IconButton onClick={() => setQuickStartOpen(true)} sx={{ mr: 1 }}>
+            <IconButton onClick={() => setQuickStartOpen(true)}>
               <HelpOutlineIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Learn more about PEC Rule 1075 Illumination Standards">
+            <IconButton onClick={() => window.location.href = '/energy-audit/standards-reference?standard=PEC-2017&section=1075'}>
+              <MenuBookIcon />
             </IconButton>
           </Tooltip>
           {results && (
             <Tooltip title="Save calculation">
-              <IconButton onClick={handleOpenSaveDialog} sx={{ mr: 1 }}>
+              <IconButton onClick={handleOpenSaveDialog}>
                 <SaveIcon />
               </IconButton>
             </Tooltip>
@@ -1055,39 +1069,34 @@ const IlluminationCalculator: React.FC<IlluminationCalculatorProps> = ({ onSave 
                   </Grid>
                   
                   <Grid item xs={12}>
-                    <TextField
-                      select
-                      fullWidth
-                      id="roomType"
-                      name="roomType"
-                      label="Room Type"
-                      value={inputs.roomType}
-                      onChange={handleInputChange('roomType')}
-                      error={Boolean(errors.roomType)}
-                      helperText={getHelperText('roomType')}
-                      required
-                      InputProps={{
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <Tooltip title="Look up standards for room types">
-                              <IconButton 
-                                edge="end"
-                                onClick={() => setStandardsDialogOpen(true)}
-                                size="small"
-                              >
-                                <InfoIcon />
-                              </IconButton>
-                            </Tooltip>
-                          </InputAdornment>
-                        )
+                    <StandardValueSelector
+                      type="illumination"
+                      label="Room Type Standards Selection"
+                      helperText="Select the space type to get standard-based illuminance requirements"
+                      onValueSelect={(value) => {
+                        // Update the required illuminance based on the standard
+                        if (value && typeof value.value === 'number' && value.description) {
+                          // Use the description value safely now that we've checked it exists
+                          const description = value.description; // Assign to a local variable for TypeScript
+                          const roomTypeFound = roomTypes.find(rt => 
+                            rt.label.toLowerCase().includes(description.toLowerCase()));
+                          
+                          if (roomTypeFound) {
+                            // Update room type if we can match it
+                            setInputs(prev => ({
+                              ...prev,
+                              roomType: roomTypeFound.value
+                            }));
+                          }
+                          
+                          // Show notification with the selected standard
+                          enqueueSnackbar(
+                            `Selected standard: ${description} - ${value.value} ${value.unit || ''} (${value.source || 'Standard'} ${value.reference || ''})`, 
+                            { variant: 'info' }
+                          );
+                        }
                       }}
-                    >
-                      {roomTypes.map((option) => (
-                        <MenuItem key={option.value} value={option.value}>
-                          {option.label}
-                        </MenuItem>
-                      ))}
-                    </TextField>
+                    />
                   </Grid>
                 </Grid>
               </CardContent>

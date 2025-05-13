@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { errorMiddleware } from './utils/errorHandler';
+import logger from './utils/logger';
 
 // Load environment variables
 dotenv.config();
@@ -15,6 +17,10 @@ import adminSettingsRoutes from './routes/adminSettingsRoutes';
 import auditLogRoutes from './routes/auditLogRoutes';
 import userRoutes from './routes/userRoutes';
 import energyAuditRouter from './routes/energyAuditRoutes';
+import searchRoutes from './routes/searchRoutes';
+import standardsRoutes from './routes/standardsRoutes';
+import tagRoutes from './routes/tagRoutes';
+import complianceRoutes from './routes/complianceRoutes';
 
 const app = express();
 
@@ -22,6 +28,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Request logging middleware
+app.use((req, _res, next) => {
+  logger.info(`${req.method} ${req.url}`);
+  next();
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -33,14 +45,12 @@ app.use('/api/admin/settings', adminSettingsRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/energy-audit', energyAuditRouter);
+app.use('/api/search', searchRoutes);
+app.use('/api/standards', standardsRoutes);
+app.use('/api/tags', tagRoutes);
+app.use('/api/compliance', complianceRoutes);
 
-// Error handling middleware
-app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({
-    error: 'Internal Server Error',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
-});
+// Custom error handling middleware
+app.use(errorMiddleware);
 
 export default app; 

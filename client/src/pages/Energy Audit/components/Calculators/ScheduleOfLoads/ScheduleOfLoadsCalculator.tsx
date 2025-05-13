@@ -30,7 +30,9 @@ import {
   DialogActions,
   FormHelperText,
   Tooltip,
-  Chip
+  Chip,
+  CircularProgress,
+  Collapse
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -42,10 +44,17 @@ import {
   RestartAlt as RestartAltIcon,
   Info as InfoIcon,
   HelpOutline as HelpOutlineIcon,
-  ElectricalServices as ElectricalServicesIcon
+  ElectricalServices as ElectricalServicesIcon,
+  Close as CloseIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  MenuBook as MenuBookIcon
 } from '@mui/icons-material';
 import { LoadItem, LoadSchedule, PowerCalculationResults } from './types';
 import { v4 as uuidv4 } from 'uuid';
+import SavedCalculationsViewer from '../SavedCalculationsViewer';
+import { saveCalculation } from '../utils/storage';
+import { useSnackbar } from 'notistack';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -120,7 +129,10 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
   const [quickStartOpen, setQuickStartOpen] = useState(false);
   const [errorHelpOpen, setErrorHelpOpen] = useState(false);
   const [calculationResults, setCalculationResults] = useState<PowerCalculationResults | null>(null);
-
+  
+  // Add snackbar
+  const { enqueueSnackbar } = useSnackbar();
+  
   // Add state for new load item
   const [newLoadItem, setNewLoadItem] = useState<Omit<LoadItem, 'id'>>({...defaultLoadItem});
   
@@ -341,10 +353,38 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
   
   // Handle save
   const handleSave = () => {
-    if (onSave && loadSchedule) {
-      // Include calculation results if available
-      onSave(loadSchedule);
-      setSaveDialogOpen(false);
+    if (loadSchedule) {
+      try {
+        // Create a data object that includes all necessary information
+        const calculationData = {
+          loadSchedule,
+          calculationResults,
+          timestamp: Date.now()
+        };
+        
+        // First try using our onSave prop if provided
+        if (onSave) {
+          onSave(loadSchedule);
+        }
+        
+        // Save to localStorage
+        const id = saveCalculation('schedule-of-loads', calculationName || `Schedule of Loads - ${loadSchedule.panelName} - ${new Date().toLocaleString()}`, calculationData);
+        
+        if (id) {
+          // Show success message
+          console.log('Successfully saved schedule of loads with ID:', id);
+          console.log('Saved data:', calculationData);
+          enqueueSnackbar('Schedule of Loads saved successfully', { variant: 'success' });
+          setSaveDialogOpen(false);
+          setCalculationName('');
+        } else {
+          console.error('Error saving Schedule of Loads: No ID returned');
+          enqueueSnackbar('Error saving Schedule of Loads: No ID returned', { variant: 'error' });
+        }
+      } catch (error) {
+        console.error('Error saving Schedule of Loads:', error);
+        enqueueSnackbar(`Error saving Schedule of Loads: ${error instanceof Error ? error.message : 'Unknown error'}`, { variant: 'error' });
+      }
     }
   };
   
@@ -376,17 +416,135 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h5" component="h2">
-          Schedule of Loads Calculator
-        </Typography>
-        <Box>
+        <Typography variant="h6">Schedule of Loads Calculator</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Tooltip title="Quick Start Guide">
-            <IconButton onClick={() => setQuickStartOpen(true)} sx={{ mr: 1 }}>
+            <IconButton onClick={() => setQuickStartOpen(true)}>
               <HelpOutlineIcon />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Learn more about Schedule of Loads">
-            <IconButton onClick={() => setInfoOpen(!infoOpen)}>
+          <SavedCalculationsViewer 
+            calculationType="schedule-of-loads"
+            onLoadCalculation={(data) => {
+              try {
+                console.log("Loading schedule of loads data:", data);
+                
+                // Handle different data structures
+                let loadScheduleData;
+                
+                // Check for nested data structure - handle multiple potential formats
+                if (data.data) {
+                  if (data.data.loadSchedule) {
+                    // Standard format with loadSchedule property
+                    loadScheduleData = data.data.loadSchedule;
+                    
+                    // Also restore calculation results if available
+                    if (data.data.calculationResults) {
+                      setCalculationResults(data.data.calculationResults);
+                    }
+                  } else if (typeof data.data === 'object' && data.data.id && data.data.name && data.data.loads) {
+                    // Direct loadSchedule object
+                    loadScheduleData = data.data;
+                  }
+                } else if (typeof data === 'object' && data.id && data.name && data.loads) {
+                  // Direct loadSchedule object at root level
+                  loadScheduleData = data;
+                }
+                
+                // If we still don't have valid data, try reconstructing from what we have
+                if (!loadScheduleData || !loadScheduleData.loads) {
+                  console.warn("Could not find standard loadSchedule data format, attempting to reconstruct", data);
+                  
+                  // Create a default structure
+                  loadScheduleData = {
+                    ...defaultLoadSchedule,
+                    id: data.id || uuidv4(),
+                    name: data.name || 'Recovered Schedule of Loads',
+                    loads: []
+                  };
+                  
+                  // Try to find loads array in nested properties
+                  if (data.loads && Array.isArray(data.loads)) {
+                    loadScheduleData.loads = data.loads;
+                  } else if (data.data && data.data.loads && Array.isArray(data.data.loads)) {
+                    loadScheduleData.loads = data.data.loads;
+                  }
+                  
+                  // If we still don't have loads, this is truly invalid data
+                  if (!loadScheduleData.loads || !Array.isArray(loadScheduleData.loads)) {
+                    throw new Error("Invalid load schedule data format: missing loads array");
+                  }
+                }
+                
+                // Ensure all required properties exist with reasonable defaults
+                loadScheduleData = {
+                  ...defaultLoadSchedule,
+                  ...loadScheduleData,
+                  // Ensure these are numbers even if they were saved as strings
+                  voltage: Number(loadScheduleData.voltage) || defaultLoadSchedule.voltage,
+                  powerFactor: Number(loadScheduleData.powerFactor) || defaultLoadSchedule.powerFactor,
+                  totalConnectedLoad: Number(loadScheduleData.totalConnectedLoad) || 0,
+                  totalDemandLoad: Number(loadScheduleData.totalDemandLoad) || 0,
+                  current: Number(loadScheduleData.current) || 0
+                };
+                
+                // Ensure loads is an array with properly formatted items
+                if (!Array.isArray(loadScheduleData.loads)) {
+                  loadScheduleData.loads = [];
+                }
+                
+                // Process each load item to ensure it has all required properties
+                loadScheduleData.loads = loadScheduleData.loads.map((load: any) => ({
+                  id: load.id || uuidv4(),
+                  description: load.description || 'Unknown Item',
+                  quantity: Number(load.quantity) || 1,
+                  rating: Number(load.rating) || 0,
+                  demandFactor: Number(load.demandFactor) || 1,
+                  connectedLoad: Number(load.connectedLoad) || 0,
+                  demandLoad: Number(load.demandLoad) || 0,
+                  current: Number(load.current) || 0,
+                  voltAmpere: Number(load.voltAmpere) || 0,
+                  circuitBreaker: load.circuitBreaker || '',
+                  conductorSize: load.conductorSize || ''
+                }));
+                
+                // Recalculate totals to ensure consistency
+                const totalConnectedLoad = loadScheduleData.loads.reduce((sum: number, item: LoadItem) => sum + item.connectedLoad, 0);
+                const totalDemandLoad = loadScheduleData.loads.reduce((sum: number, item: LoadItem) => sum + item.demandLoad, 0);
+                const current = totalDemandLoad / loadScheduleData.voltage;
+                
+                loadScheduleData.totalConnectedLoad = totalConnectedLoad;
+                loadScheduleData.totalDemandLoad = totalDemandLoad;
+                loadScheduleData.current = current;
+                
+                console.log("Processed load schedule data:", loadScheduleData);
+                
+                setLoadSchedule(loadScheduleData);
+                setCalculationName(loadScheduleData.name || '');
+                
+                if (loadScheduleData.loads.length > 0) {
+                  // Calculate power consumption based on the loaded data
+                  calculatePowerConsumption();
+                }
+                
+                // Move to results tab if we have loads, otherwise go to load items tab
+                setActiveTab(loadScheduleData.loads.length > 0 ? 2 : 1);
+              } catch (error) {
+                console.error("Error loading schedule of loads:", error);
+                enqueueSnackbar(`Error loading saved data: ${error instanceof Error ? error.message : 'Invalid data format'}`, {
+                  variant: 'error',
+                  autoHideDuration: 5000
+                });
+              }
+            }}
+          />
+          <Tooltip title="Learn more about PEC 2017 Schedule of Loads requirements">
+            <IconButton onClick={() => window.location.href = '/energy-audit/standards-reference?standard=PEC-2017&section=2.4'}>
+              <MenuBookIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="What is Schedule of Loads?">
+            <IconButton onClick={() => setInfoOpen(true)}>
               <InfoIcon />
             </IconButton>
           </Tooltip>
@@ -1179,21 +1337,22 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
                 <Button 
                   variant="outlined" 
                   color="primary"
+                  onClick={() => setSaveDialogOpen(true)}
+                  startIcon={<SaveIcon />}
+                  sx={{ mr: 2 }}
+                  disabled={calculating}
+                >
+                  Save Results
+                </Button>
+                <Button 
+                  variant="outlined" 
+                  color="primary"
                   onClick={handleExportPdf}
                   startIcon={<PictureAsPdfIcon />}
                   sx={{ mr: 2 }}
                   disabled={!onExportPdf || calculating}
                 >
                   Export as PDF
-                </Button>
-                <Button 
-                  variant="contained" 
-                  color="primary"
-                  onClick={() => setSaveDialogOpen(true)}
-                  startIcon={<SaveIcon />}
-                  disabled={calculating}
-                >
-                  Save Results
                 </Button>
               </Box>
             </Box>

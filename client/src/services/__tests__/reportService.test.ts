@@ -251,7 +251,7 @@ describe('reportService', () => {
       const result = await reportService.revokeReportAccess(1, 2);
 
       // Verify
-      expect(mockedAxios.delete).toHaveBeenCalledWith('http://localhost:3001/api/reports/1/share/2');
+      expect(mockedAxios.delete).toHaveBeenCalledWith('http://localhost:8000/api/reports/1/share/2');
       expect(result).toBe(true);
     });
 
@@ -311,7 +311,7 @@ describe('reportService', () => {
       const result = await reportService.generatePublicLink(1);
 
       // Verify
-      expect(mockedAxios.post).toHaveBeenCalledWith('http://localhost:3001/api/reports/1/public-link');
+      expect(mockedAxios.post).toHaveBeenCalledWith('http://localhost:8000/api/reports/1/public-link');
       expect(result).toBe(mockLink);
     });
 
@@ -370,7 +370,7 @@ describe('reportService', () => {
       const result = await reportService.revokePublicLink(1);
 
       // Verify
-      expect(mockedAxios.delete).toHaveBeenCalledWith('http://localhost:3001/api/reports/1/public-link');
+      expect(mockedAxios.delete).toHaveBeenCalledWith('http://localhost:8000/api/reports/1/public-link');
       expect(result).toBe(true);
     });
 

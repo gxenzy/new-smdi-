@@ -11,7 +11,8 @@ import {
   TextField,
   CircularProgress,
   Breadcrumbs,
-  Link 
+  Link,
+  Collapse
 } from '@mui/material';
 import { 
   Book as BookIcon,
@@ -22,9 +23,11 @@ import {
   FolderOpen as FolderOpenIcon
 } from '@mui/icons-material';
 import axios from 'axios';
+import TagFilter from './TagFilter';
+import standardsService from '../../services/StandardsService';
 
 interface Standard {
-  id: number;
+  id: string;
   code_name: string;
   full_name: string;
   version: string;
@@ -32,18 +35,18 @@ interface Standard {
 }
 
 interface Section {
-  id: number;
-  standard_id: number;
+  id: string;
+  standard_id: string;
   section_number: string;
   title: string;
-  parent_section_id: number | null;
+  parent_section_id: string | null;
   has_tables: boolean;
   has_figures: boolean;
 }
 
 interface SearchResult {
-  id: number;
-  standard_id: number;
+  id: string;
+  standard_id: string;
   section_number: string;
   title: string;
   code_name: string;
@@ -51,13 +54,17 @@ interface SearchResult {
 }
 
 interface BreadcrumbItem {
-  id: number;
+  id: string;
   title: string;
   isStandard?: boolean;
 }
 
+interface SearchFilters {
+  tags: string[];
+}
+
 const StandardsBrowser: React.FC<{
-  onSectionSelect: (sectionId: number) => void;
+  onSectionSelect: (sectionId: string) => void;
 }> = ({ onSectionSelect }) => {
   const [standards, setStandards] = useState<Standard[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
@@ -65,9 +72,10 @@ const StandardsBrowser: React.FC<{
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [selectedStandard, setSelectedStandard] = useState<Standard | null>(null);
-  const [selectedSectionId, setSelectedSectionId] = useState<number | null>(null);
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [filters, setFilters] = useState<SearchFilters>({ tags: [] });
 
   // Fetch standards on component mount
   useEffect(() => {
@@ -87,14 +95,14 @@ const StandardsBrowser: React.FC<{
       setIsSearching(false);
       setSearchResults([]);
     }
-  }, [searchQuery]);
+  }, [searchQuery, filters.tags]);
 
   // Fetch all standards
   const fetchStandards = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/standards-api/standards');
-      setStandards(response.data);
+      const data = await standardsService.getStandards();
+      setStandards(data);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching standards:', error);
@@ -103,12 +111,11 @@ const StandardsBrowser: React.FC<{
   };
 
   // Fetch sections for a standard
-  const fetchSections = async (standardId: number, parentId: number | null = null) => {
+  const fetchSections = async (standardId: string, parentId: string | null = null) => {
     try {
       setLoading(true);
-      const url = `/api/standards-api/standards/${standardId}/sections${parentId ? `?parentId=${parentId}` : ''}`;
-      const response = await axios.get(url);
-      setSections(response.data);
+      const data = await standardsService.getSections(standardId, parentId || undefined);
+      setSections(data);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching sections:', error);
@@ -119,8 +126,13 @@ const StandardsBrowser: React.FC<{
   // Search sections
   const searchSections = async (query: string) => {
     try {
-      const response = await axios.get(`/api/standards-api/search/sections?q=${query}`);
-      setSearchResults(response.data);
+      const options = {
+        standardId: selectedStandard?.id,
+        tags: filters.tags
+      };
+      
+      const results = await standardsService.searchSections(query, options);
+      setSearchResults(results);
       setIsSearching(false);
     } catch (error) {
       console.error('Error searching sections:', error);
@@ -138,7 +150,7 @@ const StandardsBrowser: React.FC<{
 
   // Handle section selection
   const handleSectionSelect = (section: Section) => {
-    // If section has children, fetch them
+    // If section has tables or figures, view it
     if (section.has_tables || section.has_figures) {
       setSelectedSectionId(section.id);
       onSectionSelect(section.id);
@@ -162,6 +174,17 @@ const StandardsBrowser: React.FC<{
     onSectionSelect(result.id);
   };
 
+  // Handle tag filter changes
+  const handleTagFilterChange = (selectedTagIds: string[]) => {
+    setFilters(prev => ({ ...prev, tags: selectedTagIds }));
+    
+    // If there's an active search, refresh it
+    if (searchQuery.length >= 3) {
+      setIsSearching(true);
+      searchSections(searchQuery);
+    }
+  };
+
   // Navigate to breadcrumb
   const navigateToBreadcrumb = (index: number) => {
     const newBreadcrumbs = breadcrumbs.slice(0, index + 1);
@@ -182,7 +205,7 @@ const StandardsBrowser: React.FC<{
   };
 
   return (
-    <Paper sx={{ p: 2, height: '100%' }}>
+    <Paper sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ mb: 2 }}>
         <Typography variant="h5" component="h2" gutterBottom>
           Standards Browser
@@ -196,7 +219,11 @@ const StandardsBrowser: React.FC<{
             startAdornment: <SearchIcon color="action" />,
             endAdornment: isSearching ? <CircularProgress size={20} /> : null
           }}
+          sx={{ mb: 2 }}
         />
+        
+        {/* Tag filtering */}
+        <TagFilter onFilterChange={handleTagFilterChange} />
       </Box>
       
       {/* Breadcrumb navigation */}
@@ -222,97 +249,101 @@ const StandardsBrowser: React.FC<{
         </Box>
       )}
 
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-          <CircularProgress />
-        </Box>
-      ) : searchQuery.length >= 3 ? (
-        // Search results
-        <List>
-          {searchResults.length > 0 ? (
-            searchResults.map((result) => (
-              <ListItem
-                key={result.id}
-                button
-                onClick={() => handleSearchResultSelect(result)}
-              >
-                <ListItemIcon>
-                  <ArticleIcon />
-                </ListItemIcon>
-                <ListItemText
-                  primary={`${result.section_number} ${result.title}`}
-                  secondary={`${result.code_name}`}
-                />
-              </ListItem>
-            ))
-          ) : (
-            <Box sx={{ textAlign: 'center', p: 2 }}>
-              {isSearching ? (
-                <Typography>Searching...</Typography>
-              ) : (
-                <Typography>No results found</Typography>
-              )}
-            </Box>
-          )}
-        </List>
-      ) : !selectedStandard ? (
-        // Standards list
-        <List>
-          {standards.map((standard) => (
-            <React.Fragment key={standard.id}>
-              <ListItem 
-                button
-                onClick={() => handleStandardSelect(standard)}
-              >
-                <ListItemIcon>
-                  <BookIcon />
-                </ListItemIcon>
-                <ListItemText
-                  primary={standard.code_name}
-                  secondary={standard.full_name}
-                />
-                <ChevronRightIcon />
-              </ListItem>
-              <Divider />
-            </React.Fragment>
-          ))}
-        </List>
-      ) : (
-        // Sections list
-        <List>
-          {sections.length > 0 ? (
-            sections.map((section) => (
-              <React.Fragment key={section.id}>
-                <ListItem 
-                  button 
-                  onClick={() => handleSectionSelect(section)}
+      <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : searchQuery.length >= 3 ? (
+          // Search results
+          <List>
+            {searchResults.length > 0 ? (
+              searchResults.map((result) => (
+                <ListItem
+                  key={result.id}
+                  button
+                  onClick={() => handleSearchResultSelect(result)}
                 >
                   <ListItemIcon>
-                    {section.has_tables || section.has_figures ? (
-                      <ArticleIcon />
-                    ) : (
-                      selectedSectionId === section.id ? (
-                        <FolderOpenIcon />
-                      ) : (
-                        <FolderIcon />
-                      )
-                    )}
+                    <ArticleIcon />
                   </ListItemIcon>
                   <ListItemText
-                    primary={`${section.section_number} ${section.title}`}
+                    primary={`${result.section_number} ${result.title}`}
+                    secondary={`${result.code_name}`}
                   />
-                  {!(section.has_tables || section.has_figures) && <ChevronRightIcon />}
                 </ListItem>
-                <Divider />
-              </React.Fragment>
-            ))
-          ) : (
-            <Box sx={{ textAlign: 'center', p: 2 }}>
-              <Typography>No sections found</Typography>
-            </Box>
-          )}
-        </List>
-      )}
+              ))
+            ) : (
+              <Box sx={{ textAlign: 'center', p: 2 }}>
+                {isSearching ? (
+                  <CircularProgress size={24} />
+                ) : (
+                  <Typography color="text.secondary">
+                    No results found for "{searchQuery}"
+                  </Typography>
+                )}
+              </Box>
+            )}
+          </List>
+        ) : (
+          // Standard browser
+          <div>
+            {!selectedStandard ? (
+              // Standards list
+              <List>
+                {standards.map((standard) => (
+                  <ListItem
+                    key={standard.id}
+                    button
+                    onClick={() => handleStandardSelect(standard)}
+                  >
+                    <ListItemIcon>
+                      <BookIcon />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={standard.code_name}
+                      secondary={`${standard.full_name} (${standard.version})`}
+                    />
+                    <ChevronRightIcon color="action" />
+                  </ListItem>
+                ))}
+              </List>
+            ) : (
+              // List of sections
+              <List>
+                {sections.length > 0 ? (
+                  sections.map((section) => (
+                    <ListItem
+                      key={section.id}
+                      button
+                      onClick={() => handleSectionSelect(section)}
+                      selected={section.id === selectedSectionId}
+                    >
+                      <ListItemIcon>
+                        {section.has_tables || section.has_figures ? (
+                          <ArticleIcon />
+                        ) : (
+                          section.id === selectedSectionId ? <FolderOpenIcon /> : <FolderIcon />
+                        )}
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={`${section.section_number} ${section.title}`}
+                      />
+                      <ChevronRightIcon color="action" />
+                    </ListItem>
+                  ))
+                ) : (
+                  <Box sx={{ textAlign: 'center', p: 2 }}>
+                    <Typography color="text.secondary">
+                      No sections found
+                    </Typography>
+                  </Box>
+                )}
+              </List>
+            )}
+          </div>
+        )}
+      </Box>
     </Paper>
   );
 };

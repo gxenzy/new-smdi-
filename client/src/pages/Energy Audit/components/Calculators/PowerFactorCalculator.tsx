@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -42,8 +42,12 @@ import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import ElectricalServicesIcon from '@mui/icons-material/ElectricalServices';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
 import SavedCalculationsViewer from './SavedCalculationsViewer';
 import { saveCalculation } from './utils/storage';
+import StandardValueSelector from '../../../../components/StandardsReference/StandardValueSelector';
+import axios from 'axios';
+import { useSnackbar } from 'notistack';
 
 interface PowerFactorCalculatorProps {
   onSave?: (data: PowerFactorCalculationResult) => void;
@@ -367,6 +371,8 @@ const PowerFactorCalculator: React.FC<PowerFactorCalculatorProps> = ({ onSave, o
   const [errorHelpOpen, setErrorHelpOpen] = useState<boolean>(false);
   const [quickStartOpen, setQuickStartOpen] = useState<boolean>(false);
   
+  const { enqueueSnackbar } = useSnackbar();
+  
   // Handle input changes
   const handleInputChange = (field: keyof PowerFactorCalculationInputs) => (
     event: React.ChangeEvent<HTMLInputElement>
@@ -586,19 +592,65 @@ const PowerFactorCalculator: React.FC<PowerFactorCalculatorProps> = ({ onSave, o
   // Save calculation
   const handleSave = () => {
     if (results) {
-      const id = saveCalculation('powerfactor', calculationName || `Power Factor Calculation - ${new Date().toLocaleString()}`, results);
-      if (id) {
-        setSaveDialogOpen(false);
-        // Reset calculation name
-        setCalculationName('');
+      try {
+        const calculationData = {
+          inputs,
+          results,
+          timestamp: Date.now()
+        };
+        
+        const id = saveCalculation('power-factor', calculationName || `Power Factor Calculation - ${new Date().toLocaleString()}`, calculationData);
+        
+        if (id) {
+          console.log('Successfully saved power factor calculation with ID:', id);
+          console.log('Saved data:', calculationData);
+          enqueueSnackbar('Power factor calculation saved successfully', { variant: 'success' });
+          setSaveDialogOpen(false);
+          // Reset calculation name
+          setCalculationName('');
+        } else {
+          console.error('Error saving power factor calculation: No ID returned');
+          enqueueSnackbar('Error saving calculation: No ID returned', { variant: 'error' });
+        }
+      } catch (error) {
+        console.error('Error saving calculation:', error);
+        enqueueSnackbar(`Error saving calculation: ${error instanceof Error ? error.message : 'Unknown error'}`, { 
+          variant: 'error' 
+        });
       }
+    } else {
+      enqueueSnackbar('Please calculate results before saving', { variant: 'warning' });
     }
   };
   
   // Handle loading a saved calculation
-  const handleLoadCalculation = (data: PowerFactorCalculationResult) => {
-    setResults(data);
-    setActiveTab(2);
+  const handleLoadCalculation = (data: any) => {
+    try {
+      console.log("Loading power factor calculation data:", data);
+      
+      // Extract the correct data structure
+      let resultsData = data;
+      
+      // Check if data has a nested structure and extract the results
+      if (data.data && data.data.results) {
+        resultsData = data.data.results;
+      } else if (data.results) {
+        resultsData = data.results;
+      }
+      
+      // Validate that we have the required properties
+      if (!resultsData.calculatedPowerFactor) {
+        throw new Error("Invalid calculation data format");
+      }
+      
+      setResults(resultsData);
+      setActiveTab(2);
+    } catch (error) {
+      console.error("Error loading calculation:", error);
+      enqueueSnackbar(`Error loading calculation: ${error instanceof Error ? error.message : 'Invalid data format'}`, {
+        variant: 'error'
+      });
+    }
   };
   
   // Update the handleExportPdf function
@@ -627,23 +679,28 @@ const PowerFactorCalculator: React.FC<PowerFactorCalculatorProps> = ({ onSave, o
         <Typography variant="h5" component="h2">
           Power Factor Calculator (PEC 2017 Section 4.30)
         </Typography>
-        <Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Tooltip title="Quick Start Guide">
-            <IconButton onClick={() => setQuickStartOpen(true)} sx={{ mr: 1 }}>
+            <IconButton onClick={() => setQuickStartOpen(true)}>
               <HelpOutlineIcon />
             </IconButton>
           </Tooltip>
           {results && (
             <Tooltip title="Save calculation">
-              <IconButton onClick={() => setSaveDialogOpen(true)} sx={{ mr: 1 }}>
+              <IconButton onClick={() => setSaveDialogOpen(true)}>
                 <SaveIcon />
               </IconButton>
             </Tooltip>
           )}
           <SavedCalculationsViewer 
-            calculationType="powerfactor"
+            calculationType="power-factor"
             onLoadCalculation={handleLoadCalculation}
           />
+          <Tooltip title="Learn more about PEC 2017 Section 4.30 Power Factor Standards">
+            <IconButton onClick={() => window.location.href = '/energy-audit/standards-reference?standard=PEC-2017&section=4.30'}>
+              <MenuBookIcon />
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Learn more about PEC 2017 Section 4.30">
             <IconButton onClick={() => setStandardsInfo(!standardsInfo)}>
               <InfoIcon />
@@ -847,6 +904,33 @@ const PowerFactorCalculator: React.FC<PowerFactorCalculatorProps> = ({ onSave, o
                   </Grid>
                   
                   <Grid item xs={12} md={6}>
+                    <StandardValueSelector
+                      type="power-factor"
+                      label="Standard Power Factor Values"
+                      helperText="Select recommended power factor values based on PEC 2017 standards"
+                      onValueSelect={(value) => {
+                        // Update the target power factor based on the standard
+                        if (value && value.value) {
+                          const pfValue = typeof value.value === 'number' 
+                            ? value.value.toString() 
+                            : value.value;
+                            
+                          setInputs(prev => ({
+                            ...prev,
+                            targetPowerFactor: pfValue
+                          }));
+                          
+                          // Show notification with the selected standard
+                          enqueueSnackbar(
+                            `Selected standard: ${value.description} - ${value.value} (${value.source} ${value.reference})`, 
+                            { variant: 'info' }
+                          );
+                        }
+                      }}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
                       label="Target Power Factor"
@@ -856,8 +940,10 @@ const PowerFactorCalculator: React.FC<PowerFactorCalculatorProps> = ({ onSave, o
                       value={inputs.targetPowerFactor}
                       onChange={handleInputChange('targetPowerFactor')}
                       error={!!errors.targetPowerFactor}
-                      helperText={errors.targetPowerFactor || "Recommended: 0.95 or higher"}
-                      inputProps={{ min: 0, max: 1, step: 0.01 }}
+                      helperText={errors.targetPowerFactor || "You can manually adjust the value or select from standards above"}
+                      InputProps={{
+                        inputProps: { min: 0, max: 1, step: 0.01 }
+                      }}
                     />
                   </Grid>
                 </Grid>

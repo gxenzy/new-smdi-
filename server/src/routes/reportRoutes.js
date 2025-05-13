@@ -1,12 +1,12 @@
 const express = require('express');
 const { body } = require('express-validator');
 const reportController = require('../controllers/reportController');
-const { authenticateToken } = require('../middleware/auth');
+const auth = require('../middleware/auth');
 
 const router = express.Router();
 
 // Apply authentication middleware to all routes
-router.use(authenticateToken);
+router.use(auth);
 
 // Helper function to handle async controller functions
 const asyncHandler = (fn) => 
