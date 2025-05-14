@@ -34,7 +34,11 @@ import {
   CircularProgress,
   Collapse,
   Snackbar,
-  LinearProgress
+  LinearProgress,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -55,9 +59,11 @@ import {
   Bolt as BoltIcon,
   Warning as WarningIcon,
   Sync as SyncIcon,
-  Assessment as AssessmentIcon
+  Assessment as AssessmentIcon,
+  CheckCircle as CheckCircleIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
-import { LoadItem, LoadSchedule, PowerCalculationResults } from './types';
+import { LoadItem, LoadSchedule, PowerCalculationResults, CIRCUIT_BREAKER_OPTIONS, CONDUCTOR_SIZE_OPTIONS, CIRCUIT_TYPE_OPTIONS } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import SavedCalculationsViewer from '../SavedCalculationsViewer';
 import { saveCalculation } from '../utils/storage';
@@ -68,6 +74,10 @@ import LoadItemInfoDialog from './LoadItemInfoDialog';
 import { useCircuitSync } from '../../../../../contexts/CircuitSynchronizationContext';
 import SynchronizationPanel from '../SynchronizationPanel';
 import { UnifiedCircuitData } from '../utils/circuitDataExchange';
+import PhaseBalanceDisplay from './PhaseBalanceDisplay';
+import CircuitDetailsDialog from './CircuitDetailsDialog';
+import ComplianceReportTab from './ComplianceReportTab';
+import { updateLoadScheduleCompliance } from '../utils/pecComplianceUtils';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -157,6 +167,10 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
   // Get circuit sync context
   const circuitSync = useCircuitSync();
 
+  // Add state for circuit details dialog
+  const [circuitDetailsDialogOpen, setCircuitDetailsDialogOpen] = useState(false);
+  const [selectedCircuitItem, setSelectedCircuitItem] = useState<LoadItem | null>(null);
+
   // Update the circuit sync context whenever the loadSchedule changes
   useEffect(() => {
     // Only update if not from an initial load and if we have actual loads
@@ -194,31 +208,40 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
       return;
     }
     
-    // Calculate connected load and demand load
+    // Calculate connected load, demand load, etc.
     const calculatedItem = calculateLoadValues(newLoadItem);
     
-    // Add to load schedule
+    // Add default circuit details
     const newItem: LoadItem = {
       id: uuidv4(),
-      ...calculatedItem
+      ...calculatedItem,
+      // Add default circuit details to enable PEC compliance checking
+      circuitDetails: {
+        type: 'lighting',
+        poles: 1, 
+        phase: 'A',
+        wireType: 'THHN_COPPER',
+        maxVoltageDropAllowed: 3 // Default 3% per PEC 2017
+      }
     };
     
+    // Add to the load schedule
     const updatedLoads = [...loadSchedule.loads, newItem];
     
     // Calculate totals
     const totalConnectedLoad = updatedLoads.reduce((sum, item) => sum + item.connectedLoad, 0);
     const totalDemandLoad = updatedLoads.reduce((sum, item) => sum + item.demandLoad, 0);
-    const current = totalDemandLoad / loadSchedule.voltage;
+    const totalCurrent = totalDemandLoad / loadSchedule.voltage;
     
     setLoadSchedule({
       ...loadSchedule,
       loads: updatedLoads,
       totalConnectedLoad,
       totalDemandLoad,
-      current
+      current: totalCurrent
     });
     
-    // Reset new item form
+    // Reset the form
     setNewLoadItem({...defaultLoadItem});
     setErrors({});
   };
@@ -345,38 +368,72 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
     setCalculating(true);
     
     setTimeout(() => {
-      // For demonstration, assume 8 hours per day, 22 days per month as default operation
-      const dailyOperatingHours = 8;
-      const daysPerMonth = 22;
-      const electricityRate = 10.5; // PHP per kWh
-      
-      // Calculate energy consumption in kWh
-      const dailyEnergyConsumption = loadSchedule.totalDemandLoad * dailyOperatingHours / 1000;
-      const monthlyEnergyConsumption = dailyEnergyConsumption * daysPerMonth;
-      const annualEnergyConsumption = monthlyEnergyConsumption * 12;
-      
-      // Calculate costs
-      const monthlyCost = monthlyEnergyConsumption * electricityRate;
-      const annualCost = annualEnergyConsumption * electricityRate;
-      
-      // Calculate peak demand in kW
-      const peakDemand = loadSchedule.totalDemandLoad / 1000;
-      
-      // Calculate load factor (typically done with more data, but simplified here)
-      const loadFactor = 0.65; // Assume 65% load factor for demonstration
-      
-      const results: PowerCalculationResults = {
-        monthlyEnergyConsumption,
-        annualEnergyConsumption,
-        monthlyCost,
-        annualCost,
-        dailyOperatingHours,
-        peakDemand,
-        loadFactor
-      };
-      
-      setCalculationResults(results);
-      setCalculating(false);
+      // Import the compliance checking utility
+      import('../utils/pecComplianceUtils').then(({ updateLoadScheduleCompliance }) => {
+        try {
+          // For demonstration, assume 8 hours per day, 22 days per month as default operation
+          const dailyOperatingHours = 8;
+          const daysPerMonth = 22;
+          const electricityRate = 10.5; // PHP per kWh
+          
+          // Calculate energy consumption in kWh
+          const dailyEnergyConsumption = loadSchedule.totalDemandLoad * dailyOperatingHours / 1000;
+          const monthlyEnergyConsumption = dailyEnergyConsumption * daysPerMonth;
+          const annualEnergyConsumption = monthlyEnergyConsumption * 12;
+          
+          // Calculate costs
+          const monthlyCost = monthlyEnergyConsumption * electricityRate;
+          const annualCost = annualEnergyConsumption * electricityRate;
+          
+          // Calculate peak demand in kW
+          const peakDemand = loadSchedule.totalDemandLoad / 1000;
+          
+          // Calculate load factor (typically done with more data, but simplified here)
+          const loadFactor = 0.65; // Assume 65% load factor for demonstration
+          
+          const results: PowerCalculationResults = {
+            monthlyEnergyConsumption,
+            annualEnergyConsumption,
+            monthlyCost,
+            annualCost,
+            dailyOperatingHours,
+            peakDemand,
+            loadFactor
+          };
+          
+          // Update compliance status for the entire load schedule
+          const compliantLoadSchedule = updateLoadScheduleCompliance(loadSchedule);
+          
+          // Update state with results and compliant load schedule
+          setCalculationResults(results);
+          setLoadSchedule(compliantLoadSchedule);
+          
+          // Notify user if there are compliance issues
+          if (!compliantLoadSchedule.isPECCompliant) {
+            const nonCompliantCount = compliantLoadSchedule.loads.filter(
+              load => load.pecCompliance && !load.pecCompliance.isCompliant
+            ).length;
+            
+            if (nonCompliantCount > 0) {
+              enqueueSnackbar(
+                `Found ${nonCompliantCount} items that don't comply with PEC 2017 standards. Check the results tab for details.`,
+                { variant: 'warning', autoHideDuration: 5000 }
+              );
+            }
+          }
+        } catch (error) {
+          console.error('Error during calculation:', error);
+          enqueueSnackbar(
+            `Error during calculation: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            { variant: 'error', autoHideDuration: 5000 }
+          );
+        } finally {
+          setCalculating(false);
+        }
+      }).catch(error => {
+        console.error('Error loading compliance utilities:', error);
+        setCalculating(false);
+      });
     }, 500); // Simulate calculation time
   };
   
@@ -500,6 +557,82 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
       circuit.source === 'voltage-drop' && 
       (circuit.sourceId === loadItem.id || circuit.id === loadItemCircuitId)
     );
+  };
+
+  // Add function to open circuit details dialog
+  const handleOpenCircuitDetails = (loadItem: LoadItem) => {
+    setSelectedCircuitItem(loadItem);
+    setCircuitDetailsDialogOpen(true);
+  };
+  
+  // Add function to save circuit details
+  const handleSaveCircuitDetails = (updatedLoadItem: LoadItem) => {
+    // Update the load item with new circuit details
+    const updatedLoads = loadSchedule.loads.map(item => 
+      item.id === updatedLoadItem.id ? updatedLoadItem : item
+    );
+    
+    // Update load schedule
+    const updatedSchedule = {
+      ...loadSchedule,
+      loads: updatedLoads
+    };
+    
+    // Check compliance after updating circuit details
+    const compliantSchedule = updateLoadScheduleCompliance(updatedSchedule);
+    
+    setLoadSchedule(compliantSchedule);
+    setCircuitDetailsDialogOpen(false);
+    setSelectedCircuitItem(null);
+    
+    // Show notification
+    enqueueSnackbar('Circuit details updated successfully', { variant: 'success' });
+  };
+
+  // Handle phase configuration change in Panel Settings
+  const handlePhaseConfigChange = (newConfig: 'single-phase' | 'three-phase') => {
+    setLoadSchedule(prev => ({
+      ...prev,
+      phaseConfiguration: newConfig
+    }));
+  };
+
+  // Handle load phase change (for 3-phase panels)
+  const handleUpdateLoadPhase = (loadId: string, newPhase: 'A' | 'B' | 'C' | 'A-B' | 'B-C' | 'C-A' | 'A-B-C') => {
+    // Update the phase information for the specific load
+    const updatedLoads = loadSchedule.loads.map(item => {
+      if (item.id === loadId && item.circuitDetails) {
+        return {
+          ...item,
+          circuitDetails: {
+            ...item.circuitDetails,
+            phase: newPhase
+          }
+        };
+      }
+      return item;
+    });
+    
+    // Update load schedule with the new loads
+    const updatedSchedule = {
+      ...loadSchedule,
+      loads: updatedLoads
+    };
+    
+    // Check compliance after updating phase configuration
+    const compliantSchedule = updateLoadScheduleCompliance(updatedSchedule);
+    
+    setLoadSchedule(compliantSchedule);
+  };
+  
+  // Handle saving panel settings
+  const handleSaveSettings = () => {
+    // Check compliance after updating settings
+    const compliantSchedule = updateLoadScheduleCompliance(loadSchedule);
+    setLoadSchedule(compliantSchedule);
+    
+    // Show notification
+    enqueueSnackbar('Panel settings updated successfully', { variant: 'success' });
   };
 
   const renderPanelSummary = () => {
@@ -708,902 +841,435 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
     );
   };
 
+  // Main render for the calculator
   return (
-    <Box>
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6">Schedule of Loads Calculator</Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Tooltip title="Quick Start Guide">
-              <IconButton onClick={() => setQuickStartOpen(true)}>
-                <HelpOutlineIcon />
-              </IconButton>
-            </Tooltip>
-            <SavedCalculationsViewer 
-              calculationType="schedule-of-loads"
-              onLoadCalculation={(data) => {
-                try {
-                  console.log("Loading schedule of loads data:", data);
-                  
-                  // Handle different data structures
-                  let loadScheduleData;
-                  
-                  // Check for nested data structure - handle multiple potential formats
-                  if (data.data) {
-                    if (data.data.loadSchedule) {
-                      // Standard format with loadSchedule property
-                      loadScheduleData = data.data.loadSchedule;
-                      
-                      // Also restore calculation results if available
-                      if (data.data.calculationResults) {
-                        setCalculationResults(data.data.calculationResults);
-                      }
-                    } else if (typeof data.data === 'object' && data.data.id && data.data.name && data.data.loads) {
-                      // Direct loadSchedule object
-                      loadScheduleData = data.data;
-                    }
-                  } else if (typeof data === 'object' && data.id && data.name && data.loads) {
-                    // Direct loadSchedule object at root level
-                    loadScheduleData = data;
-                  }
-                  
-                  // If we still don't have valid data, try reconstructing from what we have
-                  if (!loadScheduleData || !loadScheduleData.loads) {
-                    console.warn("Could not find standard loadSchedule data format, attempting to reconstruct", data);
-                    
-                    // Create a default structure
-                    loadScheduleData = {
-                      ...defaultLoadSchedule,
-                      id: data.id || uuidv4(),
-                      name: data.name || 'Recovered Schedule of Loads',
-                      loads: []
-                    };
-                    
-                    // Try to find loads array in nested properties
-                    if (data.loads && Array.isArray(data.loads)) {
-                      loadScheduleData.loads = data.loads;
-                    } else if (data.data && data.data.loads && Array.isArray(data.data.loads)) {
-                      loadScheduleData.loads = data.data.loads;
-                    }
-                    
-                    // If we still don't have loads, this is truly invalid data
-                    if (!loadScheduleData.loads || !Array.isArray(loadScheduleData.loads)) {
-                      throw new Error("Invalid load schedule data format: missing loads array");
-                    }
-                  }
-                  
-                  // Ensure all required properties exist with reasonable defaults
-                  loadScheduleData = {
-                    ...defaultLoadSchedule,
-                    ...loadScheduleData,
-                    // Ensure these are numbers even if they were saved as strings
-                    voltage: Number(loadScheduleData.voltage) || defaultLoadSchedule.voltage,
-                    powerFactor: Number(loadScheduleData.powerFactor) || defaultLoadSchedule.powerFactor,
-                    totalConnectedLoad: Number(loadScheduleData.totalConnectedLoad) || 0,
-                    totalDemandLoad: Number(loadScheduleData.totalDemandLoad) || 0,
-                    current: Number(loadScheduleData.current) || 0
-                  };
-                  
-                  // Ensure loads is an array with properly formatted items
-                  if (!Array.isArray(loadScheduleData.loads)) {
-                    loadScheduleData.loads = [];
-                  }
-                  
-                  // Process each load item to ensure it has all required properties
-                  loadScheduleData.loads = loadScheduleData.loads.map((load: any) => ({
-                    id: load.id || uuidv4(),
-                    description: load.description || 'Unknown Item',
-                    quantity: Number(load.quantity) || 1,
-                    rating: Number(load.rating) || 0,
-                    demandFactor: Number(load.demandFactor) || 1,
-                    connectedLoad: Number(load.connectedLoad) || 0,
-                    demandLoad: Number(load.demandLoad) || 0,
-                    current: Number(load.current) || 0,
-                    voltAmpere: Number(load.voltAmpere) || 0,
-                    circuitBreaker: load.circuitBreaker || '',
-                    conductorSize: load.conductorSize || ''
-                  }));
-                  
-                  // Recalculate totals to ensure consistency
-                  const totalConnectedLoad = loadScheduleData.loads.reduce((sum: number, item: LoadItem) => sum + item.connectedLoad, 0);
-                  const totalDemandLoad = loadScheduleData.loads.reduce((sum: number, item: LoadItem) => sum + item.demandLoad, 0);
-                  const current = totalDemandLoad / loadScheduleData.voltage;
-                  
-                  loadScheduleData.totalConnectedLoad = totalConnectedLoad;
-                  loadScheduleData.totalDemandLoad = totalDemandLoad;
-                  loadScheduleData.current = current;
-                  
-                  console.log("Processed load schedule data:", loadScheduleData);
-                  
-                  setLoadSchedule(loadScheduleData);
-                  setCalculationName(loadScheduleData.name || '');
-                  
-                  if (loadScheduleData.loads.length > 0) {
-                    // Calculate power consumption based on the loaded data
-                    calculatePowerConsumption();
-                  }
-                  
-                  // Move to results tab if we have loads, otherwise go to load items tab
-                  setActiveTab(loadScheduleData.loads.length > 0 ? 2 : 1);
-                } catch (error) {
-                  console.error("Error loading schedule of loads:", error);
-                  enqueueSnackbar(`Error loading saved data: ${error instanceof Error ? error.message : 'Invalid data format'}`, {
-                    variant: 'error',
-                    autoHideDuration: 5000
-                  });
-                }
-              }}
-            />
-            <Tooltip title="Learn more about PEC 2017 Schedule of Loads requirements">
-              <IconButton onClick={() => window.location.href = '/energy-audit/standards-reference?standard=PEC-2017&section=2.4'}>
-                <MenuBookIcon />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="What is Schedule of Loads?">
-              <IconButton onClick={() => setInfoOpen(true)}>
-                <InfoIcon />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </Box>
-        
-        {/* Add Synchronization Panel */}
-        <SynchronizationPanel />
-        
-        {infoOpen && (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            <Typography variant="subtitle2">
-              Schedule of Loads (SOL)
+    <Paper elevation={3} sx={{ p: 3, mb: 4, mt: 2 }}>
+      {/* Header section */}
+      <Box sx={{ mb: 4 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={6}>
+            <Typography variant="h5" component="h2" gutterBottom>
+              Schedule of Loads Calculator
             </Typography>
-            <Typography variant="body2">
-              A Schedule of Loads is a detailed listing of all electrical loads in a system, panel, or area. It helps in
-              properly sizing electrical equipment and determining energy consumption patterns. The PEC (Philippine Electrical 
-              Code) requires a properly prepared Schedule of Loads for all electrical installations.
+            <Typography variant="body2" color="textSecondary">
+              Calculate load schedule based on PEC 2017 requirements
             </Typography>
-          </Alert>
-        )}
-        
-        <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} sx={{ mb: 2 }}>
-          <Tab label="Basic Information" />
-          <Tab label="Load Items" />
-          <Tab label="Results" disabled={loadSchedule.loads.length === 0} />
-        </Tabs>
-        
-        {/* Basic Information Tab */}
-        <TabPanel value={activeTab} index={0}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Panel Information
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary" paragraph>
-                    Enter basic information about the electrical panel and its location.
-                  </Typography>
-                  
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Schedule Name"
-                        value={loadSchedule.name}
-                        onChange={(e) => setLoadSchedule({...loadSchedule, name: e.target.value})}
-                        margin="normal"
-                        variant="outlined"
-                      />
-                    </Grid>
-                    
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Panel Name"
-                        value={loadSchedule.panelName}
-                        onChange={(e) => setLoadSchedule({...loadSchedule, panelName: e.target.value})}
-                        margin="normal"
-                        variant="outlined"
-                      />
-                    </Grid>
-                  </Grid>
-                  
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Room/Area Name"
-                        value={loadSchedule.roomId || ''}
-                        onChange={(e) => setLoadSchedule({...loadSchedule, roomId: e.target.value})}
-                        margin="normal"
-                        variant="outlined"
-                      />
-                    </Grid>
-                    
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Floor Name"
-                        value={loadSchedule.floorName || ''}
-                        onChange={(e) => setLoadSchedule({...loadSchedule, floorName: e.target.value})}
-                        margin="normal"
-                        variant="outlined"
-                      />
-                    </Grid>
-                  </Grid>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid item xs={12}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Electrical Specifications
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary" paragraph>
-                    Enter electrical specifications for the panel.
-                  </Typography>
-                  
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} md={4}>
-                      <TextField
-                        fullWidth
-                        label="Voltage"
-                        type="number"
-                        value={loadSchedule.voltage}
-                        onChange={(e) => setLoadSchedule({...loadSchedule, voltage: Number(e.target.value)})}
-                        margin="normal"
-                        variant="outlined"
-                        InputProps={{
-                          endAdornment: <InputAdornment position="end">V</InputAdornment>,
-                        }}
-                      />
-                    </Grid>
-                    
-                    <Grid item xs={12} md={4}>
-                      <TextField
-                        fullWidth
-                        label="Power Factor"
-                        type="number"
-                        value={loadSchedule.powerFactor}
-                        onChange={(e) => setLoadSchedule({...loadSchedule, powerFactor: Number(e.target.value)})}
-                        margin="normal"
-                        variant="outlined"
-                        inputProps={{ min: 0, max: 1, step: 0.01 }}
-                      />
-                    </Grid>
-                    
-                    <Grid item xs={12} md={4}>
-                      <TextField
-                        fullWidth
-                        label="Main Circuit Breaker"
-                        value={loadSchedule.circuitBreaker || ''}
-                        onChange={(e) => setLoadSchedule({...loadSchedule, circuitBreaker: e.target.value})}
-                        margin="normal"
-                        variant="outlined"
-                        placeholder="e.g., 100AT/100AF 3P"
-                      />
-                    </Grid>
-                  </Grid>
-                  
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} md={4}>
-                      <TextField
-                        fullWidth
-                        label="Conductor Size"
-                        value={loadSchedule.conductorSize || ''}
-                        onChange={(e) => setLoadSchedule({...loadSchedule, conductorSize: e.target.value})}
-                        margin="normal"
-                        variant="outlined"
-                        placeholder="e.g., 30mm² THHN"
-                      />
-                    </Grid>
-                    
-                    <Grid item xs={12} md={4}>
-                      <TextField
-                        fullWidth
-                        label="Incoming Feeder Size"
-                        value={loadSchedule.incomingFeederSize || ''}
-                        onChange={(e) => setLoadSchedule({...loadSchedule, incomingFeederSize: e.target.value})}
-                        margin="normal"
-                        variant="outlined"
-                        placeholder="e.g., 4-30mm² THHN"
-                      />
-                    </Grid>
-                    
-                    <Grid item xs={12} md={4}>
-                      <TextField
-                        fullWidth
-                        label="Feeder Protection Size"
-                        value={loadSchedule.feederProtectionSize || ''}
-                        onChange={(e) => setLoadSchedule({...loadSchedule, feederProtectionSize: e.target.value})}
-                        margin="normal"
-                        variant="outlined"
-                        placeholder="e.g., 100AT/100AF 3P"
-                      />
-                    </Grid>
-                  </Grid>
-                </CardContent>
-              </Card>
-            </Grid>
           </Grid>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+          <Grid item xs={12} md={6} sx={{ textAlign: 'right' }}>
             <Button 
-              variant="contained" 
-              endIcon={<CalculateIcon />}
-              onClick={() => setActiveTab(1)}
-              color="primary"
+              variant="outlined" 
+              color="primary" 
+              startIcon={<HelpOutlineIcon />}
+              onClick={() => setQuickStartOpen(true)}
+              sx={{ mr: 1 }}
             >
-              Next: Load Items
+              Quick Start
             </Button>
+            <Button 
+              variant="outlined" 
+              color="primary" 
+              startIcon={<InfoIcon />}
+              onClick={() => setInfoOpen(true)}
+            >
+              Info
+            </Button>
+          </Grid>
+        </Grid>
+      </Box>
+
+      {/* Main content */}
+      <Box sx={{ width: '100%' }}>
+        <Tabs
+          value={activeTab}
+          onChange={(_, newValue) => setActiveTab(newValue)}
+          variant="scrollable"
+          scrollButtons="auto"
+        >
+          <Tab label="Input" />
+          <Tab label="Results" />
+          <Tab label="Settings" />
+          <Tab label="Compliance Report" />
+        </Tabs>
+
+        {/* Input Tab */}
+        <TabPanel value={activeTab} index={0}>
+          {/* Panel information */}
+          {renderPanelSummary()}
+          
+          {/* Load items table */}
+          {renderLoadItemsTable()}
+          
+          {/* Add new load item form */}
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              Add New Load Item
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={4}>
+                <TextField 
+                  fullWidth
+                  label="Description"
+                  value={newLoadItem.description}
+                  onChange={handleNewItemChange('description')}
+                  error={!!errors.description}
+                  helperText={errors.description}
+                />
+              </Grid>
+              <Grid item xs={12} md={2}>
+                <TextField 
+                  fullWidth
+                  label="Quantity"
+                  type="number"
+                  value={newLoadItem.quantity}
+                  onChange={handleNewItemChange('quantity')}
+                  InputProps={{ inputProps: { min: 1 } }}
+                  error={!!errors.quantity}
+                  helperText={errors.quantity}
+                />
+              </Grid>
+              <Grid item xs={12} md={2}>
+                <TextField 
+                  fullWidth
+                  label="Rating (W)"
+                  type="number"
+                  value={newLoadItem.rating}
+                  onChange={handleNewItemChange('rating')}
+                  InputProps={{ inputProps: { min: 0 } }}
+                  error={!!errors.rating}
+                  helperText={errors.rating}
+                />
+              </Grid>
+              <Grid item xs={12} md={2}>
+                <TextField 
+                  fullWidth
+                  label="Demand Factor"
+                  type="number"
+                  value={newLoadItem.demandFactor}
+                  onChange={handleNewItemChange('demandFactor')}
+                  InputProps={{ inputProps: { min: 0, max: 1, step: 0.1 } }}
+                  error={!!errors.demandFactor}
+                  helperText={errors.demandFactor}
+                />
+              </Grid>
+              <Grid item xs={12} md={2}>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  color="primary"
+                  onClick={handleAddLoadItem}
+                  startIcon={<AddIcon />}
+                  sx={{ mt: 1 }}
+                >
+                  Add
+                </Button>
+              </Grid>
+            </Grid>
           </Box>
         </TabPanel>
-        
-        {/* Load Items Tab */}
+
+        {/* Results Tab */}
         <TabPanel value={activeTab} index={1}>
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
-                    Add New Load Item
+                    Summary
                   </Typography>
-                  
                   <Grid container spacing={2}>
-                    <Grid item xs={12} md={4}>
-                      <TextField
-                        fullWidth
-                        label="Description"
-                        value={newLoadItem.description}
-                        onChange={handleNewItemChange('description')}
-                        error={!!errors.description}
-                        helperText={errors.description}
-                        margin="normal"
-                        variant="outlined"
-                        placeholder="e.g., Lighting Fixtures, Air Conditioner"
-                      />
-                    </Grid>
-                    
-                    <Grid item xs={12} md={2}>
-                      <TextField
-                        fullWidth
-                        label="Quantity"
-                        type="number"
-                        value={newLoadItem.quantity}
-                        onChange={handleNewItemChange('quantity')}
-                        error={!!errors.quantity}
-                        helperText={errors.quantity}
-                        margin="normal"
-                        variant="outlined"
-                        inputProps={{ min: 1 }}
-                      />
-                    </Grid>
-                    
                     <Grid item xs={12} md={3}>
-                      <TextField
-                        fullWidth
-                        label="Rating"
-                        type="number"
-                        value={newLoadItem.rating}
-                        onChange={handleNewItemChange('rating')}
-                        error={!!errors.rating}
-                        helperText={errors.rating}
-                        margin="normal"
-                        variant="outlined"
-                        InputProps={{
-                          endAdornment: <InputAdornment position="end">W</InputAdornment>,
-                        }}
-                      />
+                      <Typography variant="body2" color="textSecondary" gutterBottom>
+                        Total Connected Load
+                      </Typography>
+                      <Typography variant="h6">
+                        {loadSchedule.totalConnectedLoad.toFixed(2)} W
+                      </Typography>
                     </Grid>
-                    
                     <Grid item xs={12} md={3}>
-                      <TextField
-                        fullWidth
-                        label="Demand Factor"
-                        type="number"
-                        value={newLoadItem.demandFactor}
-                        onChange={handleNewItemChange('demandFactor')}
-                        error={!!errors.demandFactor}
-                        helperText={errors.demandFactor || "0.0 - 1.0"}
-                        margin="normal"
-                        variant="outlined"
-                        inputProps={{ min: 0, max: 1, step: 0.01 }}
-                      />
+                      <Typography variant="body2" color="textSecondary" gutterBottom>
+                        Total Demand Load
+                      </Typography>
+                      <Typography variant="h6">
+                        {loadSchedule.totalDemandLoad.toFixed(2)} W
+                      </Typography>
                     </Grid>
-                  </Grid>
-                  
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} md={4}>
-                      <TextField
-                        fullWidth
-                        label="Circuit Breaker (optional)"
-                        value={newLoadItem.circuitBreaker}
-                        onChange={handleNewItemChange('circuitBreaker')}
-                        margin="normal"
-                        variant="outlined"
-                        placeholder="e.g., 20AT 2P"
-                      />
+                    <Grid item xs={12} md={3}>
+                      <Typography variant="body2" color="textSecondary" gutterBottom>
+                        Current
+                      </Typography>
+                      <Typography variant="h6">
+                        {loadSchedule.current.toFixed(2)} A
+                      </Typography>
                     </Grid>
-                    
-                    <Grid item xs={12} md={4}>
-                      <TextField
-                        fullWidth
-                        label="Conductor Size (optional)"
-                        value={newLoadItem.conductorSize}
-                        onChange={handleNewItemChange('conductorSize')}
-                        margin="normal"
-                        variant="outlined"
-                        placeholder="e.g., 3.5mm² THHN"
-                      />
-                    </Grid>
-                    
-                    <Grid item xs={12} md={4} sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={handleAddLoadItem}
-                        sx={{ mt: 2, height: 40 }}
-                        fullWidth
-                      >
-                        Add Load Item
-                      </Button>
+                    <Grid item xs={12} md={3}>
+                      <Typography variant="body2" color="textSecondary" gutterBottom>
+                        Volt-Ampere
+                      </Typography>
+                      <Typography variant="h6">
+                        {(loadSchedule.totalDemandLoad / loadSchedule.powerFactor).toFixed(2)} VA
+                      </Typography>
                     </Grid>
                   </Grid>
                 </CardContent>
               </Card>
             </Grid>
             
-            <Grid item xs={12}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Load Items
-                  </Typography>
-                  
-                  {renderLoadItemsTable()}
-                </CardContent>
-              </Card>
-            </Grid>
+            {/* Power Consumption Estimation */}
+            {calculationResults && (
+              <Grid item xs={12}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Power Consumption Estimation
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} md={4}>
+                        <Typography variant="body2" color="textSecondary" gutterBottom>
+                          Monthly Energy Consumption
+                        </Typography>
+                        <Typography variant="h6">
+                          {calculationResults.monthlyEnergyConsumption.toFixed(2)} kWh
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} md={4}>
+                        <Typography variant="body2" color="textSecondary" gutterBottom>
+                          Annual Energy Consumption
+                        </Typography>
+                        <Typography variant="h6">
+                          {calculationResults.annualEnergyConsumption.toFixed(2)} kWh
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} md={4}>
+                        <Typography variant="body2" color="textSecondary" gutterBottom>
+                          Monthly Cost
+                        </Typography>
+                        <Typography variant="h6">
+                          ₱{calculationResults.monthlyCost.toFixed(2)}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} md={4}>
+                        <Typography variant="body2" color="textSecondary" gutterBottom>
+                          Annual Cost
+                        </Typography>
+                        <Typography variant="h6">
+                          ₱{calculationResults.annualCost.toFixed(2)}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} md={4}>
+                        <Typography variant="body2" color="textSecondary" gutterBottom>
+                          Peak Demand
+                        </Typography>
+                        <Typography variant="h6">
+                          {calculationResults.peakDemand.toFixed(2)} kW
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} md={4}>
+                        <Typography variant="body2" color="textSecondary" gutterBottom>
+                          Load Factor
+                        </Typography>
+                        <Typography variant="h6">
+                          {calculationResults.loadFactor.toFixed(2)}%
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              </Grid>
+            )}
+            
+            {/* Add Phase Balance Display if three-phase panel */}
+            {loadSchedule.phaseConfiguration === 'three-phase' && (
+              <Grid item xs={12}>
+                <PhaseBalanceDisplay 
+                  loadSchedule={loadSchedule} 
+                  onUpdateLoadPhase={handleUpdateLoadPhase} 
+                />
+              </Grid>
+            )}
           </Grid>
           
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-            <Button 
-              variant="outlined" 
-              onClick={() => setActiveTab(0)}
-            >
-              Back to Basic Information
-            </Button>
-            <Button 
-              variant="contained" 
-              endIcon={<CalculateIcon />}
-              onClick={() => setActiveTab(2)}
-              disabled={loadSchedule.loads.length === 0}
+            <Button
+              variant="outlined"
               color="primary"
+              startIcon={<CalculateIcon />}
+              onClick={calculatePowerConsumption}
+              disabled={loadSchedule.loads.length === 0}
             >
-              View Results
+              Calculate Power Consumption
             </Button>
+            
+            <Box>
+              <Button
+                variant="outlined"
+                color="primary"
+                startIcon={<SaveIcon />}
+                onClick={() => setSaveDialogOpen(true)}
+                sx={{ mr: 1 }}
+                disabled={loadSchedule.loads.length === 0}
+              >
+                Save
+              </Button>
+              
+              <Button
+                variant="outlined"
+                color="primary"
+                startIcon={<PictureAsPdfIcon />}
+                onClick={handleExportPdf}
+                disabled={loadSchedule.loads.length === 0 || !onExportPdf}
+              >
+                Export PDF
+              </Button>
+            </Box>
           </Box>
         </TabPanel>
-        
-        {/* Edit Load Item Dialog */}
-        <Dialog open={!!editingLoad} onClose={() => setEditingLoad(null)} maxWidth="md" fullWidth>
-          <DialogTitle>Edit Load Item</DialogTitle>
-          <DialogContent>
-            {editingLoad && (
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Description"
-                    value={editingLoad.description}
-                    onChange={handleEditingItemChange('description')}
-                    error={!!errors.editDescription}
-                    helperText={errors.editDescription}
-                    margin="normal"
-                    variant="outlined"
-                  />
-                </Grid>
-                
-                <Grid item xs={12} md={3}>
-                  <TextField
-                    fullWidth
-                    label="Quantity"
-                    type="number"
-                    value={editingLoad.quantity}
-                    onChange={handleEditingItemChange('quantity')}
-                    error={!!errors.editQuantity}
-                    helperText={errors.editQuantity}
-                    margin="normal"
-                    variant="outlined"
-                    inputProps={{ min: 1 }}
-                  />
-                </Grid>
-                
-                <Grid item xs={12} md={3}>
-                  <TextField
-                    fullWidth
-                    label="Rating"
-                    type="number"
-                    value={editingLoad.rating}
-                    onChange={handleEditingItemChange('rating')}
-                    error={!!errors.editRating}
-                    helperText={errors.editRating}
-                    margin="normal"
-                    variant="outlined"
-                    InputProps={{
-                      endAdornment: <InputAdornment position="end">W</InputAdornment>,
-                    }}
-                  />
-                </Grid>
-                
-                <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    label="Demand Factor"
-                    type="number"
-                    value={editingLoad.demandFactor}
-                    onChange={handleEditingItemChange('demandFactor')}
-                    error={!!errors.editDemandFactor}
-                    helperText={errors.editDemandFactor || "0.0 - 1.0"}
-                    margin="normal"
-                    variant="outlined"
-                    inputProps={{ min: 0, max: 1, step: 0.01 }}
-                  />
-                </Grid>
-                
-                <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    label="Circuit Breaker"
-                    value={editingLoad.circuitBreaker}
-                    onChange={handleEditingItemChange('circuitBreaker')}
-                    margin="normal"
-                    variant="outlined"
-                  />
-                </Grid>
-                
-                <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    label="Conductor Size"
-                    value={editingLoad.conductorSize}
-                    onChange={handleEditingItemChange('conductorSize')}
-                    margin="normal"
-                    variant="outlined"
-                  />
-                </Grid>
-                
-                <Grid item xs={12}>
-                  <Divider sx={{ my: 2 }} />
-                  <Typography variant="subtitle2" gutterBottom>
-                    Calculated Values (Read Only)
-                  </Typography>
-                  
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} md={3}>
-                      <TextField
-                        fullWidth
-                        label="Connected Load"
-                        value={editingLoad.connectedLoad.toFixed(2)}
-                        margin="normal"
-                        variant="outlined"
-                        InputProps={{
-                          endAdornment: <InputAdornment position="end">W</InputAdornment>,
-                          readOnly: true,
-                        }}
-                      />
-                    </Grid>
-                    
-                    <Grid item xs={12} md={3}>
-                      <TextField
-                        fullWidth
-                        label="Demand Load"
-                        value={editingLoad.demandLoad.toFixed(2)}
-                        margin="normal"
-                        variant="outlined"
-                        InputProps={{
-                          endAdornment: <InputAdornment position="end">W</InputAdornment>,
-                          readOnly: true,
-                        }}
-                      />
-                    </Grid>
-                    
-                    <Grid item xs={12} md={3}>
-                      <TextField
-                        fullWidth
-                        label="Current"
-                        value={editingLoad.current?.toFixed(2) || '0.00'}
-                        margin="normal"
-                        variant="outlined"
-                        InputProps={{
-                          endAdornment: <InputAdornment position="end">A</InputAdornment>,
-                          readOnly: true,
-                        }}
-                      />
-                    </Grid>
-                    
-                    <Grid item xs={12} md={3}>
-                      <TextField
-                        fullWidth
-                        label="Volt-Amperes"
-                        value={editingLoad.voltAmpere?.toFixed(2) || '0.00'}
-                        margin="normal"
-                        variant="outlined"
-                        InputProps={{
-                          endAdornment: <InputAdornment position="end">VA</InputAdornment>,
-                          readOnly: true,
-                        }}
-                      />
-                    </Grid>
-                  </Grid>
-                </Grid>
-              </Grid>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setEditingLoad(null)}>Cancel</Button>
-            <Button onClick={handleUpdateLoadItem} color="primary">Update</Button>
-          </DialogActions>
-        </Dialog>
-        
-        {/* Results Tab */}
+
+        {/* Settings Tab */}
         <TabPanel value={activeTab} index={2}>
           <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <Alert 
-                severity="info" 
-                sx={{ mb: 3 }}
-              >
-                <Typography variant="subtitle1">
-                  Schedule of Loads Summary
-                </Typography>
-                <Typography variant="body2">
-                  This schedule of loads for {loadSchedule.name} contains {loadSchedule.loads.length} load items
-                  with a total connected load of {loadSchedule.totalConnectedLoad.toFixed(0)} watts ({(loadSchedule.totalConnectedLoad/1000).toFixed(2)} kW)
-                  and total demand load of {loadSchedule.totalDemandLoad.toFixed(0)} watts ({(loadSchedule.totalDemandLoad/1000).toFixed(2)} kW).
-                </Typography>
-              </Alert>
-            </Grid>
-            
             <Grid item xs={12} md={6}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Panel Specifications
-                  </Typography>
-                  
-                  <TableContainer>
-                    <Table>
-                      <TableBody>
-                        <TableRow>
-                          <TableCell component="th" scope="row">Panel Name</TableCell>
-                          <TableCell align="right">{loadSchedule.panelName}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell component="th" scope="row">Location</TableCell>
-                          <TableCell align="right">{loadSchedule.floorName || '-'} {loadSchedule.roomId ? `, ${loadSchedule.roomId}` : ''}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell component="th" scope="row">Voltage</TableCell>
-                          <TableCell align="right">{loadSchedule.voltage} V</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell component="th" scope="row">Current</TableCell>
-                          <TableCell align="right">{loadSchedule.current.toFixed(2)} A</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell component="th" scope="row">Power Factor</TableCell>
-                          <TableCell align="right">{loadSchedule.powerFactor.toFixed(2)}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell component="th" scope="row">Connected Load</TableCell>
-                          <TableCell align="right">{loadSchedule.totalConnectedLoad.toFixed(0)} W ({(loadSchedule.totalConnectedLoad/1000).toFixed(2)} kW)</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell component="th" scope="row">Demand Load</TableCell>
-                          <TableCell align="right">{loadSchedule.totalDemandLoad.toFixed(0)} W ({(loadSchedule.totalDemandLoad/1000).toFixed(2)} kW)</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell component="th" scope="row">Apparent Power</TableCell>
-                          <TableCell align="right">{(loadSchedule.totalDemandLoad / loadSchedule.powerFactor).toFixed(0)} VA ({(loadSchedule.totalDemandLoad / loadSchedule.powerFactor / 1000).toFixed(2)} kVA)</TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Energy Consumption Estimate
-                  </Typography>
-                  
-                  {calculationResults ? (
-                    <TableContainer>
-                      <Table>
-                        <TableBody>
-                          <TableRow>
-                            <TableCell component="th" scope="row">Daily Operating Hours</TableCell>
-                            <TableCell align="right">{calculationResults.dailyOperatingHours} hours</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell component="th" scope="row">Peak Demand</TableCell>
-                            <TableCell align="right">{calculationResults.peakDemand.toFixed(2)} kW</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell component="th" scope="row">Load Factor</TableCell>
-                            <TableCell align="right">{(calculationResults.loadFactor * 100).toFixed(0)}%</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell component="th" scope="row">Monthly Energy Consumption</TableCell>
-                            <TableCell align="right">{calculationResults.monthlyEnergyConsumption.toFixed(2)} kWh</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell component="th" scope="row">Annual Energy Consumption</TableCell>
-                            <TableCell align="right">{calculationResults.annualEnergyConsumption.toFixed(2)} kWh</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell component="th" scope="row">Estimated Monthly Cost</TableCell>
-                            <TableCell align="right">PHP {calculationResults.monthlyCost.toFixed(2)}</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell component="th" scope="row">Estimated Annual Cost</TableCell>
-                            <TableCell align="right">PHP {calculationResults.annualCost.toFixed(2)}</TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  ) : (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
-                      <Typography color="textSecondary">Calculating energy consumption...</Typography>
-                    </Box>
-                  )}
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid item xs={12}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Schedule of Loads Details
-                  </Typography>
-                  
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Description</TableCell>
-                          <TableCell align="right">Qty</TableCell>
-                          <TableCell align="right">Rating (W)</TableCell>
-                          <TableCell align="right">D.F.</TableCell>
-                          <TableCell align="right">Connected (W)</TableCell>
-                          <TableCell align="right">Demand (W)</TableCell>
-                          <TableCell align="right">Current (A)</TableCell>
-                          <TableCell align="right">Circuit Breaker</TableCell>
-                          <TableCell align="right">Conductor</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {loadSchedule.loads.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell>{item.description}</TableCell>
-                            <TableCell align="right">{item.quantity}</TableCell>
-                            <TableCell align="right">{item.rating}</TableCell>
-                            <TableCell align="right">{item.demandFactor.toFixed(2)}</TableCell>
-                            <TableCell align="right">{item.connectedLoad.toFixed(0)}</TableCell>
-                            <TableCell align="right">{item.demandLoad.toFixed(0)}</TableCell>
-                            <TableCell align="right">{item.current?.toFixed(2) || '-'}</TableCell>
-                            <TableCell align="right">{item.circuitBreaker || '-'}</TableCell>
-                            <TableCell align="right">{item.conductorSize || '-'}</TableCell>
-                          </TableRow>
-                        ))}
-                        <TableRow>
-                          <TableCell colSpan={4} align="right">
-                            <Typography variant="subtitle2">Total:</Typography>
-                          </TableCell>
-                          <TableCell align="right">
-                            <Typography variant="subtitle2">
-                              {loadSchedule.totalConnectedLoad.toFixed(0)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="right">
-                            <Typography variant="subtitle2">
-                              {loadSchedule.totalDemandLoad.toFixed(0)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="right">
-                            <Typography variant="subtitle2">
-                              {loadSchedule.current.toFixed(2)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell colSpan={2}></TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                  
-                  <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
-                    Notes:
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    1. D.F. = Demand Factor
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    2. Power factor used for calculations: {loadSchedule.powerFactor.toFixed(2)}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    3. Voltage: {loadSchedule.voltage} V
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid item xs={12}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-                <Button 
-                  variant="outlined" 
-                  onClick={() => setActiveTab(1)}
+              <FormControl fullWidth>
+                <InputLabel>Phase Configuration</InputLabel>
+                <Select
+                  value={loadSchedule.phaseConfiguration || 'single-phase'}
+                  label="Phase Configuration"
+                  onChange={(e) => handlePhaseConfigChange(e.target.value as 'single-phase' | 'three-phase')}
                 >
-                  Back to Load Items
-                </Button>
-                <Box>
-                  <Button 
-                    variant="outlined" 
-                    color="primary"
-                    onClick={() => setSaveDialogOpen(true)}
-                    startIcon={<SaveIcon />}
-                    sx={{ mr: 2 }}
-                    disabled={calculating}
-                  >
-                    Save Results
-                  </Button>
-                  <Button 
-                    variant="outlined" 
-                    color="primary"
-                    onClick={handleExportPdf}
-                    startIcon={<PictureAsPdfIcon />}
-                    sx={{ mr: 2 }}
-                    disabled={!onExportPdf || calculating}
-                  >
-                    Export as PDF
-                  </Button>
-                </Box>
-              </Box>
+                  <MenuItem value="single-phase">Single Phase</MenuItem>
+                  <MenuItem value="three-phase">Three Phase</MenuItem>
+                </Select>
+                <FormHelperText>
+                  This affects phase balance calculations and compliance requirements
+                </FormHelperText>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Main Circuit Breaker"
+                value={loadSchedule.circuitBreaker || ''}
+                onChange={(e) => setLoadSchedule({...loadSchedule, circuitBreaker: e.target.value})}
+                margin="normal"
+                variant="outlined"
+                select
+              >
+                {(CIRCUIT_BREAKER_OPTIONS || ['15A', '20A', '30A', '40A', '50A', '60A', '100A']).map(option => (
+                  <MenuItem key={option} value={option}>
+                    {option}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Main Feeder Conductor Size"
+                value={loadSchedule.conductorSize || ''}
+                onChange={(e) => setLoadSchedule({...loadSchedule, conductorSize: e.target.value})}
+                margin="normal"
+                variant="outlined"
+                select
+              >
+                {(CONDUCTOR_SIZE_OPTIONS || ['14 AWG', '12 AWG', '10 AWG', '8 AWG', '6 AWG', '4 AWG']).map(option => (
+                  <MenuItem key={option} value={option}>
+                    {option}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Incoming Feeder Size"
+                value={loadSchedule.incomingFeederSize || ''}
+                onChange={(e) => setLoadSchedule({...loadSchedule, incomingFeederSize: e.target.value})}
+                margin="normal"
+                variant="outlined"
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Feeder Protection Size"
+                value={loadSchedule.feederProtectionSize || ''}
+                onChange={(e) => setLoadSchedule({...loadSchedule, feederProtectionSize: e.target.value})}
+                margin="normal"
+                variant="outlined"
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Conductor Length (m)"
+                type="number"
+                value={loadSchedule.conductorLength || ''}
+                onChange={(e) => setLoadSchedule({...loadSchedule, conductorLength: Number(e.target.value)})}
+                margin="normal"
+                variant="outlined"
+                InputProps={{ inputProps: { min: 0 } }}
+              />
+            </Grid>
+            
+            <Grid item xs={12}>
+              <Button 
+                variant="contained" 
+                color="primary" 
+                onClick={handleSaveSettings}
+                startIcon={<SaveIcon />}
+              >
+                Save Panel Settings
+              </Button>
             </Grid>
           </Grid>
         </TabPanel>
         
-        {/* Save Dialog */}
-        <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)}>
-          <DialogTitle>Save Schedule of Loads</DialogTitle>
-          <DialogContent>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="Schedule Name"
-              type="text"
-              fullWidth
-              variant="outlined"
-              value={calculationName}
-              onChange={(e) => setCalculationName(e.target.value)}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} color="primary">Save</Button>
-          </DialogActions>
-        </Dialog>
-      </Paper>
+        {/* Compliance Report Tab */}
+        <TabPanel value={activeTab} index={3}>
+          <ComplianceReportTab 
+            loadSchedule={loadSchedule}
+            onUpdateLoadSchedule={setLoadSchedule}
+            onOpenCircuitDetails={handleOpenCircuitDetails}
+          />
+        </TabPanel>
+      </Box>
+      
+      {/* Save Dialog */}
+      <Dialog
+        open={saveDialogOpen}
+        onClose={() => setSaveDialogOpen(false)}
+      >
+        <DialogTitle>Save Calculation</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Calculation Name"
+            fullWidth
+            variant="outlined"
+            value={calculationName}
+            onChange={(e) => setCalculationName(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSaveDialogOpen(false)} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleSave} color="primary" disabled={!calculationName}>
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
       <QuickStartDialog
         open={quickStartOpen}
         onClose={() => setQuickStartOpen(false)}
       />
       
-      {/* Voltage Drop Analysis Dialog */}
       <VoltageDropAnalysisDialog
         open={voltageDropDialogOpen}
         onClose={() => setVoltageDropDialogOpen(false)}
@@ -1612,13 +1278,21 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
         onSaveResults={handleSaveVoltageDropResults}
       />
       
-      {/* Load Item Info Dialog */}
       <LoadItemInfoDialog
         open={itemInfoDialogOpen}
         onClose={() => setItemInfoDialogOpen(false)}
         loadItem={selectedLoadItem}
       />
-    </Box>
+      
+      {/* Circuit Details Dialog */}
+      <CircuitDetailsDialog
+        open={circuitDetailsDialogOpen}
+        onClose={() => setCircuitDetailsDialogOpen(false)}
+        loadItem={selectedCircuitItem}
+        onSave={handleSaveCircuitDetails}
+        systemVoltage={loadSchedule.voltage}
+      />
+    </Paper>
   );
 };
 

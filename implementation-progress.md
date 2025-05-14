@@ -2,6 +2,13 @@
 
 ## Recently Completed
 
+- [x] Enhanced Schedule of Loads Calculator with PEC 2017 Compliance checking
+  - Added data structures for circuit details and compliance information
+  - Implemented conductor sizing and breaker adequacy validation
+  - Created comprehensive compliance reporting interface
+  - Added phase balance analysis for three-phase panels
+  - Implemented visualization of phase loading and imbalance
+  - Integrated recommendation system for compliance improvements
 - [x] Implemented standards tagging system for organization and filtering
 - [x] Added search history and saved searches functionality to Standards Search
 - [x] Implemented advanced standards search functionality with filters and highlighting
