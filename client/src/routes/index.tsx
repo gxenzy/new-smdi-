@@ -17,6 +17,7 @@ import StandardsReference from '../pages/Energy Audit/components/StandardsRefere
 import IlluminationLevelCalculator from '../pages/Energy Audit/components/Calculators/IlluminationLevelCalculator';
 import SavedCalculationsViewer from '../pages/Energy Audit/components/Calculators/SavedCalculationsViewer';
 import StandardsManagement from '../pages/AdminSettings/StandardsManagement';
+import SystemSettingsPage from '../pages/Admin/Dashboard/SystemSettings';
 import AccessibilityChartExample from '../components/UI/AccessibilityChartExample';
 import AccessibilityTester from '../components/UI/AccessibilityTester';
 import ChartTypeSelector from '../components/UI/ChartTypeSelector';
@@ -229,6 +230,16 @@ const AppRoutes: React.FC = () => {
           element={
             <PageTransition variant="scale">
               <Settings />
+            </PageTransition>
+          } 
+        />
+        
+        {/* Add System Settings route */}
+        <Route 
+          path="/settings/system" 
+          element={
+            <PageTransition variant="scale">
+              <SystemSettingsPage />
             </PageTransition>
           } 
         />

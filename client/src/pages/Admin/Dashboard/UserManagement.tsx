@@ -60,7 +60,8 @@ const UserManagement: React.FC = () => {
     role: UserRole.VIEWER,
     department: '',
     position: '',
-    phoneNumber: ''
+    phoneNumber: '',
+    student_id: ''
   });
   const { hasRole } = useAuthContext();
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -107,7 +108,8 @@ const UserManagement: React.FC = () => {
         role: UserRole.VIEWER,
         department: '',
         position: '',
-        phoneNumber: ''
+        phoneNumber: '',
+        student_id: ''
       });
     }
     setOpenDialog(true);
@@ -134,8 +136,25 @@ const UserManagement: React.FC = () => {
     }));
   };
 
+  // Add this function to validate student ID
+  const validateStudentId = (id?: string): boolean => {
+    if (!id) return true; // Empty is allowed
+    return /^\d{8}$/.test(id); // Must be exactly 8 digits
+  };
+
+  // Update the handleSubmit function to validate student ID
   const handleSubmit = async () => {
     try {
+      // Validate student ID if provided
+      if (formData.student_id && !validateStudentId(formData.student_id)) {
+        setSnackbar({
+          open: true,
+          message: 'Student ID must be an 8-digit number',
+          severity: 'error'
+        });
+        return;
+      }
+
       if (selectedUser) {
         await adminService.updateUser(selectedUser.id.toString(), formData);
       } else {
@@ -143,8 +162,18 @@ const UserManagement: React.FC = () => {
       }
       handleCloseDialog();
       loadUsers();
-    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: selectedUser ? 'User updated successfully' : 'User created successfully',
+        severity: 'success'
+      });
+    } catch (error: any) {
       console.error('Error saving user:', error);
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || error.message || 'Failed to save user',
+        severity: 'error'
+      });
     }
   };
 
@@ -173,7 +202,8 @@ const UserManagement: React.FC = () => {
     const matchesSearch = 
       user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchQuery.toLowerCase());
+      `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (user.student_id && user.student_id.includes(searchQuery));
     
     const matchesRole = roleFilter === 'ALL' || user.role === roleFilter;
     const matchesStatus = statusFilter === 'ALL' || 
@@ -262,7 +292,7 @@ const UserManagement: React.FC = () => {
           <Grid item xs={12} md={4}>
             <TextField
               fullWidth
-              placeholder="Search users..."
+              placeholder="Search users by name, email, username, or student ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               InputProps={{
@@ -332,6 +362,8 @@ const UserManagement: React.FC = () => {
                 />
               </TableCell>
               <TableCell>Name</TableCell>
+              <TableCell>Username</TableCell>
+              <TableCell>Student ID</TableCell>
               <TableCell>Email</TableCell>
               <TableCell>Role</TableCell>
               <TableCell>Department</TableCell>
@@ -351,6 +383,8 @@ const UserManagement: React.FC = () => {
                     />
                   </TableCell>
                   <TableCell>{`${user.firstName} ${user.lastName}`}</TableCell>
+                  <TableCell>{user.username}</TableCell>
+                  <TableCell>{user.student_id || '-'}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
                     <Chip
@@ -508,6 +542,15 @@ const UserManagement: React.FC = () => {
               value={formData.phoneNumber}
               onChange={handleInputChange}
               fullWidth
+            />
+            <TextField
+              name="student_id"
+              label="Student ID"
+              value={formData.student_id}
+              onChange={handleInputChange}
+              fullWidth
+              helperText="8-digit unique student identifier"
+              inputProps={{ maxLength: 8 }}
             />
           </Box>
         </DialogContent>

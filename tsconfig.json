@@ -17,7 +17,8 @@
     "jsx": "react-jsx",
     "typeRoots": [
       "./node_modules/@types",
-      "./src/components/EnergyAudit/Calculators/utils/types"
+      "./src/components/EnergyAudit/Calculators/utils/types",
+      "./src/types"
     ]
   },
   "include": ["src"]

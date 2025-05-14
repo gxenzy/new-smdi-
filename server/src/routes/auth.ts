@@ -11,10 +11,10 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Get user from database
+    // Get user from database (support email, username, or student_id)
     const [users] = await pool.query<User[]>(
-      'SELECT * FROM users WHERE email = ?',
-      [email]
+      'SELECT * FROM users WHERE email = ? OR username = ? OR student_id = ?',
+      [email, email, email]
     );
 
     const user = users[0];

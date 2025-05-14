@@ -5,6 +5,8 @@
  * to simplify imports throughout the application.
  */
 
+import { Theme } from '@mui/material';
+
 // Chart Manager - for chart lifecycle management
 export { default as chartManager } from './chartManager';
 
@@ -40,7 +42,6 @@ export interface ChartThemeColors {
 }
 
 // Helper function to generate default theme-aware colors from Material-UI theme
-import { Theme } from '@mui/material';
 
 /**
  * Extract chart theme colors from Material-UI theme

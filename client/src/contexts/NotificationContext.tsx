@@ -19,7 +19,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   const addNotification = (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
     // Respect user notification preferences
-    const prefs = currentUser.notificationPreferences;
+    const prefs = currentUser?.notificationPreferences;
     if (prefs && (!prefs.enabled || !prefs.types.includes(notification.type as NotificationType))) {
       return;
     }

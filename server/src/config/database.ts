@@ -4,26 +4,28 @@ import path from 'path';
 import dotenv from 'dotenv';
 import fs from 'fs';
 
-const envPath = path.resolve(__dirname, '../../.env');
+// Load environment variables from .env
+const envPath = path.resolve(process.cwd(), '.env');
 console.log('Reading .env from:', envPath);
 try {
-  const envContents = fs.readFileSync(envPath, 'utf-8');
-  console.log('.env contents:\n', envContents);
+  // Check if file exists without storing it in a variable
+  fs.readFileSync(envPath, 'utf-8');
+  console.log('.env file found');
 } catch (e) {
   console.error('Could not read .env file:', e);
 }
 dotenv.config({ path: envPath });
 
-console.log('DB_HOST:', process.env.DB_HOST);
-console.log('DB_USER:', process.env.DB_USER);
-console.log('DB_PASS:', process.env.DB_PASS);
-console.log('DB_NAME:', process.env.DB_NAME);
+console.log('Database configuration:');
+console.log('DB_HOST:', process.env.DB_HOST || 'localhost');
+console.log('DB_USER:', process.env.DB_USER || 'sdmi');
+console.log('DB_NAME:', process.env.DB_NAME || 'energyauditdb');
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   port: Number(process.env.DB_PORT) || 3306,
   user: process.env.DB_USER || 'sdmi',
-  password: process.env.DB_PASS,
+  password: process.env.DB_PASS || 'SMD1SQLADM1N',
   database: process.env.DB_NAME || 'energyauditdb',
   waitForConnections: true,
   connectionLimit: 10,
@@ -88,6 +90,21 @@ async function runMigration(filename: string) {
   }
 }
 
+// Test the connection
+pool.getConnection()
+  .then(connection => {
+    console.log('Database connected successfully');
+    connection.release();
+    
+    // Setup database after successful connection
+    setupDatabase().catch(err => {
+      console.error('Database setup error:', err);
+    });
+  })
+  .catch(error => {
+    console.error('Error connecting to database:', error);
+  });
+
 // Function to create and update tables
 async function setupDatabase() {
   try {
@@ -102,7 +119,7 @@ async function setupDatabase() {
       await runMigration(migration);
     }
 
-    // Create attachments table
+    // Create attachments table if not exists
     await pool.query(`
       CREATE TABLE IF NOT EXISTS attachments (
         id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
@@ -118,7 +135,7 @@ async function setupDatabase() {
       )
     `);
 
-    // Create comments table
+    // Create comments table if not exists
     await pool.query(`
       CREATE TABLE IF NOT EXISTS comments (
         id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
@@ -132,18 +149,18 @@ async function setupDatabase() {
       )
     `);
 
-    // Create notifications table
+    // Create notifications table if not exists
     await pool.query(`
       CREATE TABLE IF NOT EXISTS notifications (
         id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
         user_id INT UNSIGNED NOT NULL,
-        finding_id INT UNSIGNED NOT NULL,
-        type ENUM('ASSIGNED', 'UPDATED', 'COMMENTED', 'CLOSED') NOT NULL,
+        finding_id INT UNSIGNED,
+        type ENUM('ASSIGNED', 'UPDATED', 'COMMENTED', 'CLOSED', 'SYSTEM') NOT NULL,
         message TEXT NOT NULL,
         is_read BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (finding_id) REFERENCES findings(id) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (finding_id) REFERENCES findings(id) ON DELETE SET NULL
       )
     `);
 
@@ -153,18 +170,5 @@ async function setupDatabase() {
     throw error;
   }
 }
-
-// Setup database on server startup
-setupDatabase();
-
-// Test the connection
-pool.getConnection()
-  .then(connection => {
-    console.log('Database connected successfully');
-    connection.release();
-  })
-  .catch(error => {
-    console.error('Error connecting to database:', error);
-  });
 
 export { pool }; 

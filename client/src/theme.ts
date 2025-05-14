@@ -429,6 +429,10 @@ export const energyTheme = responsiveFontSizes(createTheme({
       paper: '#064e3b', // Darker green paper
       sidebar: '#0a5c45',
     },
+    text: {
+      primary: '#ffffff', // Ensure white text for better contrast
+      secondary: 'rgba(255, 255, 255, 0.85)', // Brighter secondary text
+    },
   },
   components: {
     ...createBaseComponents('dark'),
@@ -463,6 +467,103 @@ export const energyTheme = responsiveFontSizes(createTheme({
           textTransform: 'none',
         } as CSSObject,
       },
+    },
+    // Add better contrast for list items in Energy theme
+    MuiListItemButton: {
+      styleOverrides: {
+        root: {
+          '&.Mui-selected': {
+            backgroundColor: 'rgba(255, 255, 255, 0.16)',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.24)',
+            },
+          },
+          '&:hover': {
+            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+          },
+        } as CSSObject,
+      }
+    },
+    // Improve chip visibility in Energy theme
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          backgroundColor: 'rgba(255, 255, 255, 0.15)',
+          color: '#ffffff',
+          '&.MuiChip-outlined': {
+            borderColor: 'rgba(255, 255, 255, 0.3)',
+          },
+          // Fix for energy audit categories with white text on white background
+          '&.MuiChip-filled': {
+            backgroundColor: 'rgba(4, 120, 87, 0.9)',
+            color: '#ffffff',
+            '&:hover': {
+              backgroundColor: 'rgba(4, 120, 87, 1)',
+            },
+          },
+          '&.MuiChip-colorPrimary': {
+            backgroundColor: '#059669',
+            color: '#ffffff',
+            '&:hover': {
+              backgroundColor: '#047857',
+            },
+          },
+          '&.MuiChip-colorSecondary': {
+            backgroundColor: '#0284c7',
+            color: '#ffffff',
+            '&:hover': {
+              backgroundColor: '#0369a1',
+            },
+          },
+        } as CSSObject,
+      }
+    },
+    // Improve tab text visibility
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          color: 'rgba(255, 255, 255, 0.7)',
+          '&.Mui-selected': {
+            color: '#ffffff',
+          },
+        } as CSSObject,
+      }
+    },
+    // Fix category buttons in energy audit
+    MuiToggleButton: {
+      styleOverrides: {
+        root: {
+          color: '#ffffff',
+          '&.Mui-selected': {
+            backgroundColor: 'rgba(5, 150, 105, 0.5)',
+            color: '#ffffff',
+            '&:hover': {
+              backgroundColor: 'rgba(5, 150, 105, 0.7)',
+            },
+          },
+          '&:hover': {
+            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+          },
+        } as CSSObject,
+      }
+    },
+    // Ensure form controls (checkboxes, radios) are visible
+    MuiFormControlLabel: {
+      styleOverrides: {
+        label: {
+          color: '#ffffff',
+        } as CSSObject,
+      }
+    },
+    // Fix accessibility settings bubble corners
+    MuiTooltip: {
+      styleOverrides: {
+        tooltip: {
+          borderRadius: '8px',
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          color: '#ffffff',
+        } as CSSObject,
+      }
     },
   },
 }));
@@ -543,6 +644,75 @@ export const blueTheme = responsiveFontSizes(createTheme({
         } as CSSObject,
       },
     },
+    // Fix category chips in blue theme
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          backgroundColor: 'rgba(255, 255, 255, 0.15)',
+          color: '#ffffff',
+          '&.MuiChip-outlined': {
+            borderColor: 'rgba(255, 255, 255, 0.3)',
+          },
+          '&.MuiChip-filled': {
+            backgroundColor: 'rgba(2, 132, 199, 0.9)',
+            color: '#ffffff',
+            '&:hover': {
+              backgroundColor: 'rgba(2, 132, 199, 1)',
+            },
+          },
+          '&.MuiChip-colorPrimary': {
+            backgroundColor: '#0284c7',
+            color: '#ffffff',
+            '&:hover': {
+              backgroundColor: '#0369a1',
+            },
+          },
+          '&.MuiChip-colorSecondary': {
+            backgroundColor: '#2563eb',
+            color: '#ffffff',
+            '&:hover': {
+              backgroundColor: '#1d4ed8',
+            },
+          },
+        } as CSSObject,
+      }
+    },
+    // Fix category buttons in blue theme
+    MuiToggleButton: {
+      styleOverrides: {
+        root: {
+          color: '#ffffff',
+          '&.Mui-selected': {
+            backgroundColor: 'rgba(2, 132, 199, 0.5)',
+            color: '#ffffff',
+            '&:hover': {
+              backgroundColor: 'rgba(2, 132, 199, 0.7)',
+            },
+          },
+          '&:hover': {
+            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+          },
+        } as CSSObject,
+      }
+    },
+    // Ensure form controls are visible
+    MuiFormControlLabel: {
+      styleOverrides: {
+        label: {
+          color: '#ffffff',
+        } as CSSObject,
+      }
+    },
+    // Fix tooltip corners
+    MuiTooltip: {
+      styleOverrides: {
+        tooltip: {
+          borderRadius: '8px',
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          color: '#ffffff',
+        } as CSSObject,
+      }
+    },
   },
 }));
 
@@ -564,9 +734,9 @@ export const grayTheme = responsiveFontSizes(createTheme({
       contrastText: '#ffffff'
     },
     background: {
-      default: '#1f2937', // Darker gray background
-      paper: '#374151', // Darker gray paper
-      sidebar: '#374151', // Match sidebar with primary color
+      default: '#1f2937', // Dark gray background
+      paper: '#374151', // Gray paper
+      sidebar: '#4b5563', // Matching sidebar with secondary
     },
     text: {
       primary: '#ffffff',
@@ -574,11 +744,11 @@ export const grayTheme = responsiveFontSizes(createTheme({
     },
   },
   components: {
-    ...createBaseComponents('dark'), // Using dark components for contrast
+    ...createBaseComponents('dark'),
     MuiAppBar: {
       styleOverrides: {
         root: {
-          backgroundColor: '#374151',
+          backgroundColor: '#4b5563',
           color: '#ffffff',
           '& .MuiButton-root': {
             textTransform: 'none'
@@ -589,7 +759,7 @@ export const grayTheme = responsiveFontSizes(createTheme({
     MuiDrawer: {
       styleOverrides: {
         paper: {
-          backgroundColor: '#374151',
+          backgroundColor: '#4b5563',
           color: '#ffffff',
           '& .MuiListItemIcon-root': {
             color: 'rgba(255, 255, 255, 0.9)',
@@ -621,6 +791,75 @@ export const grayTheme = responsiveFontSizes(createTheme({
           textTransform: 'none',
         } as CSSObject,
       },
+    },
+    // Fix category chips in gray theme
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          backgroundColor: 'rgba(255, 255, 255, 0.15)',
+          color: '#ffffff',
+          '&.MuiChip-outlined': {
+            borderColor: 'rgba(255, 255, 255, 0.3)',
+          },
+          '&.MuiChip-filled': {
+            backgroundColor: 'rgba(75, 85, 99, 0.9)',
+            color: '#ffffff',
+            '&:hover': {
+              backgroundColor: 'rgba(75, 85, 99, 1)',
+            },
+          },
+          '&.MuiChip-colorPrimary': {
+            backgroundColor: '#374151',
+            color: '#ffffff',
+            '&:hover': {
+              backgroundColor: '#1f2937',
+            },
+          },
+          '&.MuiChip-colorSecondary': {
+            backgroundColor: '#4b5563',
+            color: '#ffffff',
+            '&:hover': {
+              backgroundColor: '#374151',
+            },
+          },
+        } as CSSObject,
+      }
+    },
+    // Fix category buttons in gray theme
+    MuiToggleButton: {
+      styleOverrides: {
+        root: {
+          color: '#ffffff',
+          '&.Mui-selected': {
+            backgroundColor: 'rgba(75, 85, 99, 0.5)',
+            color: '#ffffff',
+            '&:hover': {
+              backgroundColor: 'rgba(75, 85, 99, 0.7)',
+            },
+          },
+          '&:hover': {
+            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+          },
+        } as CSSObject,
+      }
+    },
+    // Ensure form controls are visible
+    MuiFormControlLabel: {
+      styleOverrides: {
+        label: {
+          color: '#ffffff',
+        } as CSSObject,
+      }
+    },
+    // Fix tooltip corners
+    MuiTooltip: {
+      styleOverrides: {
+        tooltip: {
+          borderRadius: '8px',
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          color: '#ffffff',
+        } as CSSObject,
+      }
     },
   },
 }));

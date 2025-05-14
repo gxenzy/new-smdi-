@@ -32,7 +32,7 @@ router.get('/rules', complianceVerificationController.getApplicableRules);
  * @desc    Get verification history for authenticated user
  * @access  Private
  */
-router.get('/verification-history', auth, complianceVerificationController.getVerificationHistory);
+router.get('/verification-history', auth.authenticateToken, complianceVerificationController.getVerificationHistory);
 
 // Building Type Standards Routes
 
@@ -48,7 +48,7 @@ router.get('/building-standards', complianceVerificationController.getBuildingTy
  * @desc    Get all building type standards
  * @access  Private (admin only)
  */
-router.get('/building-standards/all', auth, complianceVerificationController.getAllBuildingTypeStandards);
+router.get('/building-standards/all', auth.authenticateToken, complianceVerificationController.getAllBuildingTypeStandards);
 
 /**
  * @route   POST /api/compliance/building-standards
@@ -58,7 +58,7 @@ router.get('/building-standards/all', auth, complianceVerificationController.get
 router.post(
   '/building-standards',
   [
-    auth,
+    auth.authenticateToken,
     check('buildingType', 'Building type is required').not().isEmpty(),
     check('standardType', 'Standard type is required').not().isEmpty(),
     check('standardCode', 'Standard code is required').not().isEmpty()
@@ -74,7 +74,7 @@ router.post(
 router.put(
   '/building-standards/:id',
   [
-    auth,
+    auth.authenticateToken,
     check('buildingType', 'Building type is required').not().isEmpty(),
     check('standardType', 'Standard type is required').not().isEmpty(),
     check('standardCode', 'Standard code is required').not().isEmpty()
@@ -87,7 +87,7 @@ router.put(
  * @desc    Delete a building type standard
  * @access  Private (admin only)
  */
-router.delete('/building-standards/:id', auth, complianceVerificationController.deleteBuildingTypeStandard);
+router.delete('/building-standards/:id', auth.authenticateToken, complianceVerificationController.deleteBuildingTypeStandard);
 
 // Project Type Standards Routes
 
@@ -103,7 +103,7 @@ router.get('/project-standards', complianceVerificationController.getProjectType
  * @desc    Get all project type standards
  * @access  Private (admin only)
  */
-router.get('/project-standards/all', auth, complianceVerificationController.getAllProjectTypeStandards);
+router.get('/project-standards/all', auth.authenticateToken, complianceVerificationController.getAllProjectTypeStandards);
 
 /**
  * @route   POST /api/compliance/project-standards
@@ -113,7 +113,7 @@ router.get('/project-standards/all', auth, complianceVerificationController.getA
 router.post(
   '/project-standards',
   [
-    auth,
+    auth.authenticateToken,
     check('projectType', 'Project type is required').not().isEmpty(),
     check('standardType', 'Standard type is required').not().isEmpty(),
     check('standardCode', 'Standard code is required').not().isEmpty()
@@ -129,7 +129,7 @@ router.post(
 router.put(
   '/project-standards/:id',
   [
-    auth,
+    auth.authenticateToken,
     check('projectType', 'Project type is required').not().isEmpty(),
     check('standardType', 'Standard type is required').not().isEmpty(),
     check('standardCode', 'Standard code is required').not().isEmpty()
@@ -142,7 +142,7 @@ router.put(
  * @desc    Delete a project type standard
  * @access  Private (admin only)
  */
-router.delete('/project-standards/:id', auth, complianceVerificationController.deleteProjectTypeStandard);
+router.delete('/project-standards/:id', auth.authenticateToken, complianceVerificationController.deleteProjectTypeStandard);
 
 // Compliance Recommendations Routes
 
@@ -158,7 +158,7 @@ router.get('/recommendations', complianceVerificationController.getComplianceRec
  * @desc    Get all compliance recommendations
  * @access  Private (admin only)
  */
-router.get('/recommendations/all', auth, complianceVerificationController.getAllComplianceRecommendations);
+router.get('/recommendations/all', auth.authenticateToken, complianceVerificationController.getAllComplianceRecommendations);
 
 /**
  * @route   POST /api/compliance/recommendations
@@ -168,7 +168,7 @@ router.get('/recommendations/all', auth, complianceVerificationController.getAll
 router.post(
   '/recommendations',
   [
-    auth,
+    auth.authenticateToken,
     check('ruleId', 'Rule ID is required').isNumeric(),
     check('nonComplianceType', 'Non-compliance type is required').not().isEmpty(),
     check('recommendationText', 'Recommendation text is required').not().isEmpty(),
@@ -185,7 +185,7 @@ router.post(
 router.put(
   '/recommendations/:id',
   [
-    auth,
+    auth.authenticateToken,
     check('ruleId', 'Rule ID is required').isNumeric(),
     check('nonComplianceType', 'Non-compliance type is required').not().isEmpty(),
     check('recommendationText', 'Recommendation text is required').not().isEmpty(),
@@ -199,7 +199,7 @@ router.put(
  * @desc    Delete a compliance recommendation
  * @access  Private (admin only)
  */
-router.delete('/recommendations/:id', auth, complianceVerificationController.deleteComplianceRecommendation);
+router.delete('/recommendations/:id', auth.authenticateToken, complianceVerificationController.deleteComplianceRecommendation);
 
 // Add a root route handler to avoid 404
 router.get('/', async (req, res) => {

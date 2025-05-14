@@ -6,38 +6,34 @@ import { RowDataPacket } from 'mysql2';
 
 export const login = async (req: Request, res: Response) => {
   try {
-    console.log('Login attempt...');
+    console.log('AUTH CONTROLLER: Login attempt...');
+    
     const { username, password } = req.body;
-    console.log('Username:', username);
+    
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Username and password are required' });
+    }
 
-    // Get user from database
-    console.log('Querying database for user...');
+    // Get user from database - with case insensitive username match or student_id match
     const [users] = await pool.query<RowDataPacket[]>(
-      'SELECT id, username, password, role FROM users WHERE username = ?',
-      [username]
+      'SELECT id, username, student_id, password, email, first_name as firstName, last_name as lastName, role, created_at as createdAt, updated_at as updatedAt FROM users WHERE LOWER(username) = LOWER(?) OR student_id = ?',
+      [username, username]
     );
-    console.log('Found users:', users.length);
 
     if (users.length === 0) {
-      console.log('No user found with username:', username);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     const user = users[0];
-    console.log('User found:', { id: user.id, username: user.username, role: user.role });
 
-    // Verify password
-    console.log('Verifying password...');
+    // Verify password with bcrypt
     const validPassword = await bcrypt.compare(password, user.password);
-    console.log('Password valid:', validPassword);
 
     if (!validPassword) {
-      console.log('Invalid password for user:', username);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Create JWT token
-    console.log('Creating JWT token...');
     const token = jwt.sign(
       { 
         id: user.id,
@@ -47,21 +43,26 @@ export const login = async (req: Request, res: Response) => {
       process.env.JWT_SECRET || 'e465aa6a212abe4bb21fb3218aa044ed2be68720b46298c20b22f861ab7324f3d299f35ec4720e2ab57a03e4810a7a885e5aac6c1',
       { expiresIn: '24h' }
     );
-    console.log('Token created successfully');
 
     // Exclude password from user object in response
     const { password: _pw, ...userWithoutPassword } = user;
 
-    return res.json({ user: userWithoutPassword, token });
-  } catch (error) {
-    console.error('Login error:', error);
-    if (error instanceof Error) {
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
+    // Add isActive field to match client's expected format
+    const userResponse = {
+      ...userWithoutPassword,
+      isActive: true
+    };
+
+    // Update last login time
+    try {
+      await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
+    } catch (updateErr) {
+      console.warn('Could not update last login time:', updateErr);
     }
+
+    return res.json({ user: userResponse, token });
+  } catch (error) {
+    console.error('LOGIN ERROR:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 }; 

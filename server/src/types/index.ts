@@ -123,6 +123,32 @@ export interface UserPreferences {
   language: string;
 }
 
+export interface PasswordPolicy {
+  minLength: number;
+  requireSpecialChar: boolean;
+  requireNumber: boolean;
+  requireUppercase: boolean;
+  requireLowercase: boolean;
+}
+
+export interface SystemSettings {
+  siteName: string;
+  maxUsers: number;
+  sessionTimeout: number;
+  backupFrequency: number;
+  emailNotifications: boolean;
+  maintenanceMode: boolean;
+  emergencyMode: boolean;
+  debugMode: boolean;
+  apiUrl: string;
+  allowRegistration: boolean;
+  registrationEnabled: boolean;
+  theme: string;
+  defaultRole: string;
+  passwordPolicy: PasswordPolicy;
+  maxLoginAttempts: number;
+}
+
 // Add Express Request type declaration
 declare global {
   namespace Express {

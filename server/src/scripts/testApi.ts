@@ -2,8 +2,24 @@ import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
 import FormData from 'form-data';
+import * as readline from 'readline';
 
 const API_URL = 'http://localhost:8000/api';
+
+// Create a readline interface for user input
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
+
+// Promise-based question function
+function question(query: string): Promise<string> {
+  return new Promise((resolve) => {
+    rl.question(query, (answer) => {
+      resolve(answer);
+    });
+  });
+}
 
 interface LoginResponse {
   token: string;
@@ -69,12 +85,22 @@ interface NotificationsResponse {
   };
 }
 
-async function testLogin() {
+async function testLogin(username?: string, password?: string) {
   try {
     console.log('Testing login endpoint...');
+    
+    // If credentials are not provided, ask for them
+    if (!username) {
+      username = await question('Enter username: ');
+    }
+    
+    if (!password) {
+      password = await question('Enter password: ');
+    }
+    
     const response = await axios.post<LoginResponse>(`${API_URL}/auth/login`, {
-      username: 'admin',
-      password: 'admin123'
+      username,
+      password
     });
 
     console.log('Login successful!');
@@ -465,8 +491,20 @@ async function testDeleteFinding(token: string, findingId: number) {
 }
 
 async function runTests() {
-  const token = await testLogin();
-  if (token) {
+  try {
+    console.log('Starting API tests...');
+    
+    // Get login credentials from user
+    const username = await question('Enter username for testing: ');
+    const password = await question('Enter password for testing: ');
+    
+    const token = await testLogin(username, password);
+    if (!token) {
+      console.error('Login failed, aborting tests');
+      process.exit(1);
+      return;
+    }
+    
     await testGetFindings(token);
     await testFilteredFindings(token);
     const findingId = await testCreateFinding(token);
@@ -494,6 +532,10 @@ async function runTests() {
 
       await testDeleteFinding(token, findingId);
     }
+  } catch (error) {
+    console.error('Test error:', error);
+  } finally {
+    rl.close();
   }
 }
 
