@@ -154,19 +154,21 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
         overflow: 'hidden',
       }}
     >
+      {/* Logo Section - Fixed at the top */}
       <Box
         sx={{
           display: 'flex',
           flexDirection: 'column',
-          alignItems: isOpen ? 'flex-start' : 'center',
+          alignItems: 'center',
           p: 2,
+          mb: 1, // Add margin bottom to create space
         }}
       >
         <Box 
           sx={{ 
             width: isOpen ? '100%' : '40px',
             display: 'flex',
-            justifyContent: isOpen ? 'flex-start' : 'center',
+            justifyContent: 'center',
             alignItems: 'center',
             transition: theme.transitions.create(['width', 'opacity'], {
               duration: theme.transitions.duration.standard,
@@ -197,16 +199,20 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
               color: 'text.secondary', 
               mt: 0.5,
               opacity: 0.8,
-              fontWeight: 500
+              fontWeight: 500,
+              textAlign: 'center',
+              width: '100%',
             }}
           >
-            Platform
+            Energy Audit Platform
           </Typography>
         )}
       </Box>
 
-      <Divider sx={{ opacity: 0.1 }} />
-      <List sx={{ py: 0.5 }}>
+      <Divider sx={{ opacity: 0.1, mb: 1 }} />
+
+      {/* Navigation List */}
+      <List sx={{ padding: 0, flex: 1, overflowY: 'auto' }}>
         {menuItems.map((item) => (
           <Tooltip title={isOpen ? '' : item.text} placement="right" key={item.text}>
             <ListItem

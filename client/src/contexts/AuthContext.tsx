@@ -186,8 +186,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Update user in state
       setCurrentUser(updatedUser);
       
-      // Update user in storage
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      // Update user in storage with correct key
+      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
       
       // If we used an emergency endpoint, show an indicator
       if (result.emergencyUsed) {

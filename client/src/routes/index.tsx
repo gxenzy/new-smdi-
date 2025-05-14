@@ -31,6 +31,7 @@ import ScreenReaderTestingGuide from '../components/UI/ScreenReaderTestingGuide'
 import ChartAccessibilityTestStats from '../components/UI/ChartAccessibilityTestStats';
 import AccessibilityTestingDashboard from '../components/UI/AccessibilityTestingDashboard';
 import ChartAccessibilityRoadmap from '../components/UI/ChartAccessibilityRoadmap';
+import EnergyAuditDashboard from '../pages/Energy Audit/Dashboard';
 
 // Report Management Components
 import { ReportList, ReportView, ReportEditor, ReportShare } from '../components/ReportManagement';
@@ -95,7 +96,7 @@ const AppRoutes: React.FC = () => {
           path="/" 
           element={
             <PageTransition variant="fade">
-              <Dashboard />
+              <EnergyAuditDashboard />
             </PageTransition>
           } 
         />
@@ -104,7 +105,7 @@ const AppRoutes: React.FC = () => {
           path="/dashboard" 
           element={
             <PageTransition variant="fade">
-              <Dashboard />
+              <EnergyAuditDashboard />
             </PageTransition>
           } 
         />
