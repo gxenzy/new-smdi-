@@ -299,52 +299,127 @@ const Benchmarking: React.FC = () => {
     const data = timeSeriesData[metricKey];
     const max = Math.max(...data.map(d => d.value));
     
+    const metricLabels: Record<string, string> = {
+      'eui': 'Energy Use Intensity',
+      'ghg': 'Greenhouse Gas Emissions',
+      'wui': 'Water Usage Intensity',
+      'energy_star': 'ENERGY STAR Score'
+    };
+    
+    const chartLabel = metricLabels[metricKey];
+    
+    // Adding keyboard navigation
+    const handleKeyDown = (event: React.KeyboardEvent, index: number) => {
+      switch (event.key) {
+        case 'ArrowLeft':
+          if (index > 0) {
+            const prevEl = document.getElementById(`trend-bar-${metricKey}-${index - 1}`);
+            prevEl?.focus();
+          }
+          break;
+        case 'ArrowRight':
+          if (index < data.length - 1) {
+            const nextEl = document.getElementById(`trend-bar-${metricKey}-${index + 1}`);
+            nextEl?.focus();
+          }
+          break;
+      }
+    };
+    
     return (
-      <Box sx={{ height: 200, display: 'flex', alignItems: 'flex-end' }}>
-        {data.map((item, index) => (
-          <Box 
-            key={index}
-            sx={{
-              flexGrow: 1,
-              mx: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center'
-            }}
-          >
+      <>
+        <Box 
+          sx={{ height: 200, display: 'flex', alignItems: 'flex-end' }}
+          role="img"
+          aria-label={`${chartLabel} trend chart showing data from ${data[0].year} to ${data[data.length - 1].year}`}
+        >
+          {data.map((item, index) => (
             <Box 
-              sx={{ 
-                width: '100%', 
-                height: `${(item.value / max) * 150}px`,
-                bgcolor: theme.palette.primary.main,
-                transition: 'height 0.5s',
-                borderTopLeftRadius: 4,
-                borderTopRightRadius: 4,
-                position: 'relative',
-                '&:hover': {
-                  bgcolor: theme.palette.primary.dark,
-                },
-                '&:hover::after': {
-                  content: `"${item.value}"`,
-                  position: 'absolute',
-                  top: -24,
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  bgcolor: 'background.paper',
-                  px: 1,
-                  py: 0.5,
-                  borderRadius: 1,
-                  fontSize: '0.75rem',
-                  boxShadow: 1
-                }
+              key={index}
+              sx={{
+                flexGrow: 1,
+                mx: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center'
               }}
-            />
-            <Typography variant="caption" sx={{ mt: 1 }}>
-              {item.year}
-            </Typography>
-          </Box>
-        ))}
-      </Box>
+            >
+              <Box 
+                id={`trend-bar-${metricKey}-${index}`}
+                tabIndex={0}
+                role="button"
+                aria-label={`${item.year}: ${item.value}`}
+                aria-pressed="false"
+                onKeyDown={(e) => handleKeyDown(e, index)}
+                sx={{ 
+                  width: '100%', 
+                  height: `${(item.value / max) * 150}px`,
+                  bgcolor: theme.palette.primary.main,
+                  transition: 'height 0.5s',
+                  borderTopLeftRadius: 4,
+                  borderTopRightRadius: 4,
+                  position: 'relative',
+                  '&:hover': {
+                    bgcolor: theme.palette.primary.dark,
+                  },
+                  '&:focus': {
+                    outline: `2px solid ${theme.palette.primary.dark}`,
+                    outlineOffset: 2,
+                    bgcolor: theme.palette.primary.dark,
+                  },
+                  '&:hover::after, &:focus::after': {
+                    content: `"${item.value}"`,
+                    position: 'absolute',
+                    top: -24,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    bgcolor: 'background.paper',
+                    px: 1,
+                    py: 0.5,
+                    borderRadius: 1,
+                    fontSize: '0.75rem',
+                    boxShadow: 1
+                  }
+                }}
+              />
+              <Typography variant="caption" sx={{ mt: 1 }}>
+                {item.year}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+        
+        {/* Hidden data table for screen readers */}
+        <Box 
+          sx={{ 
+            position: 'absolute', 
+            width: 1, 
+            height: 1, 
+            overflow: 'hidden',
+            clip: 'rect(0 0 0 0)',
+            clipPath: 'inset(50%)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <table aria-label={`Data table for ${chartLabel} trend`}>
+            <caption>{chartLabel} trend data</caption>
+            <thead>
+              <tr>
+                <th scope="col">Year</th>
+                <th scope="col">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((item, index) => (
+                <tr key={index}>
+                  <th scope="row">{item.year}</th>
+                  <td>{item.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Box>
+      </>
     );
   };
   

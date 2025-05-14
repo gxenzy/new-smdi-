@@ -104,7 +104,7 @@ const LoginForm: React.FC = () => {
           >
             <TextField
               fullWidth
-              label="Username"
+              label="Username or Student ID"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               margin="normal"

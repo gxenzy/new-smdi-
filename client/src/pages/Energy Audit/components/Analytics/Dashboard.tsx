@@ -16,7 +16,7 @@ import {
   Divider
 } from '@mui/material';
 import { ChartConfiguration } from 'chart.js';
-import InteractiveChart from './InteractiveChart';
+import { AccessibleChartRenderer } from '../../../../utils/reportGenerator/ChartAccessibilityProvider';
 import { chartThemes } from '../../../../utils/reportGenerator/chartGenerator';
 
 /**
@@ -240,6 +240,9 @@ const EnergyAuditDashboard: React.FC = () => {
     setChartTheme(event.target.value);
   };
   
+  // Type assertion to fix TypeScript error
+  const themeNameValue = (chartTheme as 'default' | 'energy' | 'financial');
+  
   // Handle time range change
   const handleTimeRangeChange = (event: SelectChangeEvent) => {
     setTimeRange(event.target.value);
@@ -304,10 +307,12 @@ const EnergyAuditDashboard: React.FC = () => {
             <CardHeader title="Energy Consumption Trends" />
             <Divider />
             <CardContent sx={{ height: 400, p: 2 }}>
-              <InteractiveChart 
+              <AccessibleChartRenderer 
                 configuration={energyConsumptionData} 
-                themeName={chartTheme}
+                themeName={themeNameValue}
                 showExportOptions
+                ariaLabel="Monthly energy consumption chart showing electricity and gas usage trends"
+                sizePreset="dashboard"
               />
             </CardContent>
           </Card>
@@ -319,10 +324,12 @@ const EnergyAuditDashboard: React.FC = () => {
             <CardHeader title="Cost Distribution" />
             <Divider />
             <CardContent sx={{ height: 400, p: 2 }}>
-              <InteractiveChart 
+              <AccessibleChartRenderer 
                 configuration={costDistributionData} 
-                themeName={chartTheme}
+                themeName={themeNameValue}
                 showExportOptions
+                ariaLabel="Pie chart showing energy cost distribution by category"
+                sizePreset="dashboard"
               />
             </CardContent>
           </Card>
@@ -334,10 +341,12 @@ const EnergyAuditDashboard: React.FC = () => {
             <CardHeader title="Efficiency Comparison" />
             <Divider />
             <CardContent sx={{ height: 350, p: 2 }}>
-              <InteractiveChart 
+              <AccessibleChartRenderer 
                 configuration={efficiencyComparisonData} 
-                themeName={chartTheme}
+                themeName={themeNameValue}
                 showExportOptions
+                ariaLabel="Bar chart comparing current efficiency with potential efficiency after upgrades"
+                sizePreset="dashboard"
               />
             </CardContent>
           </Card>
@@ -349,10 +358,12 @@ const EnergyAuditDashboard: React.FC = () => {
             <CardHeader title="Savings Potential" />
             <Divider />
             <CardContent sx={{ height: 350, p: 2 }}>
-              <InteractiveChart 
+              <AccessibleChartRenderer 
                 configuration={savingsPotentialData} 
-                themeName={chartTheme}
+                themeName={themeNameValue}
                 showExportOptions
+                ariaLabel="Doughnut chart showing energy savings potential breakdown"
+                sizePreset="dashboard"
               />
             </CardContent>
           </Card>
@@ -364,10 +375,12 @@ const EnergyAuditDashboard: React.FC = () => {
             <CardHeader title="Harmonic Distortion" />
             <Divider />
             <CardContent sx={{ height: 350, p: 2 }}>
-              <InteractiveChart 
+              <AccessibleChartRenderer 
                 configuration={harmonicDistortionData} 
-                themeName={chartTheme}
+                themeName={themeNameValue}
                 showExportOptions
+                ariaLabel="Bar chart showing harmonic distortion spectrum"
+                sizePreset="dashboard"
               />
             </CardContent>
           </Card>
@@ -379,10 +392,12 @@ const EnergyAuditDashboard: React.FC = () => {
             <CardHeader title="Peak Demand Profile" />
             <Divider />
             <CardContent sx={{ height: 350, p: 2 }}>
-              <InteractiveChart 
+              <AccessibleChartRenderer 
                 configuration={peakDemandData} 
-                themeName={chartTheme}
+                themeName={themeNameValue}
                 showExportOptions
+                ariaLabel="Line chart showing peak demand profile by hour for weekdays and weekends"
+                sizePreset="dashboard"
               />
             </CardContent>
           </Card>

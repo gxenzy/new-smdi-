@@ -13,6 +13,7 @@ import reportRoutes from './reportRoutes';
 import standardsRoutes from './standardsRoutes';
 import searchRoutes from './searchRoutes';
 import complianceRoutes from './complianceRoutes';
+import systemSettingsRoutes from './systemSettingsRoutes';
 
 // Import JavaScript modules
 const complianceVerificationRoutes = require('./compliance-verification');
@@ -37,5 +38,6 @@ router.use('/standards-api', standardsApiRoutes);
 router.use('/search', searchRoutes);
 router.use('/compliance', complianceRoutes);
 router.use('/compliance-verification', complianceVerificationRoutes);
+router.use('/admin/settings', systemSettingsRoutes);
 
 export default router; 

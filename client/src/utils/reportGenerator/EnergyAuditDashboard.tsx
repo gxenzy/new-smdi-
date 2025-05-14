@@ -21,7 +21,7 @@ import {
   Add as AddIcon,
   FilterList as FilterIcon
 } from '@mui/icons-material';
-import InteractiveChart from './InteractiveChart';
+import { AccessibleChartRenderer } from './ChartAccessibilityProvider';
 import { ChartConfiguration } from 'chart.js';
 
 // Mock Energy Audit Data
@@ -432,11 +432,12 @@ const EnergyAuditDashboard: React.FC = () => {
             <CardContent>
               <Box sx={{ height: 300 }}>
                 {chartConfigs.consumption && (
-                  <InteractiveChart 
+                  <AccessibleChartRenderer 
                     configuration={chartConfigs.consumption} 
-                    height={300}
                     themeName="energy"
                     showExportOptions={true}
+                    ariaLabel="Line chart showing electricity and natural gas consumption trends over months"
+                    sizePreset="dashboard"
                     onAddToReport={(canvas) => {
                       alert(`Added Energy Consumption chart to report. In a real implementation, this would integrate with ReportBuilder.`);
                     }}
@@ -462,11 +463,12 @@ const EnergyAuditDashboard: React.FC = () => {
             <CardContent>
               <Box sx={{ height: 300 }}>
                 {chartConfigs.distribution && (
-                  <InteractiveChart 
+                  <AccessibleChartRenderer 
                     configuration={chartConfigs.distribution} 
-                    height={300}
                     themeName="energy"
                     showExportOptions={true}
+                    ariaLabel="Pie chart showing distribution of energy usage by category"
+                    sizePreset="dashboard"
                     onAddToReport={(canvas) => {
                       alert(`Added Energy Distribution chart to report. In a real implementation, this would integrate with ReportBuilder.`);
                     }}
@@ -492,12 +494,13 @@ const EnergyAuditDashboard: React.FC = () => {
             <CardContent>
               <Box sx={{ height: 300 }}>
                 {chartConfigs.benchmark && (
-                  <InteractiveChart 
+                  <AccessibleChartRenderer 
                     configuration={chartConfigs.benchmark} 
-                    height={300}
                     themeName="energy"
                     showExportOptions={true}
-                    onAddToReport={(canvas) => {
+                    ariaLabel="Bar chart comparing energy performance against industry benchmarks"
+                    sizePreset="dashboard"
+                    onAddToReport={(canvas: HTMLCanvasElement) => {
                       alert(`Added Benchmark chart to report. In a real implementation, this would integrate with ReportBuilder.`);
                     }}
                   />
@@ -522,12 +525,13 @@ const EnergyAuditDashboard: React.FC = () => {
             <CardContent>
               <Box sx={{ height: 300 }}>
                 {chartConfigs.costs && (
-                  <InteractiveChart 
+                  <AccessibleChartRenderer 
                     configuration={chartConfigs.costs} 
-                    height={300}
                     themeName="financial"
                     showExportOptions={true}
-                    onAddToReport={(canvas) => {
+                    ariaLabel="Doughnut chart showing annual cost distribution across different energy sources"
+                    sizePreset="dashboard"
+                    onAddToReport={(canvas: HTMLCanvasElement) => {
                       alert(`Added Cost Distribution chart to report. In a real implementation, this would integrate with ReportBuilder.`);
                     }}
                   />
@@ -552,12 +556,13 @@ const EnergyAuditDashboard: React.FC = () => {
             <CardContent>
               <Box sx={{ height: 300 }}>
                 {chartConfigs.emissions && (
-                  <InteractiveChart 
+                  <AccessibleChartRenderer 
                     configuration={chartConfigs.emissions} 
-                    height={300}
                     themeName="default"
                     showExportOptions={true}
-                    onAddToReport={(canvas) => {
+                    ariaLabel="Bar chart showing carbon emissions breakdown by source"
+                    sizePreset="dashboard"
+                    onAddToReport={(canvas: HTMLCanvasElement) => {
                       alert(`Added Emissions chart to report. In a real implementation, this would integrate with ReportBuilder.`);
                     }}
                   />

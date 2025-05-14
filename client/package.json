@@ -45,6 +45,7 @@
     "react-chartjs-2": "^4.3.1",
     "react-dom": "^18.2.0",
     "react-error-boundary": "^6.0.0",
+    "react-hot-toast": "^2.5.2",
     "react-hotkeys-hook": "^5.0.1",
     "react-markdown": "^10.1.0",
     "react-redux": "^7.2.6",
@@ -82,13 +83,14 @@
     "@types/react-signature-canvas": "^1.0.7",
     "@types/uuid": "^10.0.0",
     "@types/websocket": "^1.0.6",
+    "html-webpack-plugin": "^5.6.3",
     "react-app-rewired": "^2.2.1",
     "typescript": "^4.9.5"
   },
   "scripts": {
     "start": "react-app-rewired start",
-    "build": "react-app-rewired build",
-    "test": "react-app-rewired test",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
     "eject": "react-scripts eject",
     "lint": "eslint ."
   },

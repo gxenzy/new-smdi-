@@ -37,6 +37,114 @@ We have implemented a comprehensive accessibility solution for all chart compone
    - Automatically adjusts chart dimensions based on container size
    - Provides responsive behavior for different viewport sizes
 
+## Keyboard Navigation Implementation
+
+We've enhanced chart keyboard navigation to allow users to navigate through chart data points using keyboard controls. This is important for users with motor disabilities who rely on keyboard navigation and for screen reader users.
+
+### Key Components
+
+1. **useChartKeyboardNavigation Hook**
+   - Central hook for managing keyboard navigation state
+   - Extracts data points from chart configurations
+   - Manages focus state and announcements
+   - Handles keyboard events and focus indicators
+
+2. **ChartDataTable Component**
+   - Provides tabular representation of chart data
+   - Accessible for screen readers with proper semantic markup
+   - Includes calculated values like percentages for pie charts
+   - Hidden by default but available as an alternative view
+
+3. **EnhancedAccessibleChart Component**
+   - Uses keyboard navigation hook for data point exploration
+   - Visually indicates focused data points
+   - Includes toggle controls for table view
+   - Provides ARIA-live announcements for screen readers
+
+### Keyboard Controls
+
+| Key | Function |
+|-----|----------|
+| Tab | Focus on chart |
+| Arrow keys | Move between data points |
+| Enter/Space | Select data point for details |
+| Escape | Clear selection |
+| Home | Jump to first data point |
+| End | Jump to last data point |
+
+### Implementation Example
+
+```tsx
+const {
+  containerRef,
+  handleKeyDown,
+  accessibleDataPoints,
+  activeDataPointIndex,
+  announcementText
+} = useChartKeyboardNavigation(chartConfig, {
+  enabled: true,
+  announcements: true,
+  ariaLabel: "Energy consumption chart",
+  title: "Monthly Energy Use"
+});
+
+// Use in component
+<Box
+  ref={containerRef}
+  tabIndex={0}
+  onKeyDown={handleKeyDown}
+  role="group"
+  aria-label="Energy consumption chart. Use arrow keys to navigate"
+>
+  {/* Chart content */}
+  
+  {/* Screen reader announcement */}
+  <div aria-live="polite" className="visually-hidden">
+    {announcementText}
+  </div>
+</Box>
+```
+
+### Data Table Alternative
+
+The ChartDataTable component provides an accessible alternative to the visual chart:
+
+```tsx
+// Hidden data table for screen readers
+<ChartDataTable
+  configuration={chartConfig}
+  title="Energy Consumption"
+  visuallyHidden={true}
+/>
+
+// Visible data table alternative (toggled by user)
+{showDataTable && (
+  <ChartDataTable
+    configuration={chartConfig}
+    title="Energy Consumption"
+    visuallyHidden={false}
+    highContrast={highContrastMode}
+  />
+)}
+```
+
+### Future Keyboard Navigation Enhancements
+
+1. **Custom Navigation Patterns**
+   - Allow customization of keyboard shortcuts
+   - Support for different navigation modes (grid, linear)
+   - Multi-series navigation with series switching
+
+2. **Advanced Focus Management**
+   - Save and restore focus position between chart interactions
+   - Focus history for forward/back navigation
+   - Group navigation for related data points
+
+3. **Advanced Announcements**
+   - Context-aware announcements with trend information
+   - Comparative announcements (higher/lower than previous)
+   - Summary announcements for overall data patterns
+
 ## Using Accessibility Features
 
 ### For Developers

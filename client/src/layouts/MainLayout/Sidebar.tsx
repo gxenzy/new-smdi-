@@ -19,7 +19,8 @@ import {
   Speed as TestingIcon,
   Poll as TamIcon,
   People as UsersIcon,
-  Settings as AdminIcon,
+  Settings as SettingsIcon,
+  AdminPanelSettings as AdminIcon,
   ChevronLeft,
   ChevronRight,
   Menu as MenuIcon,
@@ -39,26 +40,19 @@ import { alpha } from '@mui/material/styles';
 // { text: 'Testing', icon: <TestingIcon />, path: '/testing' },
 // { text: 'TAM Evaluation', icon: <TamIcon />, path: '/tam-evaluation' },
 // { text: 'Energy Audit V2', icon: <AuditIcon />, path: '/energy-audit-v2' },
+// { text: 'System Tools', icon: <ToolsIcon />, path: '/system-tools' },
+// { text: 'Monitoring', icon: <MonitorIcon />, path: '/energy-monitoring' },
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-  // { text: 'Electrical System', icon: <ElectricIcon />, path: '/electrical-system' }, // backed up
   { text: 'Energy Audit', icon: <AuditIcon />, path: '/energy-audit' },
-  // { text: 'Reports', icon: <ReportsIcon />, path: '/reports' }, // moved inside Energy Audit
-  // { text: 'Standards', icon: <StandardsIcon />, path: '/standards' }, // moved inside Energy Audit
-  // { text: 'Energy Audit V2', icon: <AuditIcon />, path: '/energy-audit-v2' }, // backed up and removed
-  { text: 'System Tools', icon: <ToolsIcon />, path: '/system-tools' },
-  // { text: 'Testing', icon: <TestingIcon />, path: '/testing' }, // backed up
-  // { text: 'TAM Evaluation', icon: <TamIcon />, path: '/tam-evaluation' }, // fully removed
-  { text: 'Users', icon: <UsersIcon />, path: '/user-management' },
   { text: 'Admin', icon: <AdminIcon />, path: '/admin' },
-  { text: 'Monitoring', icon: <MonitorIcon />, path: '/energy-monitoring' },
 ];
 
 // Admin submenu items
 const adminSubMenuItems = [
-  { text: 'System Settings', icon: <AdminIcon />, path: '/admin/settings' },
-  { text: 'User Management', icon: <UsersIcon />, path: '/user-management' },
   { text: 'Standards Management', icon: <ComplianceIcon />, path: '/admin/standards-management' },
+  { text: 'User Management', icon: <UsersIcon />, path: '/user-management' },
+  { text: 'System Settings', icon: <SettingsIcon />, path: '/settings/system' },
 ];
 
 interface SidebarProps {
@@ -160,52 +154,65 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
         overflow: 'hidden',
       }}
     >
+      {/* Logo Section - Fixed at the top */}
       <Box
         sx={{
           display: 'flex',
           flexDirection: 'column',
-          alignItems: isOpen ? 'flex-start' : 'center',
+          alignItems: 'center',
           p: 2,
+          mb: 1, // Add margin bottom to create space
         }}
       >
-        <Typography
-          variant="h6"
-          noWrap
-          component="div"
-          sx={{
-            overflow: 'hidden',
-            whiteSpace: 'nowrap',
-            textOverflow: 'ellipsis',
-            maxWidth: '100%',
-            fontWeight: 700,
-            letterSpacing: '0.5px',
-            color: 'inherit',
-            fontSize: isOpen ? '1.1rem' : '0.5rem',
-            opacity: isOpen ? 1 : 0,
-            transition: theme.transitions.create(['opacity', 'fontSize'], {
+        <Box 
+          sx={{ 
+            width: isOpen ? '100%' : '40px',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            transition: theme.transitions.create(['width', 'opacity'], {
               duration: theme.transitions.duration.standard,
             }),
           }}
         >
-          Energy Audit
-        </Typography>
+          <img 
+            src={
+              theme.palette.mode === 'dark' || 
+              ['energy', 'blue', 'gray', 'darkBlue'].includes(mode) 
+                ? "/logo-white.png" 
+                : "/logo-black.png"
+            } 
+            alt="Company Logo"
+            style={{
+              width: isOpen ? '100%' : '30px',
+              maxWidth: '150px',
+              height: 'auto',
+              opacity: isOpen ? 1 : 0.9,
+              transition: 'all 0.3s ease',
+            }}
+          />
+        </Box>
         {isOpen && (
           <Typography
             variant="caption"
             sx={{ 
               color: 'text.secondary', 
-              mt: -0.5,
+              mt: 0.5,
               opacity: 0.8,
-              fontWeight: 500
+              fontWeight: 500,
+              textAlign: 'center',
+              width: '100%',
             }}
           >
-            Platform
+            Energy Audit Platform
           </Typography>
         )}
       </Box>
 
-      <Divider sx={{ opacity: 0.1 }} />
-      <List sx={{ py: 0.5 }}>
+      <Divider sx={{ opacity: 0.1, mb: 1 }} />
+
+      {/* Navigation List */}
+      <List sx={{ padding: 0, flex: 1, overflowY: 'auto' }}>
         {menuItems.map((item) => (
           <Tooltip title={isOpen ? '' : item.text} placement="right" key={item.text}>
             <ListItem

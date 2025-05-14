@@ -33,7 +33,12 @@ import {
   Save as SaveIcon,
   Visibility as VisibilityIcon,
   Lock as LockIcon,
+  AccessibilityNew as AccessibilityIcon,
+  Contrast as ContrastIcon,
+  TextFields as TextFieldsIcon,
+  SlowMotionVideo as ReduceMotionIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useAppDispatch } from '../../store';
 import { updateUser } from '../../store/slices/authSlice';
@@ -41,15 +46,24 @@ import { useUserContext } from '../../contexts/UserContext';
 import { NotificationType } from '../../types';
 import { useTheme } from '@mui/material/styles';
 import { useThemeMode, ThemeMode } from '../../contexts/ThemeContext';
+import { useAccessibilitySettings } from '../../contexts/AccessibilitySettingsContext';
 
 const Settings: React.FC = () => {
   const { currentUser } = useAuthContext();
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const { setNotificationPreferences } = useUserContext();
   const theme = useTheme();
   const { mode, setMode } = useThemeMode();
+  const { 
+    settings: accessibilitySettings, 
+    toggleHighContrast, 
+    toggleLargeText, 
+    toggleReduceMotion, 
+    toggleScreenReaderOptimization 
+  } = useAccessibilitySettings();
   
   const [settings, setSettings] = useState({
     emailNotifications: false,
@@ -131,6 +145,98 @@ const Settings: React.FC = () => {
       )}
 
       <Grid container spacing={3}>
+        {/* Accessibility Settings */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardHeader title="Accessibility Settings" />
+            <Divider />
+            <CardContent>
+              <List>
+                <ListItem>
+                  <ListItemIcon>
+                    <ContrastIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="High Contrast Mode"
+                    secondary="Increases contrast for better visibility"
+                  />
+                  <ListItemSecondaryAction>
+                    <Switch
+                      edge="end"
+                      checked={accessibilitySettings.highContrastMode}
+                      onChange={toggleHighContrast}
+                    />
+                  </ListItemSecondaryAction>
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon>
+                    <TextFieldsIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Large Text Mode"
+                    secondary="Increases text size for better readability"
+                  />
+                  <ListItemSecondaryAction>
+                    <Switch
+                      edge="end"
+                      checked={accessibilitySettings.largeText}
+                      onChange={toggleLargeText}
+                    />
+                  </ListItemSecondaryAction>
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon>
+                    <ReduceMotionIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Reduce Motion"
+                    secondary="Minimizes animations and transitions"
+                  />
+                  <ListItemSecondaryAction>
+                    <Switch
+                      edge="end"
+                      checked={accessibilitySettings.reduceMotion}
+                      onChange={toggleReduceMotion}
+                    />
+                  </ListItemSecondaryAction>
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon>
+                    <AccessibilityIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Screen Reader Optimization"
+                    secondary="Adds additional labels and descriptions for screen readers"
+                  />
+                  <ListItemSecondaryAction>
+                    <Switch
+                      edge="end"
+                      checked={accessibilitySettings.screenReaderOptimization}
+                      onChange={toggleScreenReaderOptimization}
+                    />
+                  </ListItemSecondaryAction>
+                </ListItem>
+                <Divider sx={{ my: 2 }} />
+                <ListItem>
+                  <ListItemText
+                    primary="Accessibility Chart Examples"
+                    secondary="View examples of accessible charts with high contrast and pattern fills"
+                  />
+                  <ListItemSecondaryAction>
+                    <Button 
+                      variant="outlined" 
+                      size="small"
+                      onClick={() => navigate('/settings/accessibility/chart-examples')}
+                    >
+                      View Examples
+                    </Button>
+                  </ListItemSecondaryAction>
+                </ListItem>
+              </List>
+            </CardContent>
+          </Card>
+        </Grid>
+
         {/* Notification Settings */}
         <Grid item xs={12} md={6}>
           <Card>

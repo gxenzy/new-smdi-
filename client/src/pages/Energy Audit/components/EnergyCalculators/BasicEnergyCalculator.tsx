@@ -61,7 +61,7 @@ import { useSnackbar } from 'notistack';
 import IlluminationCalculator from '../Calculators/IlluminationCalculator';
 import PowerFactorCalculator from '../Calculators/PowerFactorCalculator';
 import HarmonicDistortionCalculator from '../Calculators/HarmonicDistortionCalculator';
-import { ScheduleOfLoadsCalculator } from '../Calculators/ScheduleOfLoads';
+import ScheduleOfLoadsCalculator from '../Calculators/ScheduleOfLoads';
 import SavedCalculationsViewer from '../Calculators/SavedCalculationsViewer';
 import { saveCalculation } from '../Calculators/utils/storage';
 import ComplianceCalculatorIntegration from '../Calculators/ComplianceCalculatorIntegration';

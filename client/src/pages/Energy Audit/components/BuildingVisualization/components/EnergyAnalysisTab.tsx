@@ -538,19 +538,56 @@ const EnergyAnalysisTab: React.FC<EnergyAnalysisTabProps> = ({
                 />
                 <Divider />
                 <CardContent sx={{ height: 300 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={consumptionByRoomType}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <ChartTooltip content={<CustomBarTooltip />} />
-                      <Legend />
-                      <Bar dataKey="value" name="Energy (kWh)" fill="#4CAF50" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {/* Add wrapper div with aria role and label */}
+                  <div
+                    role="img"
+                    aria-label={`Bar chart showing energy consumption by room type for ${selectedTimeRange} period`}
+                  >
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={consumptionByRoomType}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <ChartTooltip content={<CustomBarTooltip />} />
+                        <Legend />
+                        <Bar dataKey="value" name="Energy (kWh)" fill="#4CAF50" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  {/* Hidden data table for screen readers */}
+                  <Box 
+                    sx={{ 
+                      position: 'absolute', 
+                      width: 1, 
+                      height: 1, 
+                      overflow: 'hidden',
+                      clip: 'rect(0 0 0 0)',
+                      clipPath: 'inset(50%)',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <table aria-label={`Data table for energy consumption by room type (${selectedTimeRange})`}>
+                      <caption>Energy consumption by room type</caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Room Type</th>
+                          <th scope="col">Energy Consumption (kWh)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {consumptionByRoomType.map((item, index) => (
+                          <tr key={index}>
+                            <th scope="row">{item.name}</th>
+                            <td>{item.value.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>
@@ -564,26 +601,69 @@ const EnergyAnalysisTab: React.FC<EnergyAnalysisTabProps> = ({
                 />
                 <Divider />
                 <CardContent sx={{ height: 300 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={consumptionByRoomType}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        paddingAngle={5}
-                        dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      >
-                        {consumptionByRoomType.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <ChartTooltip content={<CustomPieTooltip />} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {/* Add wrapper div with aria role and label */}
+                  <div
+                    role="img"
+                    aria-label={`Pie chart showing energy distribution by room type`}
+                  >
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={consumptionByRoomType}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          paddingAngle={5}
+                          dataKey="value"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {consumptionByRoomType.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <ChartTooltip content={<CustomPieTooltip />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  {/* Hidden data table for screen readers */}
+                  <Box 
+                    sx={{ 
+                      position: 'absolute', 
+                      width: 1, 
+                      height: 1, 
+                      overflow: 'hidden',
+                      clip: 'rect(0 0 0 0)',
+                      clipPath: 'inset(50%)',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <table aria-label="Data table for energy distribution by room type">
+                      <caption>Energy distribution by room type</caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Room Type</th>
+                          <th scope="col">Energy Consumption (kWh)</th>
+                          <th scope="col">Percentage</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {consumptionByRoomType.map((item, index) => {
+                          const total = consumptionByRoomType.reduce((sum, item) => sum + item.value, 0);
+                          const percent = (item.value / total * 100).toFixed(1);
+                          return (
+                            <tr key={index}>
+                              <th scope="row">{item.name}</th>
+                              <td>{item.value.toFixed(2)}</td>
+                              <td>{percent}%</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>

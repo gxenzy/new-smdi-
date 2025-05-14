@@ -14,7 +14,6 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { UserProvider } from './contexts/UserContext';
 import { BrowserRouter } from 'react-router-dom';
 import { EnergyAuditProvider } from './pages/Energy Audit/EnergyAuditContext';
-import ChartAccessibilityProvider from './utils/reportGenerator/ChartAccessibilityProvider';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('Failed to find the root element');
@@ -36,9 +35,7 @@ root.render(
               <NotificationProvider>
                 <SocketProvider>
                   <EnergyAuditProvider>
-                    <ChartAccessibilityProvider>
-                      <App />
-                    </ChartAccessibilityProvider>
+                    <App />
                   </EnergyAuditProvider>
                 </SocketProvider>
               </NotificationProvider>

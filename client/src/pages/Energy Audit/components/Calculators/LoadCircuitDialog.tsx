@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -8,6 +8,7 @@ import {
   Box,
   List,
   ListItem,
+  ListItemButton,
   ListItemText,
   Typography,
   Divider,
@@ -26,6 +27,7 @@ import { Search as SearchIcon, Close as CloseIcon } from '@mui/icons-material';
 import { loadScheduleToUnifiedCircuit, loadItemToUnifiedCircuit, UnifiedCircuitData } from './utils/circuitDataExchange';
 import { LoadSchedule, LoadItem } from './ScheduleOfLoads/types';
 import { loadSavedCalculations } from './utils/storage';
+import { useFocusManagement } from '../../../../hooks/useFocusManagement';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -66,6 +68,19 @@ const LoadCircuitDialog: React.FC<LoadCircuitDialogProps> = ({
   const [selectedPanel, setSelectedPanel] = useState<LoadSchedule | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState<string | null>(null);
+  
+  // Use focus management hook
+  const { 
+    containerRef, 
+    handleKeyDown 
+  } = useFocusManagement(open, {
+    autoFocus: true,
+    returnFocus: true,
+    trapFocus: true,
+    onEscapeKey: onClose,
+    // Focus the search input as first element
+    focusableSelector: 'input[type="text"], button, [href], select, textarea, [tabindex]:not([tabindex="-1"])'
+  });
   
   // Fetch saved Schedule of Loads calculations on dialog open
   useEffect(() => {
@@ -139,15 +154,15 @@ const LoadCircuitDialog: React.FC<LoadCircuitDialogProps> = ({
   const renderPanelList = () => {
     if (loading) {
       return (
-        <Box display="flex" justifyContent="center" py={4}>
-          <CircularProgress />
+        <Box display="flex" justifyContent="center" py={4} role="status" aria-label="Loading panels">
+          <CircularProgress aria-label="Loading" />
         </Box>
       );
     }
     
     if (error) {
       return (
-        <Alert severity="info" sx={{ my: 2 }}>
+        <Alert severity="info" sx={{ my: 2 }} aria-live="polite">
           {error}
         </Alert>
       );
@@ -155,20 +170,20 @@ const LoadCircuitDialog: React.FC<LoadCircuitDialogProps> = ({
     
     if (filteredPanels.length === 0) {
       return (
-        <Alert severity="info" sx={{ my: 2 }}>
+        <Alert severity="info" sx={{ my: 2 }} aria-live="polite">
           No panels found matching your search criteria.
         </Alert>
       );
     }
     
     return (
-      <List>
+      <List aria-label="Panels list">
         {filteredPanels.map((panel) => (
           <React.Fragment key={panel.id}>
-            <ListItem 
-              button 
+            <ListItemButton
               onClick={() => handleSelectPanel(panel)}
               selected={selectedPanel?.id === panel.id}
+              aria-label={`Panel ${panel.panelName}: ${panel.loads.length} loads, ${panel.voltage}V, ${panel.totalDemandLoad.toFixed(2)}W`}
             >
               <ListItemText
                 primary={panel.panelName}
@@ -190,7 +205,7 @@ const LoadCircuitDialog: React.FC<LoadCircuitDialogProps> = ({
                 variant="outlined"
                 size="small"
               />
-            </ListItem>
+            </ListItemButton>
             <Divider />
           </React.Fragment>
         ))}
@@ -201,7 +216,7 @@ const LoadCircuitDialog: React.FC<LoadCircuitDialogProps> = ({
   const renderCircuitList = () => {
     if (!selectedPanel) {
       return (
-        <Alert severity="info" sx={{ my: 2 }}>
+        <Alert severity="info" sx={{ my: 2 }} aria-live="polite">
           Select a panel first to view its circuits.
         </Alert>
       );
@@ -209,7 +224,7 @@ const LoadCircuitDialog: React.FC<LoadCircuitDialogProps> = ({
     
     if (selectedPanel.loads.length === 0) {
       return (
-        <Alert severity="info" sx={{ my: 2 }}>
+        <Alert severity="info" sx={{ my: 2 }} aria-live="polite">
           This panel has no load items.
         </Alert>
       );
@@ -237,6 +252,7 @@ const LoadCircuitDialog: React.FC<LoadCircuitDialogProps> = ({
             onClick={handleLoadPanel}
             sx={{ mt: 1 }}
             fullWidth
+            aria-label={`Load ${selectedPanel.panelName} as feeder circuit`}
           >
             Load Panel as Feeder Circuit
           </Button>
@@ -244,10 +260,13 @@ const LoadCircuitDialog: React.FC<LoadCircuitDialogProps> = ({
         
         <Divider sx={{ mb: 2 }} />
         
-        <List>
+        <List aria-label={`Circuits in ${selectedPanel.panelName}`}>
           {filteredCircuits.map((circuit) => (
             <React.Fragment key={circuit.id}>
-              <ListItem button onClick={() => handleLoadCircuit(circuit)}>
+              <ListItemButton 
+                onClick={() => handleLoadCircuit(circuit)}
+                aria-label={`Load circuit: ${circuit.description}, ${circuit.rating}W × ${circuit.quantity} units, ${circuit.connectedLoad.toFixed(2)}W`}
+              >
                 <ListItemText
                   primary={circuit.description}
                   secondary={
@@ -277,7 +296,7 @@ const LoadCircuitDialog: React.FC<LoadCircuitDialogProps> = ({
                   variant="outlined"
                   size="small"
                 />
-              </ListItem>
+              </ListItemButton>
               <Divider />
             </React.Fragment>
           ))}
@@ -292,11 +311,19 @@ const LoadCircuitDialog: React.FC<LoadCircuitDialogProps> = ({
       onClose={onClose}
       maxWidth="md"
       fullWidth
+      aria-labelledby="load-circuit-dialog-title"
+      onKeyDown={handleKeyDown}
+      // Use the containerRef from our hook for focus management
+      ref={containerRef as React.Ref<HTMLDivElement>}
     >
-      <DialogTitle>
+      <DialogTitle id="load-circuit-dialog-title">
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <Typography variant="h6">Load Circuit from Schedule of Loads</Typography>
-          <IconButton onClick={onClose} size="small">
+          <IconButton 
+            onClick={onClose} 
+            size="small"
+            aria-label="Close dialog"
+          >
             <CloseIcon />
           </IconButton>
         </Box>
@@ -309,10 +336,11 @@ const LoadCircuitDialog: React.FC<LoadCircuitDialogProps> = ({
             placeholder="Search panels or circuits..."
             value={searchTerm}
             onChange={handleSearchChange}
+            aria-label="Search panels or circuits"
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon />
+                  <SearchIcon aria-hidden="true" />
                 </InputAdornment>
               ),
               endAdornment: searchTerm ? (
@@ -321,6 +349,7 @@ const LoadCircuitDialog: React.FC<LoadCircuitDialogProps> = ({
                     size="small" 
                     onClick={() => setSearchTerm('')}
                     edge="end"
+                    aria-label="Clear search"
                   >
                     <CloseIcon fontSize="small" />
                   </IconButton>
@@ -335,9 +364,10 @@ const LoadCircuitDialog: React.FC<LoadCircuitDialogProps> = ({
             value={tabValue}
             onChange={handleTabChange}
             variant="fullWidth"
+            aria-label="Load circuit tabs"
           >
-            <Tab label="Panels" />
-            <Tab label="Circuits" disabled={!selectedPanel} />
+            <Tab label="Panels" id="circuit-tab-0" aria-controls="circuit-tabpanel-0" />
+            <Tab label="Circuits" id="circuit-tab-1" aria-controls="circuit-tabpanel-1" disabled={!selectedPanel} />
           </Tabs>
           
           <TabPanel value={tabValue} index={0}>
@@ -351,7 +381,7 @@ const LoadCircuitDialog: React.FC<LoadCircuitDialogProps> = ({
       </DialogContent>
       
       <DialogActions>
-        <Button onClick={onClose}>
+        <Button onClick={onClose} aria-label="Close dialog">
           Cancel
         </Button>
       </DialogActions>

@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   SwipeableDrawer,
   List,
   ListItem,
+  ListItemButton,
   ListItemIcon,
   ListItemText,
   Divider,
@@ -17,6 +18,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import PrintIcon from '@mui/icons-material/Print';
 import ShareIcon from '@mui/icons-material/Share';
 import DownloadIcon from '@mui/icons-material/Download';
+import { useFocusManagement } from '../../../../../hooks/useFocusManagement';
 
 interface Props {
   open: boolean;
@@ -41,12 +43,23 @@ const MobileMenu: React.FC<Props> = ({
   onHelp,
   onTutorial,
 }) => {
+  // Use focus management hook
+  const { 
+    containerRef, 
+    handleKeyDown 
+  } = useFocusManagement(open, {
+    autoFocus: true,
+    returnFocus: true,
+    trapFocus: true,
+    onEscapeKey: onClose
+  });
+  
   return (
     <>
       <IconButton
         edge="start"
         color="inherit"
-        aria-label="menu"
+        aria-label="Open menu"
         onClick={onOpen}
         sx={{ display: { sm: 'none' } }}
       >
@@ -58,53 +71,77 @@ const MobileMenu: React.FC<Props> = ({
         onClose={onClose}
         onOpen={onOpen}
         sx={{ display: { sm: 'none' } }}
+        aria-label="Mobile menu"
+        onKeyDown={handleKeyDown}
       >
         <Box
           sx={{ width: 250 }}
-          role="presentation"
+          role="menu"
+          aria-orientation="vertical"
+          aria-labelledby="mobile-menu-title"
           onClick={onClose}
-          onKeyDown={onClose}
+          onKeyDown={handleKeyDown}
+          ref={containerRef as React.Ref<HTMLDivElement>}
         >
-          <List>
-            <ListItem button onClick={onExport}>
-              <ListItemIcon>
+          <List aria-label="Main actions">
+            <ListItemButton 
+              onClick={onExport}
+              tabIndex={0}
+              role="menuitem"
+            >
+              <ListItemIcon aria-hidden="true">
                 <SaveIcon />
               </ListItemIcon>
               <ListItemText primary="Export" />
-            </ListItem>
-            <ListItem button onClick={onPrint}>
-              <ListItemIcon>
+            </ListItemButton>
+            <ListItemButton 
+              onClick={onPrint}
+              role="menuitem"
+            >
+              <ListItemIcon aria-hidden="true">
                 <PrintIcon />
               </ListItemIcon>
               <ListItemText primary="Print" />
-            </ListItem>
-            <ListItem button onClick={onShare}>
-              <ListItemIcon>
+            </ListItemButton>
+            <ListItemButton 
+              onClick={onShare}
+              role="menuitem"
+            >
+              <ListItemIcon aria-hidden="true">
                 <ShareIcon />
               </ListItemIcon>
               <ListItemText primary="Share" />
-            </ListItem>
-            <ListItem button onClick={onSettings}>
-              <ListItemIcon>
+            </ListItemButton>
+            <ListItemButton 
+              onClick={onSettings}
+              role="menuitem"
+            >
+              <ListItemIcon aria-hidden="true">
                 <SettingsIcon />
               </ListItemIcon>
               <ListItemText primary="Settings" />
-            </ListItem>
+            </ListItemButton>
           </List>
           <Divider />
-          <List>
-            <ListItem button onClick={onHelp}>
-              <ListItemIcon>
+          <List aria-label="Help and information">
+            <ListItemButton 
+              onClick={onHelp}
+              role="menuitem"
+            >
+              <ListItemIcon aria-hidden="true">
                 <HelpIcon />
               </ListItemIcon>
               <ListItemText primary="Help" />
-            </ListItem>
-            <ListItem button onClick={onTutorial}>
-              <ListItemIcon>
+            </ListItemButton>
+            <ListItemButton 
+              onClick={onTutorial}
+              role="menuitem"
+            >
+              <ListItemIcon aria-hidden="true">
                 <SchoolIcon />
               </ListItemIcon>
               <ListItemText primary="Tutorial" />
-            </ListItem>
+            </ListItemButton>
           </List>
         </Box>
       </SwipeableDrawer>

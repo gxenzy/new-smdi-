@@ -1,3 +1,6 @@
+@import './theme/theme.css';
+@import './theme/accessibility.css';
+
 * {
   margin: 0;
   padding: 0;

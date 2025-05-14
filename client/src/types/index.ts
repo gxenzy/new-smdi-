@@ -4,13 +4,13 @@
  */
 export enum UserRole {
   ADMIN = 'admin',
-  USER = 'user',
   AUDITOR = 'auditor',
+  VIEWER = 'viewer',
   MANAGER = 'manager',
   REVIEWER = 'reviewer',
-  VIEWER = 'viewer',
   STAFF = 'staff',
-  MODERATOR = 'moderator'
+  MODERATOR = 'moderator',
+  USER = 'user'
 }
 
 export const enum NotificationType {
@@ -37,16 +37,20 @@ export interface User {
   id: string;
   username: string;
   email: string;
+  student_id?: string;
   role: UserRole;
   name: string;
-  firstName?: string;
-  lastName?: string;
+  firstName: string;
+  lastName: string;
   department?: string;
   position?: string;
   phoneNumber?: string;
+  profileImage?: string;
+  bio?: string;
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date;
+  updatedAt: Date;
+  lastLogin?: Date;
   permissions?: string[];
   notificationPreferences?: NotificationPreferences;
   team?: string;
@@ -85,19 +89,29 @@ export interface AuthResponse {
   token: string;
 }
 
+export interface PasswordPolicy {
+  minLength: number;
+  requireSpecialChar: boolean;
+  requireNumber: boolean;
+  requireUppercase: boolean;
+  requireLowercase: boolean;
+}
+
 export interface SystemSettings {
   siteName: string;
-  maintenanceMode: boolean;
-  registrationEnabled: boolean;
-  defaultRole: UserRole;
-  passwordPolicy: {
-    minLength: number;
-    requireSpecialChar: boolean;
-    requireNumber: boolean;
-    requireUppercase: boolean;
-    requireLowercase: boolean;
-  };
+  maxUsers?: number;
   sessionTimeout: number;
+  backupFrequency?: number;
+  emailNotifications?: boolean;
+  maintenanceMode: boolean;
+  emergencyMode: boolean;
+  debugMode?: boolean;
+  apiUrl?: string;
+  registrationEnabled: boolean;
+  allowRegistration: boolean;
+  theme?: 'light' | 'dark' | 'energy' | 'blue' | 'gray' | 'darkBlue';
+  defaultRole: UserRole;
+  passwordPolicy: PasswordPolicy;
   maxLoginAttempts: number;
 }
 
@@ -128,7 +142,42 @@ export type ApprovalStatus = 'Pending' | 'Approved' | 'Rejected';
 
 export interface UserWithId extends User {
   _id: string;
-  profileImage?: string;
+}
+
+export interface AuditLog {
+  id: string;
+  username: string;
+  action: string;
+  details: string;
+  created_at: string;
+  ip_address?: string;
+  user_agent?: string;
+  resource_type?: string;
+  resource_id?: string;
+}
+
+export interface BackupEntry {
+  id: string;
+  name: string;
+  createdAt: Date;
+  size: string;
+  type?: string;
+  status?: 'completed' | 'failed' | 'in_progress';
+}
+
+export interface ApiError {
+  message: string;
+  code?: string;
+  status?: number;
+  errors?: Record<string, string[]>;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  count: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 export * from './energy-audit'; 

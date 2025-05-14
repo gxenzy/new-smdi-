@@ -1,0 +1,193 @@
+/* Global Accessibility Styles */
+
+/* High Contrast Mode */
+.high-contrast-mode {
+  /* Color variables */
+  --high-contrast-background: #000000;
+  --high-contrast-text: #FFFFFF;
+  --high-contrast-primary: #FFFF00;
+  --high-contrast-secondary: #00FFFF;
+  --high-contrast-success: #00FF00;
+  --high-contrast-warning: #FF8000;
+  --high-contrast-error: #FF00FF;
+  --high-contrast-focus: #FFFFFF;
+  --high-contrast-border: #FFFFFF;
+  
+  /* Base styles */
+  background-color: var(--high-contrast-background) !important;
+  color: var(--high-contrast-text) !important;
+}
+
+/* Text elements in high contrast mode */
+.high-contrast-mode h1,
+.high-contrast-mode h2,
+.high-contrast-mode h3,
+.high-contrast-mode h4,
+.high-contrast-mode h5,
+.high-contrast-mode h6,
+.high-contrast-mode p,
+.high-contrast-mode span,
+.high-contrast-mode label,
+.high-contrast-mode a {
+  color: var(--high-contrast-text) !important;
+}
+
+/* Links in high contrast mode */
+.high-contrast-mode a {
+  color: var(--high-contrast-primary) !important;
+  text-decoration: underline !important;
+}
+
+.high-contrast-mode a:hover,
+.high-contrast-mode a:focus {
+  color: var(--high-contrast-secondary) !important;
+  text-decoration: underline !important;
+}
+
+/* Buttons in high contrast mode */
+.high-contrast-mode button:not(.MuiSwitch-switchBase),
+.high-contrast-mode .MuiButton-root {
+  background-color: var(--high-contrast-background) !important;
+  color: var(--high-contrast-text) !important;
+  border: 2px solid var(--high-contrast-border) !important;
+}
+
+.high-contrast-mode button:hover:not(.MuiSwitch-switchBase),
+.high-contrast-mode .MuiButton-root:hover {
+  background-color: #333333 !important;
+}
+
+/* Focus indicators */
+.high-contrast-mode *:focus {
+  outline: 3px solid var(--high-contrast-focus) !important;
+  outline-offset: 2px !important;
+}
+
+/* Form elements */
+.high-contrast-mode input,
+.high-contrast-mode textarea,
+.high-contrast-mode select {
+  background-color: var(--high-contrast-background) !important;
+  color: var(--high-contrast-text) !important;
+  border: 2px solid var(--high-contrast-border) !important;
+}
+
+/* Icons */
+.high-contrast-mode .MuiSvgIcon-root {
+  color: var(--high-contrast-text) !important;
+}
+
+/* Cards and containers */
+.high-contrast-mode .MuiPaper-root,
+.high-contrast-mode .MuiCard-root,
+.high-contrast-mode .MuiAppBar-root,
+.high-contrast-mode .MuiDrawer-paper,
+.high-contrast-mode .MuiDialog-paper {
+  background-color: var(--high-contrast-background) !important;
+  color: var(--high-contrast-text) !important;
+  border: 2px solid var(--high-contrast-border) !important;
+}
+
+/* Dividers */
+.high-contrast-mode .MuiDivider-root {
+  background-color: var(--high-contrast-text) !important;
+  height: 2px !important;
+}
+
+/* Checkboxes, radio buttons, and switches */
+.high-contrast-mode .MuiCheckbox-root.Mui-checked,
+.high-contrast-mode .MuiRadio-root.Mui-checked,
+.high-contrast-mode .MuiSwitch-switchBase.Mui-checked {
+  color: var(--high-contrast-primary) !important;
+}
+
+.high-contrast-mode .MuiSwitch-track {
+  background-color: var(--high-contrast-text) !important;
+}
+
+/* Tables */
+.high-contrast-mode .MuiTable-root {
+  border: 2px solid var(--high-contrast-border) !important;
+}
+
+.high-contrast-mode .MuiTableCell-root {
+  border: 1px solid var(--high-contrast-border) !important;
+  color: var(--high-contrast-text) !important;
+}
+
+.high-contrast-mode .MuiTableRow-root:nth-of-type(odd) {
+  background-color: #222222 !important;
+}
+
+/* Large Text Mode */
+.large-text-mode {
+  --large-text-scale: 1.25;
+}
+
+.large-text-mode p,
+.large-text-mode span,
+.large-text-mode label,
+.large-text-mode input,
+.large-text-mode textarea,
+.large-text-mode button,
+.large-text-mode a {
+  font-size: calc(1em * var(--large-text-scale)) !important;
+  line-height: 1.5 !important;
+}
+
+.large-text-mode h1 {
+  font-size: calc(2.5em * var(--large-text-scale)) !important;
+}
+
+.large-text-mode h2 {
+  font-size: calc(2em * var(--large-text-scale)) !important;
+}
+
+.large-text-mode h3 {
+  font-size: calc(1.75em * var(--large-text-scale)) !important;
+}
+
+.large-text-mode h4 {
+  font-size: calc(1.5em * var(--large-text-scale)) !important;
+}
+
+.large-text-mode h5 {
+  font-size: calc(1.25em * var(--large-text-scale)) !important;
+}
+
+.large-text-mode h6 {
+  font-size: calc(1.1em * var(--large-text-scale)) !important;
+}
+
+/* Reduced Motion Mode */
+.reduced-motion {
+  --reduced-transition: none !important;
+}
+
+.reduced-motion * {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Screen Reader Optimized */
+.screen-reader-optimized .visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.screen-reader-optimized .sr-only-focusable:active,
+.screen-reader-optimized .sr-only-focusable:focus {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  overflow: visible !important;
+  clip: auto !important;
+  white-space: normal !important;
+} 

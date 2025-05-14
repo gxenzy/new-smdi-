@@ -1,11 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { useSnackbar } from 'notistack';
-import jwt_decode from 'jwt-decode';
-
-// Define user roles
-export type UserRole = 'admin' | 'auditor' | 'viewer';
+import * as authService from '../services/authService';
+import * as userService from '../services/userService';
+import { UserRole, NotificationPreferences, NotificationType } from '../types';
 
 // Define user interface
 export interface User {
@@ -22,10 +19,7 @@ export interface User {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
-  notificationPreferences?: {
-    enabled: boolean;
-    types: string[];
-  };
+  notificationPreferences?: NotificationPreferences;
 }
 
 // Define auth context type
@@ -36,11 +30,11 @@ interface AuthContextType {
   hasRole: (role: UserRole) => boolean;
   loading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   register: (userData: Partial<User>, password: string) => Promise<boolean>;
   updateUser: (userData: Partial<User>) => Promise<boolean>;
-  resetPassword: (email: string) => Promise<boolean>;
+  resetPassword: (username: string) => Promise<boolean>;
   checkAuth: () => Promise<boolean>;
 }
 
@@ -63,23 +57,6 @@ const AuthContext = createContext<AuthContextType>({
 // Hook to use auth context
 export const useAuthContext = () => useContext(AuthContext);
 
-// Mock user data for development
-const MOCK_USER: User = {
-  id: 'user1',
-  name: 'John Doe',
-  email: 'john.doe@example.com',
-  username: 'johndoe',
-  firstName: 'John',
-  lastName: 'Doe',
-  role: 'admin',
-  department: 'Engineering',
-  profileImage: 'https://i.pravatar.cc/150?img=68',
-  lastLogin: new Date(),
-  isActive: true,
-  createdAt: new Date('2023-01-01'),
-  updatedAt: new Date()
-};
-
 // Auth provider component
 interface AuthProviderProps {
   children: ReactNode;
@@ -89,6 +66,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   // Check if user has a specific role
   const hasRole = (role: UserRole): boolean => {
@@ -99,17 +77,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // In a real app, this would call an API to verify the token and get user data
-        // For this example, we'll simulate a successful authentication
-        await new Promise(resolve => setTimeout(resolve, 500));
+        setLoading(true);
+        const token = localStorage.getItem('token');
         
-        const savedUser = localStorage.getItem('currentUser');
-        if (savedUser) {
-          setCurrentUser(JSON.parse(savedUser));
+        if (token) {
+          // Check if token is valid
+          const user = await authService.verifyToken();
+          if (user) {
+            setCurrentUser(user);
+          }
         } else {
-          // Auto-login with mock user for development
-          setCurrentUser(MOCK_USER);
-          localStorage.setItem('currentUser', JSON.stringify(MOCK_USER));
+          // Try to restore from localStorage as fallback
+          const savedUser = localStorage.getItem('currentUser');
+          if (savedUser) {
+            try {
+              // Verify that the cached user is still valid with the server
+              await authService.verifyToken();
+              setCurrentUser(JSON.parse(savedUser));
+            } catch (err) {
+              // Token invalid, remove saved user
+              localStorage.removeItem('currentUser');
+              localStorage.removeItem('token');
+            }
+          }
         }
       } catch (err) {
         console.error('Authentication error:', err);
@@ -123,27 +113,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   // Login function
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (username: string, password: string): Promise<boolean> => {
     setLoading(true);
     setError(null);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      // Simple email/password validation for demo
-      if (email.length < 5 || !email.includes('@') || password.length < 6) {
-        setError('Invalid email or password');
-        return false;
-      }
-
-      // Mock successful login
-      setCurrentUser(MOCK_USER);
-      localStorage.setItem('currentUser', JSON.stringify(MOCK_USER));
+      console.log('Logging in with username:', username);
+      const response = await authService.login(username, password);
+      setCurrentUser(response.user);
       return true;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Login error:', err);
-      setError('Login failed. Please try again.');
+      setError(err.message || 'Invalid username or password. Please try again.');
       return false;
     } finally {
       setLoading(false);
@@ -155,12 +136,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Clear user data and storage
+      await authService.logout();
       setCurrentUser(null);
-      localStorage.removeItem('currentUser');
+      navigate('/login');
     } catch (err) {
       console.error('Logout error:', err);
       setError('Logout failed. Please try again.');
@@ -175,66 +153,51 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // For demo, just log the registration attempt
-      console.log('Register attempt:', { userData, password });
-      
-      // Simulate successful registration
-      const newUser: User = {
-        ...MOCK_USER,
-        id: 'new_user_id',
-        name: userData.name || 'New User',
-        email: userData.email || 'new.user@example.com',
-        username: userData.username || 'newuser',
-        firstName: userData.firstName || 'New',
-        lastName: userData.lastName || 'User',
-        role: userData.role || 'viewer',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        isActive: true
-      };
-      
-      setCurrentUser(newUser);
-      localStorage.setItem('currentUser', JSON.stringify(newUser));
+      // Call register API
+      await authService.register(userData, password);
       return true;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Registration error:', err);
-      setError('Registration failed. Please try again.');
+      setError(err.message || 'Registration failed. Please try again.');
       return false;
     } finally {
       setLoading(false);
     }
   };
 
-  // Update user function
+  /**
+   * Update current user's profile
+   */
   const updateUser = async (userData: Partial<User>): Promise<boolean> => {
-    setLoading(true);
-    setError(null);
-
+    if (!currentUser) {
+      console.error('Cannot update user: No current user');
+      return false;
+    }
+    
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      if (!currentUser) {
-        setError('No user is currently logged in');
-        return false;
-      }
-
-      // Update user data
-      const updatedUser: User = {
-        ...currentUser,
-        ...userData,
-        updatedAt: new Date()
-      };
-
+      setLoading(true);
+      
+      // Call updateUser service method
+      const result = await userService.updateUser(currentUser.id, userData);
+      
+      // Extract user from result (new response format)
+      const updatedUser = result.user;
+      
+      // Update user in state
       setCurrentUser(updatedUser);
+      
+      // Update user in storage with correct key
       localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+      
+      // If we used an emergency endpoint, show an indicator
+      if (result.emergencyUsed) {
+        console.log('Used emergency database update for user update');
+        // We could dispatch an event or set a state here if needed
+      }
+      
       return true;
-    } catch (err) {
-      console.error('Update user error:', err);
-      setError('Failed to update user information. Please try again.');
+    } catch (error) {
+      console.error('Error updating user:', error);
       return false;
     } finally {
       setLoading(false);
@@ -247,21 +210,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      // Simple validation for demo
-      if (!email || !email.includes('@')) {
-        setError('Please provide a valid email address');
-        return false;
-      }
-
-      // In a real app, this would send a password reset email
-      console.log('Password reset requested for:', email);
+      await authService.requestPasswordReset(email);
       return true;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Password reset error:', err);
-      setError('Failed to request password reset. Please try again.');
+      setError(err.message || 'Failed to request password reset. Please try again.');
       return false;
     } finally {
       setLoading(false);
@@ -270,7 +223,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Check authentication function
   const checkAuth = async (): Promise<boolean> => {
-    // In a real app, this would verify the auth token with backend
+    if (authService.isTokenExpired()) {
+      setCurrentUser(null);
+      return false;
+    }
+    
     return !!currentUser;
   };
 

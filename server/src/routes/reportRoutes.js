@@ -6,7 +6,7 @@ const auth = require('../middleware/auth');
 const router = express.Router();
 
 // Apply authentication middleware to all routes
-router.use(auth);
+router.use(auth.authenticateToken);
 
 // Helper function to handle async controller functions
 const asyncHandler = (fn) => 

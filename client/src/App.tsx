@@ -5,6 +5,11 @@ import { useLocation } from 'react-router-dom';
 import { ErrorBoundary } from 'react-error-boundary';
 import { CircularProgress, Box, Typography, Button } from '@mui/material';
 import { EnergyAuditProvider } from './contexts/EnergyAuditContext';
+import { AccessibilitySettingsProvider } from './contexts/AccessibilitySettingsContext';
+import ChartAccessibilityProvider from './utils/reportGenerator/ChartAccessibilityProvider';
+import { EmergencyModeProvider, useEmergencyMode } from './contexts/EmergencyModeContext';
+import EmergencyDbUpdateBanner from './components/UI/EmergencyDbUpdateBanner';
+import { Toaster } from 'react-hot-toast';
 
 function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
   return (
@@ -47,12 +52,14 @@ function LoadingFallback() {
   );
 }
 
-function AppContent() {
+function AppContentWithEmergencyBanner() {
+  const { isEmergencyMode } = useEmergencyMode();
+  
   return (
-    <div style={{ padding: 40, fontSize: 24, color: 'red' }}>
-      The frontend is working!<br />
-      (If you see this, the white screen is fixed. Backend/API errors will not prevent this message from showing.)
-    </div>
+    <>
+      {isEmergencyMode && <EmergencyDbUpdateBanner />}
+      <AppRoutes />
+    </>
   );
 }
 
@@ -60,21 +67,30 @@ function App() {
   const location = useLocation();
   
   return (
-    <ErrorBoundary
-      FallbackComponent={ErrorFallback}
-      onReset={() => {
-        // Reset the state of your app here
-        window.location.href = '/';
-      }}
-    >
-      <EnergyAuditProvider>
-        <Suspense fallback={<LoadingFallback />}>
-          <AnimatePresence mode="wait">
-            <AppRoutes key={location.pathname} />
-          </AnimatePresence>
-        </Suspense>
-      </EnergyAuditProvider>
-    </ErrorBoundary>
+    <>
+      <Toaster position="top-right" />
+      <ErrorBoundary
+        FallbackComponent={ErrorFallback}
+        onReset={() => {
+          // Reset the state of your app here
+          window.location.href = '/';
+        }}
+      >
+        <EmergencyModeProvider>
+          <AccessibilitySettingsProvider>
+            <ChartAccessibilityProvider>
+              <EnergyAuditProvider>
+                <Suspense fallback={<LoadingFallback />}>
+                  <AnimatePresence mode="wait">
+                    <AppContentWithEmergencyBanner key={location.pathname} />
+                  </AnimatePresence>
+                </Suspense>
+              </EnergyAuditProvider>
+            </ChartAccessibilityProvider>
+          </AccessibilitySettingsProvider>
+        </EmergencyModeProvider>
+      </ErrorBoundary>
+    </>
   );
 }
 

@@ -15,19 +15,24 @@ import {
   Select,
   MenuItem,
   Card,
-  CardContent
+  CardContent,
+  CircularProgress
 } from '@mui/material';
 import { Save as SaveIcon } from '@mui/icons-material';
 import type { SystemSettings } from '../../../types';
 import { UserRole } from '../../../types';
 import * as adminService from '../../../services/adminService';
+import { useEmergencyMode } from '../../../contexts/EmergencyModeContext';
 import { SelectChangeEvent } from '@mui/material';
 
-const SystemSettings: React.FC = () => {
+const SystemSettingsPage: React.FC = () => {
+  const { isEmergencyMode, setEmergencyMode } = useEmergencyMode();
   const [settings, setSettings] = useState<SystemSettings>({
     siteName: '',
     maintenanceMode: false,
+    emergencyMode: isEmergencyMode,
     registrationEnabled: true,
+    allowRegistration: true,
     defaultRole: UserRole.VIEWER,
     passwordPolicy: {
       minLength: 8,
@@ -39,7 +44,8 @@ const SystemSettings: React.FC = () => {
     sessionTimeout: 30,
     maxLoginAttempts: 5
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -47,13 +53,30 @@ const SystemSettings: React.FC = () => {
     loadSettings();
   }, []);
 
+  // Update settings when emergency mode changes in context
+  useEffect(() => {
+    setSettings(prevSettings => ({
+      ...prevSettings,
+      emergencyMode: isEmergencyMode
+    }));
+  }, [isEmergencyMode]);
+
   const loadSettings = async () => {
     try {
+      setLoading(true);
+      setError(null);
       const data = await adminService.getSystemSettings();
       setSettings(data);
-    } catch (error) {
+      
+      // Synchronize emergency mode with context
+      if (data.emergencyMode !== undefined) {
+        setEmergencyMode(data.emergencyMode);
+      }
+    } catch (error: any) {
       console.error('Error loading settings:', error);
-      setError('Failed to load system settings');
+      setError('Failed to load system settings: ' + (error.message || 'Unknown error'));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -93,19 +116,31 @@ const SystemSettings: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
-      setLoading(true);
+      setSaving(true);
       setError(null);
       setSuccess(null);
       
       await adminService.updateSystemSettings(settings);
+      
+      // Update emergency mode in context to ensure it's synchronized
+      setEmergencyMode(settings.emergencyMode);
+      
       setSuccess('Settings updated successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving settings:', error);
-      setError('Failed to update settings');
+      setError('Failed to update settings: ' + (error.message || 'Unknown error'));
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -154,6 +189,23 @@ const SystemSettings: React.FC = () => {
                 <FormControlLabel
                   control={
                     <Switch
+                      checked={settings.emergencyMode}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        handleInputChange(e);
+                        setEmergencyMode(checked);
+                      }}
+                      name="emergencyMode"
+                    />
+                  }
+                  label="Emergency Mode"
+                />
+                <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 2 }}>
+                  Enables fallback operation during API outages
+                </Typography>
+                <FormControlLabel
+                  control={
+                    <Switch
                       checked={settings.registrationEnabled}
                       onChange={handleInputChange}
                       name="registrationEnabled"
@@ -169,15 +221,7 @@ const SystemSettings: React.FC = () => {
                     onChange={handleRoleChange}
                     label="Default Role"
                   >
-                    {[
-                      UserRole.ADMIN,
-                      UserRole.MANAGER,
-                      UserRole.AUDITOR,
-                      UserRole.REVIEWER,
-                      UserRole.VIEWER,
-                      UserRole.STAFF,
-                      UserRole.MODERATOR
-                    ].map((role) => (
+                    {Object.values(UserRole).map((role) => (
                       <MenuItem key={role} value={role}>
                         {role}
                       </MenuItem>
@@ -291,11 +335,11 @@ const SystemSettings: React.FC = () => {
         <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
           <Button
             variant="contained"
-            startIcon={<SaveIcon />}
+            startIcon={saving ? <CircularProgress size={20} /> : <SaveIcon />}
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={saving}
           >
-            Save Settings
+            {saving ? 'Saving...' : 'Save Settings'}
           </Button>
         </Box>
       </Paper>
@@ -303,4 +347,4 @@ const SystemSettings: React.FC = () => {
   );
 };
 
-export default SystemSettings; 
+export default SystemSettingsPage; 

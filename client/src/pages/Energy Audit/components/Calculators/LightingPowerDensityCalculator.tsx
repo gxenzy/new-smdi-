@@ -49,6 +49,7 @@ import PreviewIcon from '@mui/icons-material/Preview';
 import TemplateIcon from '@mui/icons-material/AutoAwesome';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
+import RestoreIcon from '@mui/icons-material/Restore';
 
 import { saveCalculation } from './utils/storage';
 import {
@@ -73,6 +74,24 @@ import { BuildingStandardsType } from './utils/standards';
 
 // Import PDF export functionality
 import { exportLPDToPDF, createLPDPDFDataUrl } from './utils/pdfExport';
+
+// Import data persistence utilities
+import { 
+  saveCalculatorState, 
+  loadCalculatorState, 
+  hasDraftState, 
+  clearDraftState,
+  createAutoSave 
+} from './utils/calculatorStateStorage';
+import CalculatorStateRecoveryDialog from './utils/CalculatorStateRecoveryDialog';
+
+// Define the state structure for storage
+interface LightingCalculatorState {
+  roomData: RoomData;
+  calculation: LPDResult | null;
+  isCalculated: boolean;
+  energyParameters: EnergyParameters;
+}
 
 const LightingPowerDensityCalculator: React.FC = () => {
   const theme = useTheme();
@@ -133,6 +152,93 @@ const LightingPowerDensityCalculator: React.FC = () => {
     message: '',
     severity: 'info'
   });
+
+  // Add state for recovery dialog and save dialog
+  const [recoveryDialogOpen, setRecoveryDialogOpen] = useState<boolean>(false);
+  const [isInitialLoad, setIsInitialLoad] = useState<boolean>(true);
+  const [saveDialogOpen, setSaveDialogOpen] = useState<boolean>(false);
+  const [saveName, setSaveName] = useState<string>('');
+  
+  // Create auto-save function with debounce
+  const autoSave = createAutoSave<LightingCalculatorState>('lighting', 3000);
+  
+  // Check for draft and handle recovery on initial load
+  useEffect(() => {
+    if (isInitialLoad) {
+      const hasDraft = hasDraftState('lighting');
+      if (hasDraft) {
+        setRecoveryDialogOpen(true);
+      }
+      setIsInitialLoad(false);
+    }
+  }, [isInitialLoad]);
+  
+  // Auto-save whenever state changes
+  useEffect(() => {
+    // Only trigger auto-save if not on initial load and there's at least one fixture
+    if (!isInitialLoad && roomData.fixtures.length > 0) {
+      const state: LightingCalculatorState = {
+        roomData,
+        calculation,
+        isCalculated,
+        energyParameters
+      };
+      autoSave(state);
+    }
+  }, [roomData, calculation, isCalculated, energyParameters, isInitialLoad]);
+  
+  // Recovery dialog handlers
+  const handleRecoverDraft = () => {
+    try {
+      const savedState = loadCalculatorState<LightingCalculatorState>('lighting', true);
+      if (savedState) {
+        setRoomData(savedState.roomData);
+        setCalculation(savedState.calculation);
+        setIsCalculated(savedState.isCalculated);
+        setEnergyParameters(savedState.energyParameters);
+        
+        showNotification('Recovered draft calculation', 'success');
+      }
+    } catch (error) {
+      console.error('Failed to recover draft:', error);
+      showNotification('Failed to recover draft', 'error');
+    }
+    
+    setRecoveryDialogOpen(false);
+  };
+  
+  const handleDiscardDraft = () => {
+    clearDraftState('lighting');
+    setRecoveryDialogOpen(false);
+    showNotification('Discarded draft calculation', 'info');
+  };
+
+  // Save dialog functions
+  const handleOpenSaveDialog = () => {
+    if (isCalculated && calculation) {
+      setSaveName(`Lighting Calculation - ${roomData.name}`);
+      setSaveDialogOpen(true);
+    } else {
+      showNotification('Please calculate results before saving', 'warning');
+    }
+  };
+  
+  const handleSaveDialogClose = () => {
+    setSaveDialogOpen(false);
+  };
+  
+  const handleSaveConfirm = () => {
+    if (saveName.trim() === '') {
+      showNotification('Please enter a name for the calculation', 'warning');
+      return;
+    }
+    
+    handleSave();
+    setSaveDialogOpen(false);
+    
+    // Clear draft state after explicit save
+    clearDraftState('lighting');
+  };
   
   // Load standards on component mount
   useEffect(() => {
@@ -390,24 +496,44 @@ const LightingPowerDensityCalculator: React.FC = () => {
     }
   };
   
-  // Save calculation
+  // Modify handleSave to include the updated save functionality
   const handleSave = () => {
-    if (calculation) {
-      const id = saveCalculation(
-        'lighting',
-        `LPD Calculation - ${roomData.name}`,
+    if (!isCalculated || !calculation) {
+      showNotification('Please calculate results before saving', 'warning');
+      return;
+    }
+    
+    try {
+      // Save the calculation to the saved calculations store
+      const savedId = saveCalculation('lighting', 
+        saveName || `Lighting Calculation - ${roomData.name}`,
         {
           roomData,
-          results: calculation,
-          timestamp: new Date().toISOString()
+          calculation,
+          energyParameters,
+          calculatedSavings: calculateSavings
         }
       );
       
-      if (id) {
-        showNotification('Calculation saved successfully!', 'success');
-      } else {
-        showNotification('Failed to save calculation. Please try again.', 'error');
+      if (!savedId) {
+        throw new Error('Failed to save calculation to storage');
       }
+      
+      // Also save to calculator state storage as a permanent saved state
+      saveCalculatorState('lighting', {
+        roomData,
+        calculation,
+        isCalculated,
+        energyParameters
+      }, false); // false means this is a user-saved state, not a draft
+      
+      // Clear draft state after explicit save
+      clearDraftState('lighting');
+      
+      showNotification('Calculation saved successfully', 'success');
+    } catch (error) {
+      console.error('Failed to save calculation:', error);
+      showNotification('Failed to save calculation', 'error');
     }
   };
   
@@ -454,486 +580,528 @@ const LightingPowerDensityCalculator: React.FC = () => {
   };
   
   return (
-    <Box sx={{ width: '100%' }}>
-      <Typography variant="h5" gutterBottom>
-        Lighting Power Density (LPD) Calculator
-      </Typography>
+    <>
+      {/* Add Recovery Dialog */}
+      <CalculatorStateRecoveryDialog
+        open={recoveryDialogOpen}
+        onClose={() => setRecoveryDialogOpen(false)}
+        calculatorType="lighting"
+        onRecoverDraft={handleRecoverDraft}
+        onDiscardDraft={handleDiscardDraft}
+      />
       
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Calculate lighting power density and verify compliance with PEC 2017 standards.
-        Enter room details and add fixtures to determine if your lighting design meets energy efficiency requirements.
-      </Typography>
+      {/* Add Save Dialog */}
+      <Dialog
+        open={saveDialogOpen}
+        onClose={handleSaveDialogClose}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Save Calculation</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Calculation Name"
+            fullWidth
+            value={saveName}
+            onChange={(e) => setSaveName(e.target.value)}
+            variant="outlined"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleSaveDialogClose}>Cancel</Button>
+          <Button 
+            onClick={handleSaveConfirm} 
+            color="primary" 
+            startIcon={<SaveIcon />}
+          >
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
       
-      {isLoadingStandards && (
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <CircularProgress size={20} sx={{ mr: 1 }} />
-          <Typography variant="body2" color="text.secondary">
-            Loading standards data...
-          </Typography>
-        </Box>
-      )}
-      
-      {error && (
-        <Paper 
-          elevation={0} 
-          sx={{ 
-            p: 2, 
-            mb: 3, 
-            bgcolor: 'error.light', 
-            color: 'error.main',
-            borderRadius: 1
-          }}
-        >
-          <Typography variant="body2">{error}</Typography>
-        </Paper>
-      )}
-      
-      <Grid container spacing={3}>
-        {/* Room Information Section */}
-        <Grid item xs={12} md={6}>
-          <Paper elevation={2} sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Room Information
-            </Typography>
-            
-            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
-              <Button
-                variant="outlined"
-                startIcon={<TemplateIcon />}
-                onClick={openPresetsDialog}
-                size="small"
-              >
-                Load Preset
-              </Button>
-            </Box>
-            
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Room Name"
-                  name="name"
-                  value={roomData.name}
-                  onChange={handleTextInputChange('name')}
-                  margin="normal"
-                />
-              </Grid>
-              
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Room Area"
-                  name="area"
-                  type="number"
-                  value={roomData.area}
-                  onChange={handleTextInputChange('area')}
-                  InputProps={{
-                    endAdornment: <InputAdornment position="end">m²</InputAdornment>
-                  }}
-                  margin="normal"
-                />
-              </Grid>
-              
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth margin="normal">
-                  <InputLabel>Building Type</InputLabel>
-                  <Select
-                    value={roomData.buildingType}
-                    label="Building Type"
-                    onChange={handleSelectChange('buildingType')}
-                  >
-                    {Object.entries(buildingStandards).map(([key, { label }]) => (
-                      <MenuItem key={key} value={key}>{label}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              
-              <Grid item xs={12}>
-                <Tooltip title={`Maximum LPD for ${buildingStandards[roomData.buildingType as keyof typeof buildingStandards]?.label}: ${buildingStandards[roomData.buildingType as keyof typeof buildingStandards]?.maxLPD} W/m²`} arrow>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <InfoOutlinedIcon color="info" sx={{ mr: 1 }} />
-                    <Typography variant="body2" color="info.main">
-                      PEC Standard: {buildingStandards[roomData.buildingType as keyof typeof buildingStandards]?.maxLPD} W/m²
-                    </Typography>
-                  </Box>
-                </Tooltip>
-              </Grid>
-            </Grid>
-          </Paper>
-        </Grid>
+      <Box sx={{ width: '100%' }}>
+        <Typography variant="h5" gutterBottom>
+          Lighting Power Density (LPD) Calculator
+        </Typography>
         
-        {/* Add Fixtures Section */}
-        <Grid item xs={12} md={6}>
-          <Paper elevation={2} sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Add Fixtures
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Calculate lighting power density and verify compliance with PEC 2017 standards.
+          Enter room details and add fixtures to determine if your lighting design meets energy efficiency requirements.
+        </Typography>
+        
+        {isLoadingStandards && (
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <CircularProgress size={20} sx={{ mr: 1 }} />
+            <Typography variant="body2" color="text.secondary">
+              Loading standards data...
             </Typography>
-            
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth margin="normal">
-                  <InputLabel>Fixture Type</InputLabel>
-                  <Select
-                    value={customFixtureSelected ? 'custom' : newFixture.name}
-                    label="Fixture Type"
-                    onChange={handleFixtureTypeChange}
-                  >
-                    {DEFAULT_FIXTURES.map(fixture => (
-                      <MenuItem key={fixture.name} value={fixture.name}>
-                        {fixture.name} ({fixture.wattage}W)
-                      </MenuItem>
-                    ))}
-                    <MenuItem value="custom">Custom Fixture</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
+          </Box>
+        )}
+        
+        {error && (
+          <Paper 
+            elevation={0} 
+            sx={{ 
+              p: 2, 
+              mb: 3, 
+              bgcolor: 'error.light', 
+              color: 'error.main',
+              borderRadius: 1
+            }}
+          >
+            <Typography variant="body2">{error}</Typography>
+          </Paper>
+        )}
+        
+        <Grid container spacing={3}>
+          {/* Room Information Section */}
+          <Grid item xs={12} md={6}>
+            <Paper elevation={2} sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Room Information
+              </Typography>
               
-              {customFixtureSelected && (
-                <Grid item xs={12} sm={6}>
+              <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<TemplateIcon />}
+                  onClick={openPresetsDialog}
+                  size="small"
+                >
+                  Load Preset
+                </Button>
+              </Box>
+              
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
                   <TextField
                     fullWidth
-                    label="Custom Fixture Name"
-                    value={customFixtureName}
-                    onChange={handleCustomFixtureNameChange}
+                    label="Room Name"
+                    name="name"
+                    value={roomData.name}
+                    onChange={handleTextInputChange('name')}
                     margin="normal"
                   />
                 </Grid>
-              )}
-              
-              <Grid item xs={12} sm={customFixtureSelected ? 4 : 6}>
-                <TextField
-                  fullWidth
-                  label="Wattage"
-                  type="number"
-                  value={newFixture.wattage}
-                  onChange={handleNewFixtureChange('wattage')}
-                  InputProps={{
-                    endAdornment: <InputAdornment position="end">W</InputAdornment>
-                  }}
-                  margin="normal"
-                />
-              </Grid>
-              
-              <Grid item xs={customFixtureSelected ? 4 : 6} sm={customFixtureSelected ? 4 : 3}>
-                <TextField
-                  fullWidth
-                  label="Ballast Factor"
-                  type="number"
-                  value={newFixture.ballastFactor}
-                  onChange={handleNewFixtureChange('ballastFactor')}
-                  inputProps={{ step: 0.01, min: 0.5, max: 1.5 }}
-                  margin="normal"
-                />
-              </Grid>
-              
-              <Grid item xs={customFixtureSelected ? 4 : 6} sm={customFixtureSelected ? 4 : 3}>
-                <TextField
-                  fullWidth
-                  label="Quantity"
-                  type="number"
-                  value={newFixture.quantity}
-                  onChange={handleNewFixtureChange('quantity')}
-                  margin="normal"
-                />
-              </Grid>
-              
-              <Grid item xs={12}>
-                <Button
-                  variant="outlined"
-                  color="primary"
-                  startIcon={<AddCircleOutlineIcon />}
-                  onClick={addFixture}
-                  fullWidth
-                >
-                  Add Fixture
-                </Button>
-              </Grid>
-            </Grid>
-          </Paper>
-        </Grid>
-        
-        {/* Fixtures List Section */}
-        <Grid item xs={12}>
-          <Paper elevation={2} sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Fixtures List
-            </Typography>
-            
-            {roomData.fixtures.length > 0 ? (
-              <TableContainer component={Paper} variant="outlined">
-                <Table aria-label="fixtures table">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Fixture Type</TableCell>
-                      <TableCell align="right">Wattage (W)</TableCell>
-                      <TableCell align="right">Ballast Factor</TableCell>
-                      <TableCell align="right">Quantity</TableCell>
-                      <TableCell align="right">Total Wattage (W)</TableCell>
-                      <TableCell align="center">Action</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {roomData.fixtures.map((fixture) => {
-                      const totalFixtureWattage = fixture.wattage * fixture.ballastFactor * fixture.quantity;
-                      
-                      return (
-                        <TableRow key={fixture.id}>
-                          <TableCell component="th" scope="row">
-                            {fixture.name}
-                          </TableCell>
-                          <TableCell align="right">{fixture.wattage}</TableCell>
-                          <TableCell align="right">{fixture.ballastFactor.toFixed(2)}</TableCell>
-                          <TableCell align="right">{fixture.quantity}</TableCell>
-                          <TableCell align="right">{totalFixtureWattage.toFixed(2)}</TableCell>
-                          <TableCell align="center">
-                            <IconButton onClick={() => removeFixture(fixture.id)} color="error" size="small">
-                              <DeleteIcon />
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            ) : (
-              <Box sx={{ p: 2, textAlign: 'center', bgcolor: 'background.default' }}>
-                <Typography variant="body2" color="text.secondary">
-                  No fixtures added yet. Add fixtures using the form above.
-                </Typography>
-              </Box>
-            )}
-            
-            <Box sx={{ mt: 3, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={calculateSavings}
-                      onChange={() => calculateSavings ? setCalculateSavings(false) : openEnergySavingsDialog()}
-                    />
-                  }
-                  label="Calculate Energy Savings"
-                />
-                <Tooltip title="Configure energy savings parameters" arrow>
-                  <IconButton 
-                    size="small" 
-                    color="primary" 
-                    onClick={openEnergySavingsDialog}
-                    disabled={!calculateSavings}
-                  >
-                    <InfoOutlinedIcon />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-              
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  startIcon={isCalculating ? <CircularProgress size={20} color="inherit" /> : <CalculateIcon />}
-                  onClick={calculateLPD}
-                  disabled={roomData.fixtures.length === 0 || isCalculating}
-                >
-                  {isCalculating ? 'Calculating...' : 'Calculate LPD'}
-                </Button>
                 
-                <Button
-                  variant="outlined"
-                  color="secondary"
-                  startIcon={<SaveIcon />}
-                  onClick={handleSave}
-                  disabled={!isCalculated}
-                >
-                  Save Results
-                </Button>
-              </Box>
-            </Box>
-          </Paper>
-        </Grid>
-        
-        {/* Results Section */}
-        {isCalculated && calculation && (
-          <Grid item xs={12}>
-            <Paper elevation={3} sx={{ p: 3, mt: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Calculation Results
-              </Typography>
-              
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={8}>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <Card variant="outlined">
-                        <CardContent>
-                          <Typography color="textSecondary" gutterBottom>
-                            Total Lighting Power
-                          </Typography>
-                          <Typography variant="h5">
-                            {calculation.totalWattage.toFixed(2)} W
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                    
-                    <Grid item xs={12} sm={6}>
-                      <Card variant="outlined">
-                        <CardContent>
-                          <Typography color="textSecondary" gutterBottom>
-                            Lighting Power Density (LPD)
-                          </Typography>
-                          <Typography variant="h5">
-                            {calculation.lpd.toFixed(2)} W/m²
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                    
-                    <Grid item xs={12}>
-                      <Card 
-                        variant="outlined" 
-                        sx={{ 
-                          bgcolor: calculation.isCompliant ? 'success.light' : 'error.light',
-                          borderColor: calculation.isCompliant ? 'success.main' : 'error.main'
-                        }}
-                      >
-                        <CardContent>
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            {calculation.isCompliant ? (
-                              <CheckCircleIcon color="success" sx={{ mr: 1 }} />
-                            ) : (
-                              <ErrorIcon color="error" sx={{ mr: 1 }} />
-                            )}
-                            
-                            <Typography 
-                              variant="h6" 
-                              color={calculation.isCompliant ? 'success.main' : 'error.main'}
-                            >
-                              {calculation.isCompliant ? 'Compliant' : 'Non-Compliant'} with PEC 2017 Standards
-                            </Typography>
-                          </Box>
-                          
-                          <Typography variant="body2" sx={{ mt: 1 }}>
-                            Standard for {calculation.buildingTypeLabel}: {calculation.standardLPD} W/m²
-                          </Typography>
-                          
-                          <Typography variant="body2">
-                            Your design: {calculation.lpd.toFixed(2)} W/m² 
-                            ({calculation.isCompliant 
-                              ? `${((1 - calculation.lpd / calculation.standardLPD) * 100).toFixed(1)}% below limit` 
-                              : `${((calculation.lpd / calculation.standardLPD - 1) * 100).toFixed(1)}% above limit`})
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                    
-                    {calculation.potentialSavings && (
-                      <Grid item xs={12}>
-                        <Card variant="outlined" sx={{ bgcolor: 'info.light', borderColor: 'info.main' }}>
-                          <CardContent>
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              <MonetizationOnIcon color="info" sx={{ mr: 1 }} />
-                              <Typography variant="h6" color="info.main">
-                                Energy Savings Potential
-                              </Typography>
-                            </Box>
-                            
-                            <Grid container spacing={2} sx={{ mt: 1 }}>
-                              <Grid item xs={6} sm={3}>
-                                <Typography variant="body2" color="textSecondary">
-                                  Power Savings:
-                                </Typography>
-                                <Typography variant="body1">
-                                  {calculation.potentialSavings.wattageSavings.toFixed(1)} W
-                                </Typography>
-                              </Grid>
-                              
-                              <Grid item xs={6} sm={3}>
-                                <Typography variant="body2" color="textSecondary">
-                                  Percentage:
-                                </Typography>
-                                <Typography variant="body1">
-                                  {calculation.potentialSavings.percentageSavings.toFixed(1)}%
-                                </Typography>
-                              </Grid>
-                              
-                              <Grid item xs={6} sm={3}>
-                                <Typography variant="body2" color="textSecondary">
-                                  Annual Savings:
-                                </Typography>
-                                <Typography variant="body1">
-                                  {calculation.potentialSavings.estimatedAnnualKwh.toFixed(0)} kWh
-                                </Typography>
-                              </Grid>
-                              
-                              <Grid item xs={6} sm={3}>
-                                <Typography variant="body2" color="textSecondary">
-                                  Cost Savings:
-                                </Typography>
-                                <Typography variant="body1">
-                                  ${calculation.potentialSavings.estimatedAnnualCost.toFixed(2)}/yr
-                                </Typography>
-                              </Grid>
-                            </Grid>
-                          </CardContent>
-                        </Card>
-                      </Grid>
-                    )}
-                  </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Room Area"
+                    name="area"
+                    type="number"
+                    value={roomData.area}
+                    onChange={handleTextInputChange('area')}
+                    InputProps={{
+                      endAdornment: <InputAdornment position="end">m²</InputAdornment>
+                    }}
+                    margin="normal"
+                  />
                 </Grid>
                 
-                <Grid item xs={12} md={4}>
-                  <Card variant="outlined" sx={{ height: '100%' }}>
-                    <CardContent>
-                      <Typography variant="subtitle1" gutterBottom>
-                        Recommendations
-                      </Typography>
-                      
-                      <Divider sx={{ mb: 2 }} />
-                      
-                      {calculation.recommendations.map((recommendation, index) => (
-                        <Typography key={index} variant="body2" paragraph>
-                          {recommendation}
-                        </Typography>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth margin="normal">
+                    <InputLabel>Building Type</InputLabel>
+                    <Select
+                      value={roomData.buildingType}
+                      label="Building Type"
+                      onChange={handleSelectChange('buildingType')}
+                    >
+                      {Object.entries(buildingStandards).map(([key, { label }]) => (
+                        <MenuItem key={key} value={key}>{label}</MenuItem>
                       ))}
-                    </CardContent>
-                  </Card>
+                    </Select>
+                  </FormControl>
                 </Grid>
                 
                 <Grid item xs={12}>
-                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
-                    <Button
-                      variant="outlined"
-                      startIcon={<PreviewIcon />}
-                      onClick={handlePreviewPDF}
-                    >
-                      Preview PDF
-                    </Button>
-                    
-                    <Button
-                      variant="contained"
-                      startIcon={<PictureAsPdfIcon />}
-                      onClick={handleExportPDF}
-                    >
-                      Export PDF
-                    </Button>
-                  </Box>
-                </Grid>
-                
-                <Grid item xs={12}>
-                  <Box sx={{ bgcolor: 'background.default', p: 2, borderRadius: 1 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      <strong>Note:</strong> This calculator uses the Philippine Green Building Code standards for Lighting Power Density.
-                      Values are based on space function and building type, with a focus on energy efficiency.
-                    </Typography>
-                  </Box>
+                  <Tooltip title={`Maximum LPD for ${buildingStandards[roomData.buildingType as keyof typeof buildingStandards]?.label}: ${buildingStandards[roomData.buildingType as keyof typeof buildingStandards]?.maxLPD} W/m²`} arrow>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <InfoOutlinedIcon color="info" sx={{ mr: 1 }} />
+                      <Typography variant="body2" color="info.main">
+                        PEC Standard: {buildingStandards[roomData.buildingType as keyof typeof buildingStandards]?.maxLPD} W/m²
+                      </Typography>
+                    </Box>
+                  </Tooltip>
                 </Grid>
               </Grid>
             </Paper>
           </Grid>
-        )}
-      </Grid>
+          
+          {/* Add Fixtures Section */}
+          <Grid item xs={12} md={6}>
+            <Paper elevation={2} sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Add Fixtures
+              </Typography>
+              
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth margin="normal">
+                    <InputLabel>Fixture Type</InputLabel>
+                    <Select
+                      value={customFixtureSelected ? 'custom' : newFixture.name}
+                      label="Fixture Type"
+                      onChange={handleFixtureTypeChange}
+                    >
+                      {DEFAULT_FIXTURES.map(fixture => (
+                        <MenuItem key={fixture.name} value={fixture.name}>
+                          {fixture.name} ({fixture.wattage}W)
+                        </MenuItem>
+                      ))}
+                      <MenuItem value="custom">Custom Fixture</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                
+                {customFixtureSelected && (
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="Custom Fixture Name"
+                      value={customFixtureName}
+                      onChange={handleCustomFixtureNameChange}
+                      margin="normal"
+                    />
+                  </Grid>
+                )}
+                
+                <Grid item xs={12} sm={customFixtureSelected ? 4 : 6}>
+                  <TextField
+                    fullWidth
+                    label="Wattage"
+                    type="number"
+                    value={newFixture.wattage}
+                    onChange={handleNewFixtureChange('wattage')}
+                    InputProps={{
+                      endAdornment: <InputAdornment position="end">W</InputAdornment>
+                    }}
+                    margin="normal"
+                  />
+                </Grid>
+                
+                <Grid item xs={customFixtureSelected ? 4 : 6} sm={customFixtureSelected ? 4 : 3}>
+                  <TextField
+                    fullWidth
+                    label="Ballast Factor"
+                    type="number"
+                    value={newFixture.ballastFactor}
+                    onChange={handleNewFixtureChange('ballastFactor')}
+                    inputProps={{ step: 0.01, min: 0.5, max: 1.5 }}
+                    margin="normal"
+                  />
+                </Grid>
+                
+                <Grid item xs={customFixtureSelected ? 4 : 6} sm={customFixtureSelected ? 4 : 3}>
+                  <TextField
+                    fullWidth
+                    label="Quantity"
+                    type="number"
+                    value={newFixture.quantity}
+                    onChange={handleNewFixtureChange('quantity')}
+                    margin="normal"
+                  />
+                </Grid>
+                
+                <Grid item xs={12}>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    startIcon={<AddCircleOutlineIcon />}
+                    onClick={addFixture}
+                    fullWidth
+                  >
+                    Add Fixture
+                  </Button>
+                </Grid>
+              </Grid>
+            </Paper>
+          </Grid>
+          
+          {/* Fixtures List Section */}
+          <Grid item xs={12}>
+            <Paper elevation={2} sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Fixtures List
+              </Typography>
+              
+              {roomData.fixtures.length > 0 ? (
+                <TableContainer component={Paper} variant="outlined">
+                  <Table aria-label="fixtures table">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Fixture Type</TableCell>
+                        <TableCell align="right">Wattage (W)</TableCell>
+                        <TableCell align="right">Ballast Factor</TableCell>
+                        <TableCell align="right">Quantity</TableCell>
+                        <TableCell align="right">Total Wattage (W)</TableCell>
+                        <TableCell align="center">Action</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {roomData.fixtures.map((fixture) => {
+                        const totalFixtureWattage = fixture.wattage * fixture.ballastFactor * fixture.quantity;
+                        
+                        return (
+                          <TableRow key={fixture.id}>
+                            <TableCell component="th" scope="row">
+                              {fixture.name}
+                            </TableCell>
+                            <TableCell align="right">{fixture.wattage}</TableCell>
+                            <TableCell align="right">{fixture.ballastFactor.toFixed(2)}</TableCell>
+                            <TableCell align="right">{fixture.quantity}</TableCell>
+                            <TableCell align="right">{totalFixtureWattage.toFixed(2)}</TableCell>
+                            <TableCell align="center">
+                              <IconButton onClick={() => removeFixture(fixture.id)} color="error" size="small">
+                                <DeleteIcon />
+                              </IconButton>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                <Box sx={{ p: 2, textAlign: 'center', bgcolor: 'background.default' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    No fixtures added yet. Add fixtures using the form above.
+                  </Typography>
+                </Box>
+              )}
+              
+              <Box sx={{ mt: 3, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={calculateSavings}
+                        onChange={() => calculateSavings ? setCalculateSavings(false) : openEnergySavingsDialog()}
+                      />
+                    }
+                    label="Calculate Energy Savings"
+                  />
+                  <Tooltip title="Configure energy savings parameters" arrow>
+                    <IconButton 
+                      size="small" 
+                      color="primary" 
+                      onClick={openEnergySavingsDialog}
+                      disabled={!calculateSavings}
+                    >
+                      <InfoOutlinedIcon />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+                
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={isCalculating ? <CircularProgress size={20} color="inherit" /> : <CalculateIcon />}
+                    onClick={calculateLPD}
+                    disabled={roomData.fixtures.length === 0 || isCalculating}
+                  >
+                    {isCalculating ? 'Calculating...' : 'Calculate LPD'}
+                  </Button>
+                  
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    startIcon={<SaveIcon />}
+                    onClick={handleOpenSaveDialog}
+                    disabled={!isCalculated}
+                  >
+                    Save Results
+                  </Button>
+                </Box>
+              </Box>
+            </Paper>
+          </Grid>
+          
+          {/* Results Section */}
+          {isCalculated && calculation && (
+            <Grid item xs={12}>
+              <Paper elevation={3} sx={{ p: 3, mt: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Calculation Results
+                </Typography>
+                
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={8}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <Card variant="outlined">
+                          <CardContent>
+                            <Typography color="textSecondary" gutterBottom>
+                              Total Lighting Power
+                            </Typography>
+                            <Typography variant="h5">
+                              {calculation.totalWattage.toFixed(2)} W
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                      
+                      <Grid item xs={12} sm={6}>
+                        <Card variant="outlined">
+                          <CardContent>
+                            <Typography color="textSecondary" gutterBottom>
+                              Lighting Power Density (LPD)
+                            </Typography>
+                            <Typography variant="h5">
+                              {calculation.lpd.toFixed(2)} W/m²
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                      
+                      <Grid item xs={12}>
+                        <Card 
+                          variant="outlined" 
+                          sx={{ 
+                            bgcolor: calculation.isCompliant ? 'success.light' : 'error.light',
+                            borderColor: calculation.isCompliant ? 'success.main' : 'error.main'
+                          }}
+                        >
+                          <CardContent>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              {calculation.isCompliant ? (
+                                <CheckCircleIcon color="success" sx={{ mr: 1 }} />
+                              ) : (
+                                <ErrorIcon color="error" sx={{ mr: 1 }} />
+                              )}
+                              
+                              <Typography 
+                                variant="h6" 
+                                color={calculation.isCompliant ? 'success.main' : 'error.main'}
+                              >
+                                {calculation.isCompliant ? 'Compliant' : 'Non-Compliant'} with PEC 2017 Standards
+                              </Typography>
+                            </Box>
+                            
+                            <Typography variant="body2" sx={{ mt: 1 }}>
+                              Standard for {calculation.buildingTypeLabel}: {calculation.standardLPD} W/m²
+                            </Typography>
+                            
+                            <Typography variant="body2">
+                              Your design: {calculation.lpd.toFixed(2)} W/m² 
+                              ({calculation.isCompliant 
+                                ? `${((1 - calculation.lpd / calculation.standardLPD) * 100).toFixed(1)}% below limit` 
+                                : `${((calculation.lpd / calculation.standardLPD - 1) * 100).toFixed(1)}% above limit`})
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                      
+                      {calculation.potentialSavings && (
+                        <Grid item xs={12}>
+                          <Card variant="outlined" sx={{ bgcolor: 'info.light', borderColor: 'info.main' }}>
+                            <CardContent>
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <MonetizationOnIcon color="info" sx={{ mr: 1 }} />
+                                <Typography variant="h6" color="info.main">
+                                  Energy Savings Potential
+                                </Typography>
+                              </Box>
+                              
+                              <Grid container spacing={2} sx={{ mt: 1 }}>
+                                <Grid item xs={6} sm={3}>
+                                  <Typography variant="body2" color="textSecondary">
+                                    Power Savings:
+                                  </Typography>
+                                  <Typography variant="body1">
+                                    {calculation.potentialSavings.wattageSavings.toFixed(1)} W
+                                  </Typography>
+                                </Grid>
+                                
+                                <Grid item xs={6} sm={3}>
+                                  <Typography variant="body2" color="textSecondary">
+                                    Percentage:
+                                  </Typography>
+                                  <Typography variant="body1">
+                                    {calculation.potentialSavings.percentageSavings.toFixed(1)}%
+                                  </Typography>
+                                </Grid>
+                                
+                                <Grid item xs={6} sm={3}>
+                                  <Typography variant="body2" color="textSecondary">
+                                    Annual Savings:
+                                  </Typography>
+                                  <Typography variant="body1">
+                                    {calculation.potentialSavings.estimatedAnnualKwh.toFixed(0)} kWh
+                                  </Typography>
+                                </Grid>
+                                
+                                <Grid item xs={6} sm={3}>
+                                  <Typography variant="body2" color="textSecondary">
+                                    Cost Savings:
+                                  </Typography>
+                                  <Typography variant="body1">
+                                    ${calculation.potentialSavings.estimatedAnnualCost.toFixed(2)}/yr
+                                  </Typography>
+                                </Grid>
+                              </Grid>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                      )}
+                    </Grid>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={4}>
+                    <Card variant="outlined" sx={{ height: '100%' }}>
+                      <CardContent>
+                        <Typography variant="subtitle1" gutterBottom>
+                          Recommendations
+                        </Typography>
+                        
+                        <Divider sx={{ mb: 2 }} />
+                        
+                        {calculation.recommendations.map((recommendation, index) => (
+                          <Typography key={index} variant="body2" paragraph>
+                            {recommendation}
+                          </Typography>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
+                      <Button
+                        variant="outlined"
+                        startIcon={<PreviewIcon />}
+                        onClick={handlePreviewPDF}
+                      >
+                        Preview PDF
+                      </Button>
+                      
+                      <Button
+                        variant="contained"
+                        startIcon={<PictureAsPdfIcon />}
+                        onClick={handleExportPDF}
+                      >
+                        Export PDF
+                      </Button>
+                    </Box>
+                  </Grid>
+                  
+                  <Grid item xs={12}>
+                    <Box sx={{ bgcolor: 'background.default', p: 2, borderRadius: 1 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        <strong>Note:</strong> This calculator uses the Philippine Green Building Code standards for Lighting Power Density.
+                        Values are based on space function and building type, with a focus on energy efficiency.
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Paper>
+            </Grid>
+          )}
+        </Grid>
+      </Box>
       
       {/* Building Presets Dialog */}
       <Dialog open={presetsOpen} onClose={closePresetsDialog} maxWidth="md" fullWidth>
@@ -1147,7 +1315,7 @@ const LightingPowerDensityCalculator: React.FC = () => {
           {notification.message}
         </Alert>
       </Snackbar>
-    </Box>
+    </>
   );
 };
 

@@ -23,7 +23,7 @@ router.get('/sections/:sectionId/tags', standardsController.getSectionTags);
 router.get('/tags/:tagId/sections', standardsController.getSectionsByTag);
 
 // Protected routes - authentication required
-router.use(auth);
+router.use(auth.authenticateToken);
 
 // Standard and section management
 router.post('/standards', standardsController.createStandard);

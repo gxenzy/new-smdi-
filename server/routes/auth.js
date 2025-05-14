@@ -7,6 +7,24 @@ const auth = require('../middleware/auth');
 const validator = require('validator');
 const rateLimit = require('express-rate-limit');
 const { addRefreshToken } = require('./refreshToken');
+const crypto = require('crypto');
+
+// Function to generate a secure random password
+function generateSecurePassword(length = 12) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+';
+  let password = '';
+  
+  // Get random bytes
+  const randomBytes = crypto.randomBytes(length);
+  
+  // Convert random bytes to password characters
+  for (let i = 0; i < length; i++) {
+    const randomIndex = randomBytes[i] % chars.length;
+    password += chars.charAt(randomIndex);
+  }
+  
+  return password;
+}
 
 // Rate limiter for auth routes
 const authLimiter = rateLimit({
@@ -192,35 +210,6 @@ router.get('/user', auth, async (req, res) => {
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Temporary route to create admin user
-router.post('/create-admin', async (req, res) => {
-  try {
-    const hashedPassword = await bcrypt.hash('admin123', 10);
-    const admin = await User.create({
-      username: 'admin',
-      email: 'admin@example.com',
-      password: hashedPassword,
-      role: 'ADMIN',
-      firstName: 'Admin',
-      lastName: 'User',
-      department: 'IT',
-      position: 'Administrator',
-      active: true,
-      settings: JSON.stringify({
-        emailNotifications: true,
-        darkMode: false,
-        language: 'en',
-        timezone: 'UTC'
-      }),
-      notifications: JSON.stringify([])
-    });
-    res.json({ message: 'Admin user created successfully', user: admin });
-  } catch (error) {
-    console.error('Error creating admin:', error);
-    res.status(500).json({ message: 'Error creating admin user', error: error.message });
   }
 });
 
