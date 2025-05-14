@@ -95,7 +95,7 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
-interface ScheduleOfLoadsCalculatorProps {
+export interface ScheduleOfLoadsCalculatorProps {
   onSave?: (data: LoadSchedule) => void;
   onExportPdf?: (data: LoadSchedule) => Promise<void>;
   initialData?: LoadSchedule;

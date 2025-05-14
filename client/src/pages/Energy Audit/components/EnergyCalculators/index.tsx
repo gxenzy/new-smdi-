@@ -3,9 +3,9 @@ import { Tabs, Tab, Box, Typography, Paper } from '@mui/material';
 import { 
   PowerFactorCalculator, 
   HarmonicDistortionCalculator, 
-  IlluminationCalculator,
-  ScheduleOfLoadsCalculator
+  IlluminationCalculator
 } from '../Calculators';
+import ScheduleOfLoadsCalculator from '../Calculators/ScheduleOfLoads';
 
 interface TabPanelProps {
   children?: React.ReactNode;
