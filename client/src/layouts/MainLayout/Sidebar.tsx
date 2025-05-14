@@ -24,6 +24,9 @@ import {
   ChevronRight,
   Menu as MenuIcon,
   MonitorHeart as MonitorIcon,
+  Assessment as ReportsIcon,
+  MenuBook as StandardsIcon,
+  Rule as ComplianceIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '../../contexts/AuthContext';
@@ -35,16 +38,27 @@ import { alpha } from '@mui/material/styles';
 // { text: 'Electrical System', icon: <ElectricIcon />, path: '/electrical-system' },
 // { text: 'Testing', icon: <TestingIcon />, path: '/testing' },
 // { text: 'TAM Evaluation', icon: <TamIcon />, path: '/tam-evaluation' },
+// { text: 'Energy Audit V2', icon: <AuditIcon />, path: '/energy-audit-v2' },
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
   // { text: 'Electrical System', icon: <ElectricIcon />, path: '/electrical-system' }, // backed up
   { text: 'Energy Audit', icon: <AuditIcon />, path: '/energy-audit' },
+  // { text: 'Reports', icon: <ReportsIcon />, path: '/reports' }, // moved inside Energy Audit
+  // { text: 'Standards', icon: <StandardsIcon />, path: '/standards' }, // moved inside Energy Audit
+  // { text: 'Energy Audit V2', icon: <AuditIcon />, path: '/energy-audit-v2' }, // backed up and removed
   { text: 'System Tools', icon: <ToolsIcon />, path: '/system-tools' },
   // { text: 'Testing', icon: <TestingIcon />, path: '/testing' }, // backed up
   // { text: 'TAM Evaluation', icon: <TamIcon />, path: '/tam-evaluation' }, // fully removed
   { text: 'Users', icon: <UsersIcon />, path: '/user-management' },
   { text: 'Admin', icon: <AdminIcon />, path: '/admin' },
   { text: 'Monitoring', icon: <MonitorIcon />, path: '/energy-monitoring' },
+];
+
+// Admin submenu items
+const adminSubMenuItems = [
+  { text: 'System Settings', icon: <AdminIcon />, path: '/admin/settings' },
+  { text: 'User Management', icon: <UsersIcon />, path: '/user-management' },
+  { text: 'Standards Management', icon: <ComplianceIcon />, path: '/admin/standards-management' },
 ];
 
 interface SidebarProps {
@@ -58,6 +72,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
   const { user } = useAuthContext();
   const theme = useTheme();
   const { mode } = useThemeMode();
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
 
   const handleNavigation = (path: string) => {
     navigate(path);
@@ -68,7 +83,13 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
     setCollapsed(!collapsed);
   };
 
+  const handleToggleAdminMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setAdminMenuOpen(!adminMenuOpen);
+  };
+
   const isOpen = !collapsed;
+  const isAdmin = user?.role === UserRole.ADMIN;
 
   // Calculate colors based on theme
   const getThemeColors = () => {
@@ -139,70 +160,57 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
         overflow: 'hidden',
       }}
     >
-      <Box sx={{ p: 1, textAlign: 'center', minHeight: 48, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        {isOpen ? (
-          <>
-            {/* Profile Section */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <Box 
-                sx={{ 
-                  width: 32, 
-                  height: 32, 
-                  bgcolor: avatarBg, 
-                  borderRadius: '50%', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  color: avatarColor, 
-                  fontWeight: 'bold', 
-                  fontSize: 16, 
-                  mb: 0.5,
-                  border: `1px solid ${avatarBorder}`,
-                }}
-              >
-                {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
-              </Box>
-              <Typography 
-                variant="subtitle2" 
-                sx={{ 
-                  fontWeight: 600, 
-                  fontSize: 12, 
-                  color: theme.palette.mode === 'dark' || ['energy', 'blue', 'gray', 'darkBlue'].includes(mode) ? '#ffffff' : theme.palette.text.primary,
-                  opacity: 0.9,
-                }} 
-                noWrap
-              >
-                {user?.name || ''}
-              </Typography>
-            </Box>
-          </>
-        ) : (
-          <Box
-            sx={{
-              width: 32, 
-              height: 32, 
-              bgcolor: avatarBg, 
-              borderRadius: '50%', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              color: avatarColor, 
-              fontWeight: 'bold', 
-              fontSize: 16,
-              border: `1px solid ${avatarBorder}`,
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: isOpen ? 'flex-start' : 'center',
+          p: 2,
+        }}
+      >
+        <Typography
+          variant="h6"
+          noWrap
+          component="div"
+          sx={{
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
+            textOverflow: 'ellipsis',
+            maxWidth: '100%',
+            fontWeight: 700,
+            letterSpacing: '0.5px',
+            color: 'inherit',
+            fontSize: isOpen ? '1.1rem' : '0.5rem',
+            opacity: isOpen ? 1 : 0,
+            transition: theme.transitions.create(['opacity', 'fontSize'], {
+              duration: theme.transitions.duration.standard,
+            }),
+          }}
+        >
+          Energy Audit
+        </Typography>
+        {isOpen && (
+          <Typography
+            variant="caption"
+            sx={{ 
+              color: 'text.secondary', 
+              mt: -0.5,
+              opacity: 0.8,
+              fontWeight: 500
             }}
           >
-            {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
-          </Box>
+            Platform
+          </Typography>
         )}
       </Box>
+
       <Divider sx={{ opacity: 0.1 }} />
       <List sx={{ py: 0.5 }}>
         {menuItems.map((item) => (
           <Tooltip title={isOpen ? '' : item.text} placement="right" key={item.text}>
             <ListItem
               button
-              onClick={() => handleNavigation(item.path)}
+              onClick={(e) => item.text === 'Admin' ? handleToggleAdminMenu(e) : handleNavigation(item.path)}
               selected={location.pathname === item.path}
               sx={{
                 mb: 0.25,
@@ -257,6 +265,72 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
             </ListItem>
           </Tooltip>
         ))}
+
+        {/* Admin Submenu */}
+        {isAdmin && adminMenuOpen && isOpen && (
+          <Box pl={2}>
+            {adminSubMenuItems.map((item) => (
+              <Tooltip title={isOpen ? '' : item.text} placement="right" key={item.text}>
+                <ListItem
+                  button
+                  onClick={() => handleNavigation(item.path)}
+                  selected={location.pathname === item.path}
+                  sx={{
+                    mb: 0.25,
+                    borderRadius: 1,
+                    bgcolor:
+                      location.pathname === item.path
+                        ? alpha(theme.palette.primary.main, 0.12)
+                        : 'transparent',
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.primary.main, 0.08),
+                    },
+                    color: 'inherit',
+                    opacity: 1,
+                    cursor: 'pointer',
+                    justifyContent: isOpen ? 'flex-start' : 'center',
+                    px: isOpen ? 1 : 1,
+                    py: 0.75,
+                    minHeight: 32,
+                    maxWidth: '100%',
+                    overflow: 'visible'
+                  }}
+                >
+                  <>
+                    <ListItemIcon 
+                      sx={{ 
+                        color: location.pathname === item.path ? theme.palette.primary.main : 'inherit', 
+                        minWidth: 30, 
+                        justifyContent: 'center',
+                        fontSize: '0.85rem'
+                      }}
+                    >
+                      {item.icon}
+                    </ListItemIcon>
+                    {isOpen && (
+                      <ListItemText 
+                        primary={item.text} 
+                        sx={{ 
+                          margin: 0, 
+                          pr: 0.5,
+                          overflow: 'visible'
+                        }}
+                        primaryTypographyProps={{ 
+                          fontSize: '0.8rem',
+                          fontWeight: location.pathname === item.path ? 600 : 400,
+                          color: location.pathname === item.path ? theme.palette.primary.main : 'inherit',
+                          whiteSpace: 'normal',
+                          lineHeight: 1.2,
+                          display: 'block'
+                        }} 
+                      />
+                    )}
+                  </>
+                </ListItem>
+              </Tooltip>
+            ))}
+          </Box>
+        )}
       </List>
       <Box sx={{ flexGrow: 1 }} />
       {/* Collapse/Expand Button */}

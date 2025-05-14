@@ -62,7 +62,27 @@ const Settings: React.FC = () => {
   const defaultNotifPrefs = { enabled: true, types: [NotificationType.Info, NotificationType.Success, NotificationType.Warning, NotificationType.Error] };
   const notifPrefs = currentUser?.notificationPreferences || defaultNotifPrefs;
   const [notifEnabled, setNotifEnabled] = useState(notifPrefs.enabled);
-  const [notifTypes, setNotifTypes] = useState<NotificationType[]>(notifPrefs.types);
+  
+  // Convert string types to NotificationType enum values if needed
+  const convertToNotificationTypes = (types: string[]): NotificationType[] => {
+    return types.map(type => {
+      switch(type) {
+        case 'info': return NotificationType.Info;
+        case 'success': return NotificationType.Success;
+        case 'warning': return NotificationType.Warning;
+        case 'error': return NotificationType.Error;
+        default: return NotificationType.Info;
+      }
+    });
+  };
+  
+  const [notifTypes, setNotifTypes] = useState<NotificationType[]>(
+    Array.isArray(notifPrefs.types) 
+      ? typeof notifPrefs.types[0] === 'string' 
+        ? convertToNotificationTypes(notifPrefs.types as string[])
+        : notifPrefs.types as NotificationType[]
+      : defaultNotifPrefs.types
+  );
 
   const handleSettingChange = (setting: string, value: any) => {
     setSettings(prev => ({

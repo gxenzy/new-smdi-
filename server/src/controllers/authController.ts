@@ -44,7 +44,7 @@ export const login = async (req: Request, res: Response) => {
         username: user.username,
         role: user.role 
       },
-      process.env.JWT_SECRET || 'test-secret-key',
+      process.env.JWT_SECRET || 'e465aa6a212abe4bb21fb3218aa044ed2be68720b46298c20b22f861ab7324f3d299f35ec4720e2ab57a03e4810a7a885e5aac6c1',
       { expiresIn: '24h' }
     );
     console.log('Token created successfully');

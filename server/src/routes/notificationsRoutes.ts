@@ -9,7 +9,7 @@ import { authenticateToken } from '../middleware/auth';
 const notificationsRouter = express.Router();
 
 // Apply authentication middleware to all routes
-notificationsRouter.use(authenticateToken);
+notificationsRouter.use(authenticateToken());
 
 // Get user's notifications
 notificationsRouter.get('/', getNotifications);

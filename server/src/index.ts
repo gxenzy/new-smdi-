@@ -3,11 +3,12 @@ import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import * as compressionMiddleware from 'compression';
+import compression from 'compression';
 import { createWebSocketServer, attachWebSocketHandlers } from './config/websocket';
 import { errorHandler } from './middleware/errorHandler';
 import routes from './routes';
 import dotenv from 'dotenv';
+import path from 'path';
 
 // Load environment variables
 dotenv.config();
@@ -36,9 +37,13 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Basic middleware setup
-app.use(compressionMiddleware.default());
+app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Serve static files from uploads directory
+app.use('/floorplan', express.static(path.join(__dirname, '../../uploads/floorplans')));
+app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
 
 // Health check endpoint
 app.get('/health', (_req, res) => {

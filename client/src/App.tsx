@@ -47,6 +47,15 @@ function LoadingFallback() {
   );
 }
 
+function AppContent() {
+  return (
+    <div style={{ padding: 40, fontSize: 24, color: 'red' }}>
+      The frontend is working!<br />
+      (If you see this, the white screen is fixed. Backend/API errors will not prevent this message from showing.)
+    </div>
+  );
+}
+
 function App() {
   const location = useLocation();
   

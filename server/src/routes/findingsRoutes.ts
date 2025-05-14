@@ -12,7 +12,7 @@ import { UserRole } from '../types';
 const findingsRouter = express.Router();
 
 // Apply authentication middleware to all routes
-findingsRouter.use(authenticateToken);
+findingsRouter.use(authenticateToken());
 
 // Get all findings
 findingsRouter.get('/', getAllFindings);

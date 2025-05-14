@@ -34,7 +34,7 @@ import {
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthContext } from '../../contexts/AuthContext';
 import Sidebar from './Sidebar';
-import NotificationsMenu from './NotificationsMenu';
+import NotificationCenter from './MainLayoutNotificationCenter';
 import { styled } from '@mui/material/styles';
 import { useNotificationContext } from '../../contexts/NotificationContext';
 import NotificationListener from '../../components/NotificationListener';
@@ -320,43 +320,46 @@ const MainLayout: React.FC<MainLayoutProps> = () => {
             <ThemeSwitcher />
             
             {/* Notifications */}
-            <IconButton 
-              sx={{ color: theme.palette.text.primary }}
-              onClick={handleNotificationsOpen}
-              aria-label="notifications"
-            >
-              <Badge badgeContent={notifications.length} color="error">
-                <NotificationsIcon />
-              </Badge>
-            </IconButton>
+            <NotificationCenter onNavigate={navigate} />
             
             {/* User Menu */}
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Tooltip title={user?.name || 'Profile'}>
-                <IconButton 
+              <Tooltip title="Account">
+                <IconButton
                   onClick={handleProfileMenuOpen}
-                  size="small"
+                  color="inherit"
                   sx={{ 
+                    p: 0,
                     ml: 1,
-                    border: 1,
-                    borderColor: 'divider',
-                    borderRadius: '50%',
-                    p: 0.5,
-                    transition: 'transform 0.2s',
                     '&:hover': {
-                      transform: 'scale(1.05)'
+                      bgcolor: alpha(theme.palette.background.paper, 0.1)
                     }
                   }}
                 >
-                  {userProfileImage ? (
+                  {userImageSrc && userImageSrc !== '' ? (
                     <Avatar 
-                      alt={user?.name} 
                       src={userImageSrc} 
-                      sx={{ width: 32, height: 32 }} 
+                      alt={user?.name || 'User Profile'}
+                      sx={{ 
+                        width: 32, 
+                        height: 32,
+                        border: '2px solid',
+                        borderColor: alpha(theme.palette.background.paper, 0.3)
+                      }} 
                     />
                   ) : (
-                    <Avatar sx={{ width: 32, height: 32, bgcolor: theme.palette.primary.main }}>
-                      {user?.name?.charAt(0) || 'U'}
+                    <Avatar 
+                      alt={user?.name || 'User Profile'}
+                      sx={{ 
+                        width: 32, 
+                        height: 32,
+                        bgcolor: theme.palette.secondary.main,
+                        color: theme.palette.secondary.contrastText,
+                        border: '2px solid',
+                        borderColor: alpha(theme.palette.background.paper, 0.3)
+                      }}
+                    >
+                      {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
                     </Avatar>
                   )}
                 </IconButton>
@@ -484,14 +487,7 @@ const MainLayout: React.FC<MainLayoutProps> = () => {
         </MenuItem>
       </Menu>
 
-      {/* Notifications Menu */}
-      <NotificationsMenu
-        anchorEl={notificationsAnchorEl}
-        open={Boolean(notificationsAnchorEl)}
-        onClose={handleNotificationsClose}
-        notifications={notifications}
-        onMarkAsRead={markAsRead}
-      />
+      {/* NotificationsMenu has been replaced by the new NotificationCenter component */}
 
       {/* Scroll to Top Button */}
       {showScrollTop && (

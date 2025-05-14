@@ -59,7 +59,7 @@ export const designTokens = {
   },
   spacing: {
     xs: 4,
-    sm: 8,
+    sm: 8, 
     md: 16,
     lg: 24,
     xl: 32
@@ -90,10 +90,10 @@ export const designTokens = {
       'sans-serif',
     ].join(','),
     code: [
-      'SFMono-Regular',
-      'Consolas',
-      '"Liberation Mono"',
-      'Menlo',
+      'SFMono-Regular', 
+      'Consolas', 
+      '"Liberation Mono"', 
+      'Menlo', 
       'monospace'
     ].join(',')
   },
@@ -130,10 +130,10 @@ export const designTokens = {
 };
 
 const createTypography = (mode: 'light' | 'dark'): TypographyOptions => {
-  const textColor = mode === 'light'
-    ? designTokens.colors.text.lightPrimary
+  const textColor = mode === 'light' 
+    ? designTokens.colors.text.lightPrimary 
     : designTokens.colors.text.darkPrimary;
-
+  
   const secondaryTextColor = mode === 'light'
     ? designTokens.colors.text.lightSecondary
     : designTokens.colors.text.darkSecondary;
@@ -223,7 +223,7 @@ const createTypography = (mode: 'light' | 'dark'): TypographyOptions => {
 
 const createBaseComponents = (mode: 'light' | 'dark'): Components<Theme> => ({
   MuiCssBaseline: {
-    styleOverrides: {
+      styleOverrides: {
       body: {
         scrollbarColor: mode === 'dark' ? '#6b6b6b #2b2b2b' : '#959595 #f5f5f5',
         '&::-webkit-scrollbar, & *::-webkit-scrollbar': {
@@ -252,8 +252,8 @@ const createBaseComponents = (mode: 'light' | 'dark'): Components<Theme> => ({
     },
   },
   MuiButton: {
-    styleOverrides: {
-      root: {
+      styleOverrides: {
+        root: {
         borderRadius: 8,
         textTransform: 'none',
         '&.MuiButton-contained': {
@@ -276,8 +276,8 @@ const createBaseComponents = (mode: 'light' | 'dark'): Components<Theme> => ({
     },
   },
   MuiPaper: {
-    styleOverrides: {
-      root: {
+      styleOverrides: {
+        root: {
         backgroundImage: 'none',
       } as CSSObject,
     },
@@ -293,8 +293,8 @@ const createBaseComponents = (mode: 'light' | 'dark'): Components<Theme> => ({
     },
   },
   MuiIconButton: {
-    styleOverrides: {
-      root: {
+      styleOverrides: {
+        root: {
         borderRadius: 8,
       } as CSSObject,
     },
@@ -308,8 +308,8 @@ const createBaseComponents = (mode: 'light' | 'dark'): Components<Theme> => ({
     },
   },
   MuiTableCell: {
-    styleOverrides: {
-      root: {
+      styleOverrides: {
+        root: {
         borderBottom: mode === 'dark'
           ? '1px solid rgba(255,255,255,0.1)'
           : '1px solid rgba(0,0,0,0.1)',
@@ -550,7 +550,7 @@ export const darkTheme = responsiveFontSizes(createTheme({
             boxShadow: '0 3px 12px rgba(0, 229, 255, 0.3)',
             color: '#000000',
             fontWeight: 500,
-            '&:hover': {
+          '&:hover': {
               boxShadow: '0 6px 16px rgba(0, 229, 255, 0.4)',
             },
           },
@@ -577,7 +577,7 @@ export const darkTheme = responsiveFontSizes(createTheme({
           color: 'rgba(255, 255, 255, 0.85)',
           '&:hover': {
             backgroundColor: 'rgba(0, 229, 255, 0.1)',
-          },
+        },
         } as CSSObject,
       },
     },
@@ -691,7 +691,7 @@ export const blueTheme = responsiveFontSizes(createTheme({
   ...createBaseTheme('light'),
   palette: {
     mode: 'light',
-    primary: {
+    primary: { 
       main: '#0072f5',  // Modern blue
       light: '#3d95ff',
       dark: '#0052cc',
@@ -701,7 +701,7 @@ export const blueTheme = responsiveFontSizes(createTheme({
       main: '#7828c8',  // Purple accent
       light: '#9750dd',
       dark: '#5c1e9e',
-      contrastText: '#ffffff'
+      contrastText: '#ffffff' 
     },
     background: {
       default: '#f5f9ff',

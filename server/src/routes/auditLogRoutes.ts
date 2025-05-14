@@ -5,7 +5,7 @@ import { UserRole } from '../types';
 
 const router = express.Router();
 
-router.use(authenticateToken);
+router.use(authenticateToken());
 router.use(authorizeRole([UserRole.ADMIN]));
 
 router.get('/', getAuditLogs);

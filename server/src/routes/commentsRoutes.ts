@@ -10,7 +10,7 @@ import { authenticateToken } from '../middleware/auth';
 const commentsRouter = express.Router();
 
 // Apply authentication middleware to all routes
-commentsRouter.use(authenticateToken);
+commentsRouter.use(authenticateToken());
 
 // Get comments for a finding
 commentsRouter.get('/:findingId', getComments);

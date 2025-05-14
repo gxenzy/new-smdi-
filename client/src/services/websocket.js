@@ -26,7 +26,7 @@ var WebSocketService = /** @class */ (function () {
     WebSocketService.prototype.connect = function () {
         var _this = this;
         try {
-            var wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:8080';
+            var wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:8000';
             this.ws = new WebSocket(wsUrl);
             this.ws.onopen = function () {
                 console.log('WebSocket connected');

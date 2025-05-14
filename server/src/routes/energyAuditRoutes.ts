@@ -5,7 +5,7 @@ import { UserRole } from '../types';
 
 const energyAuditRouter = express.Router();
 
-energyAuditRouter.use(authenticateToken);
+energyAuditRouter.use(authenticateToken());
 
 // Create new energy audit (admin only)
 energyAuditRouter.post('/', authorizeRole([UserRole.ADMIN]), createEnergyAudit);
