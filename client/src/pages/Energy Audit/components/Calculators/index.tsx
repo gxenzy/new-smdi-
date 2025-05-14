@@ -19,6 +19,7 @@ import AcUnitIcon from '@mui/icons-material/AcUnit';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import EnergyCalculator from './EnergyCalculator';
 import ROICalculator from './ROICalculator';
+import LightingPowerDensityCalculator from './LightingPowerDensityCalculator';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -190,15 +191,7 @@ const Calculators: React.FC = () => {
           
           {/* Lighting Calculator Tab */}
           <TabPanel value={tabValue} index={2}>
-            <Box sx={{ p: 3, textAlign: 'center' }}>
-              <Typography variant="h6" gutterBottom>
-                Lighting Calculator
-              </Typography>
-              <Typography variant="body1">
-                This feature will be implemented soon. The lighting calculator will help analyze
-                lighting systems and verify compliance with illumination standards.
-              </Typography>
-            </Box>
+            <LightingPowerDensityCalculator />
           </TabPanel>
           
           {/* HVAC Calculator Tab */}

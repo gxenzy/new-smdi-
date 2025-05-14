@@ -3,23 +3,27 @@ import {
   createConductorComparisonConfig,
   VoltageDropVisualizationOptions
 } from '../utils/voltageDropVisualization';
-import { VoltageRegulationInputs, VoltageRegulationResult } from '../utils/voltageRegulationUtils';
+import { VoltageDropInputs, VoltageDropResult, CircuitType } from '../utils/voltageDropUtils';
 
 describe('Voltage Drop Visualization Utilities', () => {
   // Mock inputs and results
-  const mockInputs: VoltageRegulationInputs = {
+  const mockInputs: VoltageDropInputs = {
     systemVoltage: 230,
-    loadPower: 2000,
-    powerFactor: 0.85,
+    loadCurrent: 20, // Converted from power
     conductorLength: 100,
     conductorSize: '12 AWG',
     conductorMaterial: 'copper',
     conduitMaterial: 'PVC',
     phaseConfiguration: 'single-phase',
-    temperature: 30
+    temperature: 30,
+    powerFactor: 0.85,
+    circuitConfiguration: {
+      circuitType: 'branch' as CircuitType,
+      wireway: 'conduit'
+    }
   };
   
-  const mockResults: VoltageRegulationResult = {
+  const mockResults: VoltageDropResult = {
     voltageDrop: 6.9,
     voltageDropPercent: 3.0,
     receivingEndVoltage: 223.1,
@@ -27,7 +31,12 @@ describe('Voltage Drop Visualization Utilities', () => {
     reactiveLoss: 50,
     totalLoss: 158,
     compliance: 'non-compliant',
-    recommendations: ['Consider using a larger conductor size to reduce voltage drop.']
+    recommendations: ['Consider using a larger conductor size to reduce voltage drop.'],
+    maxAllowedDrop: 3.0, // Added missing property
+    wireRating: {
+      ampacity: 20,
+      isAdequate: true
+    }
   };
   
   describe('createVoltageDropProfileConfig', () => {

@@ -4,7 +4,13 @@
  * This module provides functions for visualizing voltage drop data using Chart.js
  */
 import { Chart, ChartConfiguration, ChartData, ChartOptions, ChartTypeRegistry } from 'chart.js';
-import { VoltageRegulationInputs, VoltageRegulationResult, VOLTAGE_DROP_LIMITS } from './voltageRegulationUtils';
+import { CONDUCTOR_SIZES, VOLTAGE_DROP_LIMITS } from './voltageRegulationUtils';
+import { 
+  VoltageDropInputs, 
+  VoltageDropResult,
+  calculateVoltageDropPercentage
+} from './voltageDropUtils';
+import { downsampleVoltageProfile, DownsampleOptions } from './visualizationOptimizer';
 
 /**
  * Interface for voltage drop visualization options
@@ -13,6 +19,8 @@ export interface VoltageDropVisualizationOptions {
   showLimits?: boolean;
   colorScheme?: 'default' | 'accessibility' | 'print';
   darkMode?: boolean;
+  downsampleOptions?: DownsampleOptions;
+  showComplianceZones?: boolean;
 }
 
 // Define the color structure
@@ -24,6 +32,11 @@ interface ColorScheme {
   limit: {
     borderColor: string;
     borderDash: number[];
+  };
+  complianceZones?: {
+    compliant: string;
+    warning: string;
+    nonCompliant: string;
   };
 }
 
@@ -39,6 +52,11 @@ const colorSchemes: Record<string, ColorScheme> = {
     limit: {
       borderColor: 'rgba(255, 99, 132, 0.8)',
       borderDash: [5, 5],
+    },
+    complianceZones: {
+      compliant: 'rgba(75, 192, 192, 0.2)',   // Green zone
+      warning: 'rgba(255, 205, 86, 0.2)',     // Yellow zone
+      nonCompliant: 'rgba(255, 99, 132, 0.2)' // Red zone
     }
   },
   accessibility: {
@@ -49,6 +67,11 @@ const colorSchemes: Record<string, ColorScheme> = {
     limit: {
       borderColor: 'rgba(216, 30, 91, 0.8)',
       borderDash: [5, 5],
+    },
+    complianceZones: {
+      compliant: 'rgba(38, 114, 114, 0.2)',  // Darker green zone
+      warning: 'rgba(204, 119, 34, 0.2)',    // Darker yellow/orange
+      nonCompliant: 'rgba(153, 0, 51, 0.2)'  // Darker red zone
     }
   },
   print: {
@@ -59,6 +82,11 @@ const colorSchemes: Record<string, ColorScheme> = {
     limit: {
       borderColor: 'rgba(160, 160, 160, 0.8)',
       borderDash: [5, 5],
+    },
+    complianceZones: {
+      compliant: 'rgba(220, 220, 220, 0.2)',    // Light gray
+      warning: 'rgba(180, 180, 180, 0.2)',      // Medium gray
+      nonCompliant: 'rgba(140, 140, 140, 0.2)'  // Dark gray
     }
   }
 };
@@ -66,43 +94,35 @@ const colorSchemes: Record<string, ColorScheme> = {
 /**
  * Creates a configuration for Chart.js to visualize voltage drop along a conductor
  * 
- * @param result - Voltage regulation calculation result
- * @param inputs - Voltage regulation calculation inputs
+ * @param result - Voltage drop calculation result
+ * @param inputs - Voltage drop calculation inputs
  * @param options - Visualization options
  * @returns Chart.js configuration object
  */
 export function createVoltageDropProfileConfig(
-  result: VoltageRegulationResult,
-  inputs: VoltageRegulationInputs,
+  result: VoltageDropResult,
+  inputs: VoltageDropInputs,
   options: VoltageDropVisualizationOptions = {}
 ): ChartConfiguration {
   const {
     showLimits = true,
     colorScheme = 'default',
-    darkMode = false
+    darkMode = false,
+    downsampleOptions = {
+      maxPoints: 50,
+      preserveExtremes: true,
+      algorithm: 'lttb'
+    },
+    showComplianceZones = false
   } = options;
 
-  // Calculate voltage at different points along the conductor
-  const numPoints = 20; // Number of points to plot
-  const stepSize = inputs.conductorLength / numPoints;
-  
-  const points = Array.from({ length: numPoints + 1 }, (_, i) => {
-    const distance = i * stepSize;
-    const voltageDrop = (distance / inputs.conductorLength) * result.voltageDrop;
-    return {
-      distance,
-      voltage: inputs.systemVoltage - voltageDrop
-    };
-  });
+  // Use optimized downsampling for data points
+  const { labels, voltageValues, distanceValues } = downsampleVoltageProfile(
+    result,
+    inputs,
+    downsampleOptions
+  );
 
-  // Prepare data for chart
-  const labels = points.map(p => `${p.distance.toFixed(0)}m`);
-  const voltageValues = points.map(p => p.voltage);
-  
-  // Calculate voltage limits based on PEC requirements
-  const feederLimitVoltage = inputs.systemVoltage * (1 - VOLTAGE_DROP_LIMITS.feeder / 100);
-  const branchLimitVoltage = inputs.systemVoltage * (1 - VOLTAGE_DROP_LIMITS.branch / 100);
-  
   // Prepare datasets
   const colors = colorSchemes[colorScheme] || colorSchemes.default;
 
@@ -117,6 +137,9 @@ export function createVoltageDropProfileConfig(
     }
   }
 
+  // Calculate voltage limits based on PEC requirements
+  const limitVoltage = inputs.systemVoltage * (1 - result.maxAllowedDrop / 100);
+
   const datasets: any[] = [
     {
       label: 'Voltage Profile',
@@ -126,27 +149,28 @@ export function createVoltageDropProfileConfig(
       borderWidth: 2,
       fill: false,
       tension: 0.4,
-      pointRadius: 2,
+      pointRadius: voltageValues.length > 100 ? 0 : 2, // Hide points if too many
+      pointHoverRadius: 4,
     }
   ];
 
-  // Add limit lines if enabled
+  // Add limit line if enabled
   if (showLimits) {
-    datasets.push({
-      label: 'Feeder Limit (2%)',
-      data: Array(labels.length).fill(feederLimitVoltage),
-      borderColor: colors.limit.borderColor,
-      borderDash: colors.limit.borderDash,
-      borderWidth: 2,
-      pointRadius: 0,
-      fill: false,
-    });
+    // For the specific circuit type
+    const circuitTypeNames: Record<string, string> = {
+      'branch': 'Branch Circuit',
+      'feeder': 'Feeder',
+      'service': 'Service',
+      'motor': 'Motor Circuit'
+    };
+    
+    const circuitTypeName = circuitTypeNames[inputs.circuitConfiguration.circuitType] || 'Circuit';
     
     datasets.push({
-      label: 'Branch Circuit Limit (3%)',
-      data: Array(labels.length).fill(branchLimitVoltage),
-      borderColor: 'rgba(255, 159, 64, 0.8)',
-      borderDash: [5, 5],
+      label: `${circuitTypeName} Limit (${result.maxAllowedDrop}%)`,
+      data: Array(labels.length).fill(limitVoltage),
+      borderColor: colors.limit.borderColor,
+      borderDash: colors.limit.borderDash,
       borderWidth: 2,
       pointRadius: 0,
       fill: false,
@@ -208,11 +232,65 @@ export function createVoltageDropProfileConfig(
               label += context.parsed.y.toFixed(2) + ' V';
             }
             return label;
+          },
+          afterLabel: (context) => {
+            if (context.datasetIndex === 0) { // Only for voltage profile dataset
+              const voltage = context.parsed.y;
+              const voltageDropAtPoint = inputs.systemVoltage - voltage;
+              const percentDropAtPoint = (voltageDropAtPoint / inputs.systemVoltage) * 100;
+              return `Voltage Drop: ${percentDropAtPoint.toFixed(2)}%`;
+            }
+            // Return empty string instead of null to satisfy TypeScript
+            return '';
           }
         }
       }
     }
   };
+
+  // Add compliance zones if enabled
+  if (showComplianceZones && colors.complianceZones) {
+    // Create a dataset that we'll use to define the background areas
+    const zoneColors = colors.complianceZones;
+    
+    // Calculate zone boundaries based on maximum allowed drop
+    const warningThreshold = inputs.systemVoltage * (1 - (result.maxAllowedDrop * 0.8) / 100);
+    const criticalThreshold = limitVoltage;
+    
+    // Register background plugin data
+    if (!chartOptions.plugins) chartOptions.plugins = {};
+    (chartOptions.plugins as any).beforeDraw = (chart: any) => {
+      const ctx = chart.ctx;
+      const chartArea = chart.chartArea;
+      const meta = chart.getDatasetMeta(0);
+      
+      if (!meta.data || meta.data.length === 0) return;
+      
+      // Get Y positions for thresholds
+      const yScale = chart.scales.y;
+      const safeY = yScale.getPixelForValue(inputs.systemVoltage);
+      const warningY = yScale.getPixelForValue(warningThreshold);
+      const criticalY = yScale.getPixelForValue(criticalThreshold);
+      const bottomY = chartArea.bottom;
+      
+      // Draw zones
+      ctx.save();
+      
+      // Compliant zone (top)
+      ctx.fillStyle = zoneColors.compliant;
+      ctx.fillRect(chartArea.left, safeY, chartArea.right - chartArea.left, warningY - safeY);
+      
+      // Warning zone (middle)
+      ctx.fillStyle = zoneColors.warning;
+      ctx.fillRect(chartArea.left, warningY, chartArea.right - chartArea.left, criticalY - warningY);
+      
+      // Non-compliant zone (bottom)
+      ctx.fillStyle = zoneColors.nonCompliant;
+      ctx.fillRect(chartArea.left, criticalY, chartArea.right - chartArea.left, bottomY - criticalY);
+      
+      ctx.restore();
+    };
+  }
 
   return {
     type: 'line',
@@ -228,20 +306,21 @@ export function createVoltageDropProfileConfig(
  * Creates a configuration for Chart.js to visualize voltage drop comparison
  * between different conductor sizes
  * 
- * @param baseInputs - Base voltage regulation calculation inputs
+ * @param baseInputs - Base voltage drop calculation inputs
  * @param conductorSizes - Array of conductor sizes to compare
  * @param options - Visualization options
  * @returns Chart.js configuration object
  */
 export function createConductorComparisonConfig(
-  baseInputs: VoltageRegulationInputs,
+  baseInputs: VoltageDropInputs,
   conductorSizes: string[],
   options: VoltageDropVisualizationOptions = {}
 ): ChartConfiguration {
   const {
     showLimits = true,
     colorScheme = 'default',
-    darkMode = false
+    darkMode = false,
+    showComplianceZones = false
   } = options;
 
   // Generate a different color for each conductor size
@@ -250,10 +329,25 @@ export function createConductorComparisonConfig(
     return `hsla(${hue}, 70%, 60%, ${alpha})`;
   };
 
+  // Get the limit based on circuit type
+  let dropLimit = VOLTAGE_DROP_LIMITS.total;
+  switch (baseInputs.circuitConfiguration.circuitType) {
+    case 'branch':
+      dropLimit = VOLTAGE_DROP_LIMITS.branch;
+      break;
+    case 'feeder':
+    case 'service':
+      dropLimit = VOLTAGE_DROP_LIMITS.feeder;
+      break;
+    case 'motor':
+      dropLimit = 3.0; // Default for motor circuits
+      break;
+  }
+
   // Calculate voltage drops for each conductor size
   let datasets: any[] = conductorSizes.map((size, index) => {
     // Create a modified input with this conductor size
-    const modifiedInputs: VoltageRegulationInputs = {
+    const modifiedInputs: VoltageDropInputs = {
       ...baseInputs,
       conductorSize: size
     };
@@ -261,11 +355,34 @@ export function createConductorComparisonConfig(
     // Calculate voltage drop percentage for this size
     const dropPercent = calculateVoltageDropPercentage(modifiedInputs);
     
+    // Determine compliance status
+    const isCompliant = dropPercent <= dropLimit;
+    const isWarning = dropPercent > (dropLimit * 0.8) && dropPercent <= dropLimit;
+    const isCritical = dropPercent > dropLimit;
+    
+    // Generate base colors
+    let bgColor = generateColors(index, 0.7);
+    let borderColor = generateColors(index, 1);
+    
+    // Apply compliance colors if enabled
+    if (showComplianceZones) {
+      const colors = colorSchemes[colorScheme]?.complianceZones;
+      if (colors) {
+        if (isCritical) {
+          bgColor = colors.nonCompliant.replace('0.2', '0.7');
+        } else if (isWarning) {
+          bgColor = colors.warning.replace('0.2', '0.7');
+        } else if (isCompliant) {
+          bgColor = colors.compliant.replace('0.2', '0.7');
+        }
+      }
+    }
+    
     return {
       label: `${size} (${dropPercent.toFixed(2)}%)`,
       data: [dropPercent],
-      backgroundColor: generateColors(index, 0.7),
-      borderColor: generateColors(index, 1),
+      backgroundColor: bgColor,
+      borderColor: borderColor,
       borderWidth: 1
     };
   });
@@ -273,25 +390,39 @@ export function createConductorComparisonConfig(
   // Sort datasets by voltage drop (highest to lowest)
   datasets = datasets.sort((a, b) => b.data[0] - a.data[0]);
 
-  // Add PEC limits if enabled
+  // Add PEC limit for the specific circuit type
   if (showLimits) {
+    // Circuit type label
+    const circuitTypeNames: Record<string, string> = {
+      'branch': 'Branch Circuit',
+      'feeder': 'Feeder',
+      'service': 'Service',
+      'motor': 'Motor Circuit'
+    };
+    
+    const circuitTypeName = circuitTypeNames[baseInputs.circuitConfiguration.circuitType] || 'Circuit';
+    
     datasets.push({
-      label: 'Feeder Limit (2%)',
-      data: [VOLTAGE_DROP_LIMITS.feeder],
+      label: `${circuitTypeName} Limit (${dropLimit}%)`,
+      data: [dropLimit],
       backgroundColor: 'rgba(255, 99, 132, 0.5)',
       borderColor: 'rgb(255, 99, 132)',
       borderWidth: 2,
       type: 'line'
     });
     
-    datasets.push({
-      label: 'Branch Circuit Limit (3%)',
-      data: [VOLTAGE_DROP_LIMITS.branch],
-      backgroundColor: 'rgba(255, 159, 64, 0.5)',
-      borderColor: 'rgb(255, 159, 64)',
-      borderWidth: 2,
-      type: 'line'
-    });
+    // Add warning threshold if showing compliance zones
+    if (showComplianceZones) {
+      datasets.push({
+        label: `Warning Threshold (${(dropLimit * 0.8).toFixed(1)}%)`,
+        data: [dropLimit * 0.8],
+        backgroundColor: 'rgba(255, 205, 86, 0.5)',
+        borderColor: 'rgb(255, 205, 86)',
+        borderWidth: 2,
+        borderDash: [5, 5],
+        type: 'line'
+      });
+    }
   }
 
   // Chart options
@@ -337,7 +468,19 @@ export function createConductorComparisonConfig(
       tooltip: {
         callbacks: {
           label: (context) => {
-            return `Voltage Drop: ${context.parsed.x.toFixed(2)}%`;
+            const label = context.dataset.label || '';
+            if (label.includes('Limit') || label.includes('Threshold')) {
+              return label;
+            }
+            
+            const dropValue = context.parsed.x;
+            const isCompliant = dropValue <= dropLimit;
+            const status = isCompliant ? 'Compliant' : 'Non-compliant';
+            
+            return [
+              `Voltage Drop: ${dropValue.toFixed(2)}%`,
+              `Status: ${status}`
+            ];
           }
         }
       }
@@ -352,47 +495,4 @@ export function createConductorComparisonConfig(
     },
     options: chartOptions
   } as ChartConfiguration;
-}
-
-// Helper function to calculate voltage drop percentage
-function calculateVoltageDropPercentage(inputs: VoltageRegulationInputs): number {
-  // Simple estimation for chart purposes
-  // This should match the behavior in voltageRegulationUtils.ts
-  const { systemVoltage, loadPower, powerFactor, conductorLength, conductorSize, conductorMaterial, conduitMaterial, phaseConfiguration, temperature } = inputs;
-  
-  // Get circular mils for the conductor size (simplified example)
-  let circularMils = 0;
-  
-  switch(conductorSize) {
-    case '14 AWG': circularMils = 4110; break;
-    case '12 AWG': circularMils = 6530; break;
-    case '10 AWG': circularMils = 10380; break;
-    case '8 AWG': circularMils = 16510; break;
-    case '6 AWG': circularMils = 26240; break;
-    case '4 AWG': circularMils = 41740; break;
-    case '2 AWG': circularMils = 66360; break;
-    case '1/0 AWG': circularMils = 105600; break;
-    case '2/0 AWG': circularMils = 133100; break;
-    case '3/0 AWG': circularMils = 167800; break;
-    case '4/0 AWG': circularMils = 211600; break;
-    default: circularMils = 10000; // Default value
-  }
-  
-  // Calculate approx. current
-  const current = phaseConfiguration === 'single-phase' ? 
-    loadPower / (systemVoltage * powerFactor) : 
-    loadPower / (Math.sqrt(3) * systemVoltage * powerFactor);
-  
-  // Calculate approx. resistance
-  const resistivity = conductorMaterial === 'copper' ? 10.371 : 17.020;
-  const tempCoefficient = conductorMaterial === 'copper' ? 0.00393 : 0.00403;
-  const tempAdjustment = 1 + tempCoefficient * (temperature - 75);
-  const resistance = (resistivity * tempAdjustment * conductorLength) / circularMils;
-  
-  // Calculate voltage drop (simplified formula for visualization purposes)
-  const voltageDrop = phaseConfiguration === 'single-phase' ? 
-    2 * current * resistance : 
-    Math.sqrt(3) * current * resistance;
-    
-  return (voltageDrop / systemVoltage) * 100;
 } 

@@ -21,6 +21,7 @@ import WbIncandescentIcon from '@mui/icons-material/WbIncandescent';
 import WavesIcon from '@mui/icons-material/Waves';
 import SquareFootIcon from '@mui/icons-material/SquareFoot';
 import ElectricMeterIcon from '@mui/icons-material/ElectricMeter';
+import HighlightIcon from '@mui/icons-material/Highlight';
 import EnergyCalculator from '../EnergyCalculators';
 import ROICalculator from './ROICalculator';
 import IlluminationCalculator from './IlluminationCalculator';
@@ -28,6 +29,9 @@ import IlluminationLevelCalculator from './IlluminationLevelCalculator';
 import PowerFactorCalculator from './PowerFactorCalculator';
 import HarmonicDistortionCalculator from './HarmonicDistortionCalculator';
 import VoltageRegulationCalculator from './VoltageRegulationCalculator';
+import LightingPowerDensityCalculator from './LightingPowerDensityCalculator';
+import VoltageDropCalculator from './VoltageDropCalculator';
+import WaterDropIcon from '@mui/icons-material/WaterDrop';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -94,6 +98,8 @@ const Calculators: React.FC = () => {
             <Tab icon={<CalculateIcon />} label="Power Factor" {...a11yProps(7)} />
             <Tab icon={<WavesIcon />} label="Harmonic Distortion" {...a11yProps(8)} />
             <Tab icon={<ElectricMeterIcon />} label="Voltage Regulation" {...a11yProps(9)} />
+            <Tab icon={<HighlightIcon />} label="Lighting Power Density" {...a11yProps(10)} />
+            <Tab icon={<WaterDropIcon />} label="Voltage Drop" {...a11yProps(11)} />
           </Tabs>
           
           {/* Overview Tab */}
@@ -253,6 +259,40 @@ const Calculators: React.FC = () => {
                   </CardActionArea>
                 </Card>
               </Grid>
+              
+              <Grid item xs={12} sm={6} md={4}>
+                <Card>
+                  <CardActionArea onClick={() => setTabValue(10)}>
+                    <CardContent>
+                      <HighlightIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
+                      <Typography variant="h6" gutterBottom>
+                        Lighting Power Density Calculator
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Calculate lighting power density (LPD) for a given area and verify
+                        compliance with PEC 2017 Section 4.6 standards.
+                      </Typography>
+                    </CardContent>
+                  </CardActionArea>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12} sm={6} md={4}>
+                <Card>
+                  <CardActionArea onClick={() => setTabValue(11)}>
+                    <CardContent>
+                      <WaterDropIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
+                      <Typography variant="h6" gutterBottom>
+                        Voltage Drop Calculator
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Calculate voltage drop in conductors, verify compliance with PEC 2017 
+                        standards, and determine optimal conductor sizing for efficiency.
+                      </Typography>
+                    </CardContent>
+                  </CardActionArea>
+                </Card>
+              </Grid>
             </Grid>
             
             <Box sx={{ mt: 4 }}>
@@ -353,6 +393,16 @@ const Calculators: React.FC = () => {
           {/* Voltage Regulation Tab */}
           <TabPanel value={tabValue} index={9}>
             <VoltageRegulationCalculator />
+          </TabPanel>
+          
+          {/* Lighting Power Density Tab */}
+          <TabPanel value={tabValue} index={10}>
+            <LightingPowerDensityCalculator />
+          </TabPanel>
+
+          {/* Voltage Drop Tab */}
+          <TabPanel value={tabValue} index={11}>
+            <VoltageDropCalculator />
           </TabPanel>
         </Paper>
         

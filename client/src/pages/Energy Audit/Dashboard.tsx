@@ -36,6 +36,7 @@ import {
   Work as WorkIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import VoltageDropWidget from './components/Calculators/VoltageDropWidget';
 
 const Dashboard = (): ReactElement => {
   const navigate = useNavigate();
@@ -272,6 +273,39 @@ const Dashboard = (): ReactElement => {
                 </Typography>
               </Grid>
             </Grid>
+          </Paper>
+        </Grid>
+        
+        {/* Add Voltage Drop Widget Section */}
+        <Grid item xs={12} md={6}>
+          <VoltageDropWidget
+            onNavigateToCalculator={() => navigateTo('/energy-audit/energy-calculators')}
+          />
+        </Grid>
+        
+        {/* Add another widget for balance if needed */}
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 3, height: '100%' }}>
+            <Typography variant="h6" gutterBottom>
+              Energy Audit Progress
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+            
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Typography variant="body1">
+                Your energy audit workflow progress will be shown here as you complete more assessments.
+              </Typography>
+              
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => navigateTo('/energy-audit/audit-workflow')}
+                startIcon={<WorkIcon />}
+                sx={{ alignSelf: 'flex-start' }}
+              >
+                Continue Audit Workflow
+              </Button>
+            </Box>
           </Paper>
         </Grid>
       </Grid>

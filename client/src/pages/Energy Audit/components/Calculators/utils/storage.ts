@@ -3,9 +3,9 @@
  */
 
 // Storage utility for calculator results
-type CalculatorType = 'illumination' | 'roi' | 'powerfactor' | 'power-factor' | 'hvac' | 'equipment' | 'harmonic' | 'harmonic-distortion' | 'lighting' | 'schedule-of-loads' | 'voltage-regulation';
+export type CalculatorType = 'illumination' | 'roi' | 'powerfactor' | 'power-factor' | 'hvac' | 'equipment' | 'harmonic' | 'harmonic-distortion' | 'lighting' | 'schedule-of-loads' | 'voltage-regulation' | 'voltage-drop';
 
-interface StoredCalculation {
+export interface StoredCalculation {
   id: string;
   name: string;
   timestamp: number;
@@ -44,10 +44,6 @@ export const saveCalculation = (type: CalculatorType, name: string, data: any): 
       TYPE_STORAGE_KEY = 'powerfactor_calculations';
     }
     
-    // Debug information
-    console.log(`Attempting to save calculation: ${id}`);
-    console.log(`Using storage keys: ${STORAGE_KEY} and ${TYPE_STORAGE_KEY}`);
-    
     // Get existing calculations from both storage locations
     let allCalculations: StoredCalculation[] = [];
     let typeCalculations: StoredCalculation[] = [];
@@ -56,17 +52,11 @@ export const saveCalculation = (type: CalculatorType, name: string, data: any): 
       const storedData = localStorage.getItem(STORAGE_KEY);
       if (storedData) {
         allCalculations = JSON.parse(storedData);
-        console.log(`Found ${allCalculations.length} existing calculations in unified storage`);
-      } else {
-        console.log('No existing calculations found in unified storage');
       }
       
       const typeStoredData = localStorage.getItem(TYPE_STORAGE_KEY);
       if (typeStoredData) {
         typeCalculations = JSON.parse(typeStoredData);
-        console.log(`Found ${typeCalculations.length} existing ${type} calculations`);
-      } else {
-        console.log(`No existing ${type} calculations found`);
       }
     } catch (e) {
       console.warn('Error parsing existing calculations:', e);
@@ -81,18 +71,6 @@ export const saveCalculation = (type: CalculatorType, name: string, data: any): 
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(allCalculations));
       localStorage.setItem(TYPE_STORAGE_KEY, JSON.stringify(typeCalculations));
-      
-      // Verify data was saved correctly
-      const verifyAllData = localStorage.getItem(STORAGE_KEY);
-      const verifyTypeData = localStorage.getItem(TYPE_STORAGE_KEY);
-      
-      if (!verifyAllData || !verifyTypeData) {
-        throw new Error('Verification failed: Could not retrieve saved data');
-      }
-      
-      console.log(`Successfully saved calculation to localStorage: ${id} (${type})`);
-      console.log(`Total calculations in storage: ${allCalculations.length}`);
-      console.log(`Total ${type} calculations: ${typeCalculations.length}`);
       
       return id;
     } catch (storageError) {
@@ -123,7 +101,8 @@ const createDefaultName = (type: CalculatorType): string => {
     'harmonic-distortion': 'Harmonic Distortion',
     'roi': 'ROI',
     'schedule-of-loads': 'Schedule of Loads',
-    'voltage-regulation': 'Voltage Regulation'
+    'voltage-regulation': 'Voltage Regulation',
+    'voltage-drop': 'Voltage Drop'
   };
   
   const typeLabel = typeLabels[type] || type.charAt(0).toUpperCase() + type.slice(1);
@@ -140,8 +119,6 @@ const createDefaultName = (type: CalculatorType): string => {
  */
 export const loadSavedCalculations = (type: CalculatorType): StoredCalculation[] => {
   try {
-    console.log(`Attempting to load saved calculations for type: ${type}`);
-    
     // Ensure we use the correct storage key for each type
     let TYPE_STORAGE_KEY = `${type}_calculations`;
     
@@ -150,7 +127,6 @@ export const loadSavedCalculations = (type: CalculatorType): StoredCalculation[]
     const LEGACY_STORAGE_KEY = legacyType ? `${legacyType}_calculations` : null;
     
     // First try to get from unified storage
-    console.log(`Checking unified storage key: ${STORAGE_KEY}`);
     const allCalculations = getStoredCalculations();
     
     // Include both current type and legacy type if applicable
@@ -159,7 +135,6 @@ export const loadSavedCalculations = (type: CalculatorType): StoredCalculation[]
     );
     
     // Try to get from type-specific storage
-    console.log(`Checking type-specific storage key: ${TYPE_STORAGE_KEY}`);
     let typeSpecificCalcs: StoredCalculation[] = [];
     
     try {
@@ -168,7 +143,6 @@ export const loadSavedCalculations = (type: CalculatorType): StoredCalculation[]
         const parsedData = JSON.parse(typeSpecificData);
         if (Array.isArray(parsedData)) {
           typeSpecificCalcs = parsedData;
-          console.log(`Found ${typeSpecificCalcs.length} calculations in type-specific storage`);
         }
       }
     } catch (parseError) {
@@ -178,7 +152,6 @@ export const loadSavedCalculations = (type: CalculatorType): StoredCalculation[]
     // Also check legacy storage if applicable
     let legacyTypeCalcs: StoredCalculation[] = [];
     if (legacyType && LEGACY_STORAGE_KEY) {
-      console.log(`Checking legacy storage key: ${LEGACY_STORAGE_KEY}`);
       try {
         const legacyData = localStorage.getItem(LEGACY_STORAGE_KEY);
         if (legacyData) {
@@ -189,7 +162,6 @@ export const loadSavedCalculations = (type: CalculatorType): StoredCalculation[]
               ...calc,
               type: type as CalculatorType // Convert from legacy to current
             }));
-            console.log(`Found ${legacyTypeCalcs.length} calculations in legacy storage`);
           }
         }
       } catch (parseError) {
@@ -217,7 +189,6 @@ export const loadSavedCalculations = (type: CalculatorType): StoredCalculation[]
     // Sort by timestamp (newest first)
     combinedCalculations.sort((a, b) => b.timestamp - a.timestamp);
     
-    console.log(`Returning ${combinedCalculations.length} total ${type} calculations`);
     return combinedCalculations;
   } catch (error) {
     console.error(`Error loading calculations of type '${type}':`, error);
@@ -226,21 +197,20 @@ export const loadSavedCalculations = (type: CalculatorType): StoredCalculation[]
 };
 
 /**
- * Get all stored calculations from local storage
- * 
- * @returns Array of stored calculations
+ * Get all stored calculations from unified storage
+ * @returns Array of all stored calculations
  */
 export const getStoredCalculations = (): StoredCalculation[] => {
   try {
     const storedData = localStorage.getItem(STORAGE_KEY);
+    if (!storedData) return [];
     
-    if (!storedData) {
-      return [];
-    }
+    const parsedData = JSON.parse(storedData);
+    if (!Array.isArray(parsedData)) return [];
     
-    return JSON.parse(storedData);
+    return parsedData;
   } catch (error) {
-    console.error('Error loading calculations from local storage:', error);
+    console.error('Error retrieving stored calculations:', error);
     return [];
   }
 };
@@ -265,45 +235,53 @@ export const getCalculationsByType = (type: StoredCalculation['type']): StoredCa
 
 /**
  * Get a specific calculation by ID
- * 
  * @param id The ID of the calculation to retrieve
- * @returns The stored calculation or null if not found
+ * @returns The calculation or null if not found
  */
 export const getCalculationById = (id: string): StoredCalculation | null => {
-  const allCalculations = getStoredCalculations();
-  const calculation = allCalculations.find(calc => calc.id === id);
-  
-  return calculation || null;
+  try {
+    const allCalculations = getStoredCalculations();
+    return allCalculations.find(calc => calc.id === id) || null;
+  } catch (error) {
+    console.error(`Error retrieving calculation with ID ${id}:`, error);
+    return null;
+  }
 };
 
 /**
- * Delete a saved calculation
- * @param type Calculator type
- * @param id ID of the calculation to delete
+ * Delete a specific calculation
+ * @param type The calculator type
+ * @param id The ID of the calculation to delete
  * @returns true if successful, false otherwise
  */
 export const deleteCalculation = (type: CalculatorType, id: string): boolean => {
-  let success = false;
-  
-  // Delete from type-specific storage (legacy approach)
-  const savedCalculations = loadSavedCalculations(type);
-  const updatedCalculations = savedCalculations.filter(calc => calc.id !== id);
-  
-  if (updatedCalculations.length !== savedCalculations.length) {
-    localStorage.setItem(`${type}_calculations`, JSON.stringify(updatedCalculations));
-    success = true;
+  try {
+    // Get existing calculations from both storage locations
+    const allCalculations = getStoredCalculations().filter(calc => calc.id !== id);
+    const TYPE_STORAGE_KEY = `${type}_calculations`;
+    
+    // Update unified storage
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(allCalculations));
+    
+    // Update type-specific storage
+    try {
+      const typeStoredData = localStorage.getItem(TYPE_STORAGE_KEY);
+      if (typeStoredData) {
+        const typeCalculations = JSON.parse(typeStoredData);
+        if (Array.isArray(typeCalculations)) {
+          const updatedTypeCalculations = typeCalculations.filter(calc => calc.id !== id);
+          localStorage.setItem(TYPE_STORAGE_KEY, JSON.stringify(updatedTypeCalculations));
+        }
+      }
+    } catch (e) {
+      console.warn(`Error updating type-specific storage for ${type}:`, e);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error(`Error deleting calculation with ID ${id}:`, error);
+    return false;
   }
-  
-  // Also delete from unified storage
-  const allCalculations = getStoredCalculations();
-  const updatedAllCalculations = allCalculations.filter(calc => calc.id !== id);
-  
-  if (updatedAllCalculations.length !== allCalculations.length) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedAllCalculations));
-    success = true;
-  }
-  
-  return success;
 };
 
 /**
@@ -328,15 +306,14 @@ export const deleteCalculationsByType = (type: StoredCalculation['type']): boole
 
 /**
  * Clear all stored calculations
- * 
- * @returns True if successful, false otherwise
+ * @returns true if successful, false otherwise
  */
 export const clearAllCalculations = (): boolean => {
   try {
     localStorage.removeItem(STORAGE_KEY);
     return true;
   } catch (error) {
-    console.error('Error clearing calculations from local storage:', error);
+    console.error('Error clearing all calculations:', error);
     return false;
   }
 }; 

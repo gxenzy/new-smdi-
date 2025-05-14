@@ -45,7 +45,7 @@ import {
 import { useSnackbar } from 'notistack';
 
 // Make CalculatorType type match storage.ts
-type CalculatorType = 'illumination' | 'roi' | 'powerfactor' | 'power-factor' | 'hvac' | 'equipment' | 'harmonic' | 'harmonic-distortion' | 'lighting' | 'schedule-of-loads';
+type CalculatorType = 'illumination' | 'roi' | 'powerfactor' | 'power-factor' | 'hvac' | 'equipment' | 'harmonic' | 'harmonic-distortion' | 'lighting' | 'schedule-of-loads' | 'voltage-regulation' | 'voltage-drop';
 
 // Define StoredCalculation interface to match storage.ts
 interface StoredCalculation {
@@ -95,7 +95,9 @@ const calculatorTypeLabels: Record<string, string> = {
   'harmonic': 'Harmonic Distortion',
   'harmonic-distortion': 'Harmonic Distortion',
   'roi': 'ROI',
-  'schedule-of-loads': 'Schedule of Loads'
+  'schedule-of-loads': 'Schedule of Loads',
+  'voltage-regulation': 'Voltage Regulation',
+  'voltage-drop': 'Voltage Drop'
 };
 
 // Add updateCalculationName function

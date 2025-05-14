@@ -38,6 +38,7 @@ import {
   findMinimumConductorSize
 } from './utils/voltageRegulationUtils';
 import VoltageDropVisualization from './VoltageDropVisualization';
+import { VoltageDropInputs, VoltageDropResult, CircuitType } from './utils/voltageDropUtils';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -65,6 +66,66 @@ function a11yProps(index: number) {
   return {
     id: `voltage-regulation-tab-${index}`,
     'aria-controls': `voltage-regulation-tabpanel-${index}`,
+  };
+}
+
+/**
+ * Adapts VoltageRegulationInputs and VoltageRegulationResult to the format required by VoltageDropVisualization
+ * 
+ * @param regInputs - Voltage regulation inputs
+ * @param regResults - Voltage regulation results
+ * @returns Objects compatible with VoltageDropVisualization
+ */
+function adaptForVoltageDropVisualization(
+  regInputs: VoltageRegulationInputs,
+  regResults: VoltageRegulationResult
+): {
+  inputs: VoltageDropInputs;
+  results: VoltageDropResult;
+  isCalculated: boolean;
+} {
+  // Calculate estimated current based on power and voltage
+  const estimatedCurrent = regInputs.loadPower / (regInputs.systemVoltage * regInputs.powerFactor);
+  
+  // Convert inputs
+  const dropInputs: VoltageDropInputs = {
+    systemVoltage: regInputs.systemVoltage,
+    phaseConfiguration: regInputs.phaseConfiguration,
+    conductorLength: regInputs.conductorLength,
+    conductorSize: regInputs.conductorSize,
+    conductorMaterial: regInputs.conductorMaterial,
+    conduitMaterial: regInputs.conduitMaterial,
+    temperature: 75, // Default temperature
+    loadCurrent: estimatedCurrent,
+    powerFactor: regInputs.powerFactor,
+    circuitConfiguration: {
+      circuitType: 'feeder', // Assume feeder for voltage regulation
+      wireway: 'conduit',
+      hasVFD: false
+    }
+  };
+  
+  // Convert results
+  const dropResults: VoltageDropResult = {
+    voltageDropPercent: regResults.voltageDropPercent,
+    voltageDrop: regResults.voltageDrop,
+    receivingEndVoltage: regResults.receivingEndVoltage,
+    resistiveLoss: regResults.resistiveLoss,
+    reactiveLoss: regResults.reactiveLoss,
+    totalLoss: regResults.totalLoss,
+    compliance: regResults.compliance,
+    maxAllowedDrop: 5, // Default to 5% for feeders
+    recommendations: regResults.recommendations,
+    wireRating: {
+      ampacity: estimatedCurrent * 1.25, // Estimate ampacity at 125% of current
+      isAdequate: true
+    }
+  };
+  
+  return {
+    inputs: dropInputs,
+    results: dropResults,
+    isCalculated: true
   };
 }
 
@@ -271,7 +332,12 @@ const VoltageRegulationCalculator: React.FC = () => {
         </Card>
         
         <Box mt={3}>
-          <VoltageDropVisualization inputs={inputs} results={results} />
+          {results && (
+            <VoltageDropVisualization 
+              {...adaptForVoltageDropVisualization(inputs, results)}
+              isCalculated={isCalculated}
+            />
+          )}
         </Box>
       </Box>
     );

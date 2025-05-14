@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -34,7 +35,8 @@ import {
   Stepper,
   Step,
   StepLabel,
-  Menu
+  Menu,
+  Snackbar
 } from '@mui/material';
 
 import {
@@ -51,7 +53,8 @@ import {
   MoreVert as MoreVertIcon,
   CalendarToday as CalendarIcon,
   Save as SaveIcon,
-  Cancel as CancelIcon
+  Cancel as CancelIcon,
+  Calculate as CalculateIcon
 } from '@mui/icons-material';
 
 // Define interfaces at the top, after the imports
@@ -189,6 +192,7 @@ const auditPhases = [
 
 const AuditWorkflow: React.FC = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const [currentTab, setCurrentTab] = useState(0);
   const [tasks, setTasks] = useState<AuditTask[]>(mockAuditTasks);
   const [loading, setLoading] = useState(false);
@@ -199,10 +203,80 @@ const AuditWorkflow: React.FC = () => {
   const [activePhase, setActivePhase] = useState(1); // 0-based index
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
-
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [menuTaskId, setMenuTaskId] = useState<string | null>(null);
+  const menuOpen = Boolean(anchorEl);
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    type: 'success' | 'error' | 'info';
+  }>({
+    open: false,
+    message: '',
+    type: 'info'
+  });
+  
+  // Function to launch calculators based on task type
+  const launchRelatedCalculator = (taskTitle: string) => {
+    let calculatorType = '';
+    let calculatorIndex = 0;
+    
+    // Determine which calculator to launch based on task title/description
+    if (taskTitle.toLowerCase().includes('lighting') || 
+        taskTitle.toLowerCase().includes('lpd') || 
+        taskTitle.toLowerCase().includes('light')) {
+      // For lighting-related tasks, navigate to the LPD calculator
+      calculatorType = 'Lighting Power Density Calculator';
+      calculatorIndex = 10;
+    } else if (taskTitle.toLowerCase().includes('hvac') || 
+               taskTitle.toLowerCase().includes('air conditioning')) {
+      // For HVAC-related tasks
+      calculatorType = 'HVAC Calculator';
+      calculatorIndex = 5;
+    } else if (taskTitle.toLowerCase().includes('power') || 
+               taskTitle.toLowerCase().includes('electrical') || 
+               taskTitle.toLowerCase().includes('energy')) {
+      // For electrical system tasks
+      calculatorType = 'Energy Calculator';
+      calculatorIndex = 1;
+    } else if (taskTitle.toLowerCase().includes('harmonic')) {
+      // For harmonic distortion tasks
+      calculatorType = 'Harmonic Distortion Calculator';
+      calculatorIndex = 8;
+    } else if (taskTitle.toLowerCase().includes('voltage') || 
+               taskTitle.toLowerCase().includes('drop')) {
+      // For voltage regulation tasks
+      calculatorType = 'Voltage Regulation Calculator';
+      calculatorIndex = 9;
+    } else if (taskTitle.toLowerCase().includes('illumination') || 
+               taskTitle.toLowerCase().includes('lux')) {
+      // For illumination tasks
+      calculatorType = 'Illumination Calculator';
+      calculatorIndex = 3;
+    } else if (taskTitle.toLowerCase().includes('roi') || 
+               taskTitle.toLowerCase().includes('return on investment') || 
+               taskTitle.toLowerCase().includes('payback')) {
+      // For ROI calculation tasks
+      calculatorType = 'ROI Calculator';
+      calculatorIndex = 6;
+    } else if (taskTitle.toLowerCase().includes('power factor')) {
+      // For power factor tasks
+      calculatorType = 'Power Factor Calculator';
+      calculatorIndex = 7;
+    } else {
+      // Default to calculator overview
+      calculatorType = 'Calculators Overview';
+      calculatorIndex = 0;
+    }
+    
+    // Show feedback to user before navigating
+    showNotification(`Launching ${calculatorType}...`, 'info');
+    
+    // Navigate to the appropriate calculator
+    navigate(`/energy-audit/calculators?tab=${calculatorIndex}`);
+  };
+  
   // Fetch data - in a real app, this would be an API call
   useEffect(() => {
     setLoading(true);
@@ -406,14 +480,14 @@ const AuditWorkflow: React.FC = () => {
 
   // Open task menu
   const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>, taskId: string) => {
-    setMenuAnchorEl(event.currentTarget);
-    setSelectedTaskId(taskId);
+    setAnchorEl(event.currentTarget);
+    setMenuTaskId(taskId);
   };
 
   // Close task menu
   const handleMenuClose = () => {
-    setMenuAnchorEl(null);
-    setSelectedTaskId(null);
+    setAnchorEl(null);
+    setMenuTaskId(null);
   };
 
   // Open task details
@@ -436,9 +510,9 @@ const AuditWorkflow: React.FC = () => {
 
   // Delete task
   const handleDeleteTask = () => {
-    if (selectedTaskId) {
-      setTasks(tasks.filter(task => task.id !== selectedTaskId));
-      if (currentTask && currentTask.id === selectedTaskId) {
+    if (menuTaskId) {
+      setTasks(tasks.filter(task => task.id !== menuTaskId));
+      if (currentTask && currentTask.id === menuTaskId) {
         setCurrentTask(null);
       }
     }
@@ -496,6 +570,20 @@ const AuditWorkflow: React.FC = () => {
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  // Add notification display function if it doesn't exist
+  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setNotification({
+      open: true,
+      message,
+      type
+    });
+    
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+      setNotification(prev => ({...prev, open: false}));
+    }, 3000);
   };
 
   return (
@@ -779,6 +867,21 @@ const AuditWorkflow: React.FC = () => {
                   
                   <Divider sx={{ my: 2 }} />
                   
+                  {/* Add Calculator Button */}
+                  <Box sx={{ mb: 2 }}>
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      startIcon={<CalculateIcon />}
+                      onClick={() => launchRelatedCalculator(currentTask.title)}
+                      fullWidth
+                    >
+                      Launch Related Calculator
+                    </Button>
+                  </Box>
+                  
+                  <Divider sx={{ my: 2 }} />
+                  
                   <Typography variant="subtitle1" gutterBottom>Comments</Typography>
                   
                   {currentTask.comments.length > 0 ? (
@@ -828,8 +931,8 @@ const AuditWorkflow: React.FC = () => {
 
       {/* Task Menu */}
       <Menu
-        anchorEl={menuAnchorEl}
-        open={Boolean(menuAnchorEl)}
+        anchorEl={anchorEl}
+        open={menuOpen}
         onClose={handleMenuClose}
       >
         <MenuItem onClick={handleEditTaskDetails}>
@@ -845,6 +948,15 @@ const AuditWorkflow: React.FC = () => {
           <ListItemText>Delete</ListItemText>
         </MenuItem>
       </Menu>
+
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={3000}
+        onClose={() => setNotification(prev => ({...prev, open: false}))}
+        message={notification.message}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      />
     </Box>
   );
 };

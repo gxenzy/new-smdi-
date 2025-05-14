@@ -36,6 +36,70 @@
   - ✅ Helpful reference information and user guidance
   - ✅ Interactive voltage drop visualization with Chart.js
   - ✅ Conductor size comparison visualization
+- ✅ Implemented LightingPowerDensityCalculator with complete functionality:
+  - ✅ Core calculation of lighting power density (W/m²)
+  - ✅ Standards compliance verification with PEC 2017
+  - ✅ Fixture management (addition, configuration, removal)
+  - ✅ Building type selection with appropriate standards
+  - ✅ Comprehensive recommendations based on results
+  - ✅ Building presets for common building and room types
+  - ✅ Energy savings calculation with configurable parameters
+  - ✅ PDF export with detailed reports
+  - ✅ PDF preview functionality
+  - ✅ User notifications and enhanced error handling
+  - ✅ Responsive design for different screen sizes
+  - ✅ TypeScript type safety with proper interfaces
+  - ✅ Integration with the Energy Audit workflow
+  - ✅ TypeScript declarations for jspdf-autotable
+
+## In Progress
+
+- 🔄 Creating Voltage Drop Calculator for specific circuit types:
+  - ✅ Core utility functions for voltage drop calculations
+  - ✅ Circuit type-specific configuration options
+  - ✅ Ampacity validation alongside voltage drop checks
+  - ✅ Conductor size optimization algorithms
+  - 🔄 User interface implementation
+  - 🔄 Results visualization and recommendations
+  - 🔄 Integration with standards reference and compliance checking
+- 🔄 Enhancing HarmonicDistortionCalculator with batch calculations
+- 🔄 Improving PowerFactorCalculator with new visualization features
+
+## Planned Features
+
+- ⏳ Implement ScheduleOfLoadsCalculator
+- ⏳ Create dedicated MotorLoadCalculator
+- ⏳ Develop TransformerCalculator for load analysis
+- ⏳ Implement HVACEnergyCalculator with seasonal analysis
+- ⏳ Add comparison view to all calculators
+- ⏳ Create calculation templates for common scenarios
+
+## Feature Enhancement Ideas
+
+### Voltage Drop Calculator Enhancements
+- ⏳ Add visualization of voltage drop along conductor length
+- ⏳ Implement conductor size comparison visualization
+- ⏳ Create circuit type templates for common applications
+- ⏳ Add support for custom derating factors
+- ⏳ Implement temperature-based derating calculations
+- ⏳ Add integration with Schedule of Loads calculator
+
+### LightingPowerDensityCalculator Enhancements
+- ⏳ Add comparison view for multiple lighting designs
+- ⏳ Implement 3D visualization of lighting layouts
+- ⏳ Add batch calculation for multiple rooms
+- ⏳ Create integration with BIM/CAD data
+- ⏳ Implement real-time collaboration features
+- ⏳ Add ability to import fixture data from spreadsheets
+- ⏳ Implement illumination level prediction based on LPD values
+- ⏳ Create cost optimization suggestions with ROI calculations
+- ⏳ Add fixture database with efficiency ratings
+
+### General Enhancements
+- ⏳ Add export to spreadsheet functionality for all calculators
+- ⏳ Create centralized calculation history viewer
+- ⏳ Implement calculation data visualization dashboard
+- ⏳ Add print-friendly layouts for all calculators
 
 ## Current Tasks
 
@@ -61,15 +125,45 @@
 9. ✅ Add interactive voltage drop visualization along conductor length
 10. ✅ Add conductor size comparison visualization
 
+### LightingPowerDensityCalculator Implementation (Completed)
+1. ✅ Create core utility functions for LPD calculations
+2. ✅ Implement standards compliance verification based on PEC 2017
+3. ✅ Design intuitive user interface for room and fixture input
+4. ✅ Add fixture management functionality (add, edit, remove)
+5. ✅ Create building type selection with appropriate standards
+6. ✅ Implement detailed recommendations based on results
+7. ✅ Add PDF export functionality with professional reports
+8. ✅ Implement building preset functionality for quick configuration
+9. ✅ Add energy savings calculations with configurable parameters
+10. ✅ Create interactive PDF preview functionality
+11. ✅ Implement user notifications for better feedback
+12. ✅ Create TypeScript declarations for jspdf-autotable
+
+### Voltage Drop Calculator Implementation (In Progress)
+1. ✅ Create voltage drop calculation utilities for specific circuit types
+2. ✅ Implement circuit type configuration for branch, feeder, service, and motor circuits
+3. ✅ Add ampacity validation according to PEC 2017 requirements
+4. ✅ Design user interface with circuit-specific parameters
+5. ✅ Implement intelligent conductor size recommendation algorithm
+6. 🔄 Create results display with compliance status and recommendations
+7. 🔄 Add visualization for voltage drop along conductor length
+8. 🔄 Implement comparison view for different conductor sizes
+9. 🔄 Add educational resources on PEC 2017 requirements
+10. 🔄 Integrate with SavedCalculationsViewer component
+
 ## Next Tasks
 
 ### High Priority
 1. ✅ Complete the Voltage Regulation Calculator (PEC 2017 2.30)
 2. ✅ Add interactive voltage drop visualization
-3. Enhance the Lighting Power Density Calculator with PEC 2017 compliance checks
-4. Add printable report generation for calculations
-5. Implement data export functionality (CSV, PDF)
-6. Create the Voltage Drop Calculator for specific circuit types
+3. ✅ Enhance the Lighting Power Density Calculator with PEC 2017 compliance checks
+4. ✅ Add PDF export functionality for LPD calculations
+5. ✅ Add building type presets for LPD Calculator
+6. ✅ Implement energy savings calculation for LPD
+7. ✅ Add UI for presets and building templates in LPD Calculator
+8. ✅ Implement energy savings UI with configurable parameters in LPD Calculator
+9. 🔄 Create the Voltage Drop Calculator for specific circuit types
+10. 🔄 Implement data export functionality (CSV, PDF) for other calculators
 
 ### Medium Priority
 1. Integrate calculators with building visualization module
@@ -91,10 +185,11 @@
 5. Add accessibility features (ARIA attributes, keyboard navigation)
 
 ## Documentation
-1. Add JSDoc comments to all components and functions
-2. Create usage examples for each calculator
-3. Document the calculation methodologies and standards compliance
-4. Create visual diagrams for calculator workflows
+1. ✅ Add JSDoc comments to all components and functions
+2. ✅ Create usage examples for each calculator
+3. ✅ Document the calculation methodologies and standards compliance
+4. ✅ Create visual diagrams for calculator workflows
+5. ✅ Implement comprehensive user guides for LPD Calculator
 
 # Calculator Compliance Integration TODO List
 
@@ -161,8 +256,9 @@ The calculator compliance integration has been implemented with these key featur
 
 The immediate next steps are:
 1. ✅ Complete the backend implementation with actual database queries
-2. Test API endpoints with real data
-3. Enhance error handling on the frontend
-4. Integrate with the PDF report generation system
+2. 🔄 Complete the Voltage Drop Calculator implementation
+3. Test compliance API endpoints with real data
+4. Enhance error handling on the frontend
+5. Integrate with the PDF report generation system
 
 Once these are complete, focus on the medium priority items to improve user experience and integration with other system components 

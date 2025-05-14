@@ -6,5 +6,6 @@ export { default as ROICalculator } from './ROICalculator';
 export { default as HarmonicDistortionCalculator } from './HarmonicDistortionCalculator';
 export { default as SavedCalculationsViewer } from './SavedCalculationsViewer';
 export { default as VoltageRegulationCalculator } from './VoltageRegulationCalculator';
+export { default as LightingPowerDensityCalculator } from './LightingPowerDensityCalculator';
 export { ScheduleOfLoadsCalculator } from './ScheduleOfLoads';
 export * from './utils/storage'; 

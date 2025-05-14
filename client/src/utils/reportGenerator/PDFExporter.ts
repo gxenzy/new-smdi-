@@ -11,7 +11,6 @@ import {
   SectionHeaderReportContent,
   TocReportContent
 } from '../../types/reports';
-import { autoTable } from 'jspdf-autotable';
 
 /**
  * PDF Export Options
@@ -742,4 +741,33 @@ export class PDFExporter {
   public save(): void {
     this.pdf.save(this.options.fileName);
   }
+}
+
+/**
+ * Get a PDFExporter service instance
+ * 
+ * @returns PDFExporter service
+ */
+export function getPDFExportService(): {
+  generatePDF: (report: Report, fileName?: string) => Promise<void>;
+} {
+  return {
+    generatePDF: async (report: Report, fileName?: string): Promise<void> => {
+      const options: PDFExportOptions = {
+        fileName: fileName || `${report.title.replace(/\s+/g, '_')}_report.pdf`
+      };
+      
+      const exporter = new PDFExporter(report, options);
+      const pdfBlob = await exporter.generatePDF();
+      
+      // Create download link and trigger download
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(pdfBlob);
+      link.download = options.fileName || 'report.pdf';
+      link.click();
+      
+      // Clean up
+      URL.revokeObjectURL(link.href);
+    }
+  };
 } 
