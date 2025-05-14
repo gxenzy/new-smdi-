@@ -1,7 +1,17 @@
 import { useState, useEffect } from 'react';
 import useEnergyAuditRealTime from './useEnergyAuditRealTime';
 import type { WebSocketEvent, UserPresence } from '../services/energyAuditWebSocketService';
-import type { ActivityLogEvent } from '../components/EnergyAudit/ActivityLog';
+
+// Define ActivityLogEvent interface directly to avoid import errors
+interface ActivityLogEvent {
+  id: string;
+  type: string;
+  message: string;
+  userId: string;
+  userName: string;
+  timestamp: number | string;
+  details?: any;
+}
 
 // Extend the WebSocketEvent interface to include the id property
 declare module '../services/energyAuditWebSocketService' {

@@ -17,6 +17,19 @@ import StandardsReference from '../pages/Energy Audit/components/StandardsRefere
 import IlluminationLevelCalculator from '../pages/Energy Audit/components/Calculators/IlluminationLevelCalculator';
 import SavedCalculationsViewer from '../pages/Energy Audit/components/Calculators/SavedCalculationsViewer';
 import StandardsManagement from '../pages/AdminSettings/StandardsManagement';
+import AccessibilityChartExample from '../components/UI/AccessibilityChartExample';
+import AccessibilityTester from '../components/UI/AccessibilityTester';
+import ChartTypeSelector from '../components/UI/ChartTypeSelector';
+import ColorBlindnessDemo from '../components/UI/ColorBlindnessDemo';
+import EnhancedPatternDemo from '../components/UI/EnhancedPatternDemo';
+import ScreenReaderAccessibilityDemo from '../components/UI/ScreenReaderAccessibilityDemo';
+import ChartAccessibilityTestSuite from '../components/UI/ChartAccessibilityTestSuite';
+import ChartAccessibilityTestRecorder from '../components/UI/ChartAccessibilityTestRecorder';
+import ChartAccessibilityTestReports from '../components/UI/ChartAccessibilityTestReports';
+import ScreenReaderTestingGuide from '../components/UI/ScreenReaderTestingGuide';
+import ChartAccessibilityTestStats from '../components/UI/ChartAccessibilityTestStats';
+import AccessibilityTestingDashboard from '../components/UI/AccessibilityTestingDashboard';
+import ChartAccessibilityRoadmap from '../components/UI/ChartAccessibilityRoadmap';
 
 // Report Management Components
 import { ReportList, ReportView, ReportEditor, ReportShare } from '../components/ReportManagement';
@@ -216,6 +229,205 @@ const AppRoutes: React.FC = () => {
           element={
             <PageTransition variant="scale">
               <Settings />
+            </PageTransition>
+          } 
+        />
+        
+        {/* Add route for accessibility chart example */}
+        <Route 
+          path="/settings/accessibility/chart-examples" 
+          element={
+            <PageTransition variant="scale">
+              <Box sx={{ p: 3 }}>
+                <AccessibilityChartExample />
+              </Box>
+            </PageTransition>
+          } 
+        />
+        
+        {/* Add route for color blindness simulation */}
+        <Route 
+          path="/settings/accessibility/color-blindness" 
+          element={
+            <PageTransition variant="scale">
+              <Box sx={{ p: 3 }}>
+                <Typography variant="h4" gutterBottom>
+                  Color Blindness Simulation
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  This tool demonstrates how colors appear to people with different types of color vision deficiency.
+                  Use the accessibility settings panel to change the simulation type.
+                </Typography>
+                <ColorBlindnessDemo variant="full" />
+              </Box>
+            </PageTransition>
+          } 
+        />
+        
+        {/* Add route for enhanced pattern fills demo */}
+        <Route 
+          path="/settings/accessibility/pattern-fills" 
+          element={
+            <PageTransition variant="scale">
+              <Box sx={{ p: 3 }}>
+                <EnhancedPatternDemo />
+              </Box>
+            </PageTransition>
+          } 
+        />
+        
+        {/* Add route for screen reader accessibility demo */}
+        <Route 
+          path="/settings/accessibility/screen-reader" 
+          element={
+            <PageTransition variant="scale">
+              <Box sx={{ p: 3 }}>
+                <ScreenReaderAccessibilityDemo />
+              </Box>
+            </PageTransition>
+          } 
+        />
+        
+        {/* Add route for accessibility testing tools */}
+        <Route 
+          path="/settings/accessibility/testing" 
+          element={
+            <PageTransition variant="scale">
+              <Box sx={{ p: 3 }}>
+                <Typography variant="h4" gutterBottom>
+                  Accessibility Testing Tools
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  These tools help test components for WCAG 2.1 AA compliance.
+                </Typography>
+                <ChartTypeSelector />
+              </Box>
+            </PageTransition>
+          } 
+        />
+        
+        {/* Add route for comprehensive chart accessibility test suite */}
+        <Route 
+          path="/settings/accessibility/test-suite" 
+          element={
+            <PageTransition variant="scale">
+              <Box sx={{ p: 3 }}>
+                <Typography variant="h4" gutterBottom>
+                  Chart Accessibility Test Suite
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  Advanced testing suite for comprehensive chart accessibility evaluation.
+                </Typography>
+                <ChartAccessibilityTestSuite />
+              </Box>
+            </PageTransition>
+          } 
+        />
+        
+        {/* Add route for accessibility test recorder */}
+        <Route 
+          path="/settings/accessibility/test-recorder" 
+          element={
+            <PageTransition variant="scale">
+              <Box sx={{ p: 3 }}>
+                <Typography variant="h4" gutterBottom>
+                  Accessibility Test Recorder
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  Record and analyze accessibility test results.
+                </Typography>
+                <ChartAccessibilityTestRecorder />
+              </Box>
+            </PageTransition>
+          } 
+        />
+        
+        {/* Add route for accessibility test reports */}
+        <Route 
+          path="/settings/accessibility/test-reports" 
+          element={
+            <PageTransition variant="scale">
+              <Box sx={{ p: 3 }}>
+                <Typography variant="h4" gutterBottom>
+                  Accessibility Test Reports
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  View and manage saved accessibility test reports.
+                </Typography>
+                <ChartAccessibilityTestReports />
+              </Box>
+            </PageTransition>
+          } 
+        />
+        
+        {/* Add route for screen reader testing guide */}
+        <Route 
+          path="/settings/accessibility/testing-guide" 
+          element={
+            <PageTransition variant="scale">
+              <Box sx={{ p: 3 }}>
+                <Typography variant="h4" gutterBottom>
+                  Screen Reader Testing Guide
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  Step-by-step guides for testing charts with screen readers and keyboard navigation.
+                </Typography>
+                <ScreenReaderTestingGuide />
+              </Box>
+            </PageTransition>
+          } 
+        />
+        
+        {/* Add route for accessibility test statistics */}
+        <Route 
+          path="/settings/accessibility/test-stats" 
+          element={
+            <PageTransition variant="scale">
+              <Box sx={{ p: 3 }}>
+                <Typography variant="h4" gutterBottom>
+                  Accessibility Test Analytics
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  Analytics and statistics for accessibility testing results.
+                </Typography>
+                <ChartAccessibilityTestStats />
+              </Box>
+            </PageTransition>
+          } 
+        />
+        
+        {/* Add route for accessibility testing dashboard */}
+        <Route 
+          path="/settings/accessibility/dashboard" 
+          element={
+            <PageTransition variant="scale">
+              <Box sx={{ p: 3 }}>
+                <Typography variant="h4" gutterBottom>
+                  Accessibility Testing Dashboard
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  Central hub for chart accessibility testing tools and progress tracking.
+                </Typography>
+                <AccessibilityTestingDashboard />
+              </Box>
+            </PageTransition>
+          } 
+        />
+        
+        {/* Add route for accessibility testing roadmap */}
+        <Route 
+          path="/settings/accessibility/roadmap" 
+          element={
+            <PageTransition variant="scale">
+              <Box sx={{ p: 3 }}>
+                <Typography variant="h4" gutterBottom>
+                  Accessibility Testing Roadmap
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  Step-by-step guide for comprehensive chart accessibility testing.
+                </Typography>
+                <ChartAccessibilityRoadmap />
+              </Box>
             </PageTransition>
           } 
         />

@@ -39,6 +39,16 @@ export interface VoltageDropInputs {
   phaseConfiguration: 'single-phase' | 'three-phase';
   temperature: number; // Ambient temperature in °C
   powerFactor?: number; // Power factor (0-1), default 0.85 for general calculations
+  // Enhanced voltage drop parameters
+  insulationType?: string;
+  ambientTemperature?: number;
+  harmonicFactor?: number;
+  parallelSets?: number;
+  bundleAdjustmentFactor?: number;
+  distanceToFurthestOutlet?: number;
+  startingCurrentMultiplier?: number;
+  diversityFactor?: number;
+  demandFactor?: number;
 }
 
 /**
@@ -64,7 +74,7 @@ export interface VoltageDropResult {
  * Resistivity values for conductor materials (ohm-cmil/ft)
  * at standard temperature (75°C)
  */
-const RESISTIVITY = {
+export const RESISTIVITY = {
   copper: 10.371, // ohm-cmil/ft at 75°C
   aluminum: 17.020 // ohm-cmil/ft at 75°C
 };
@@ -72,7 +82,7 @@ const RESISTIVITY = {
 /**
  * Temperature coefficient for conductor materials
  */
-const TEMP_COEFFICIENT = {
+export const TEMP_COEFFICIENT = {
   copper: 0.00393,     // per °C
   aluminum: 0.00403    // per °C
 };
@@ -81,7 +91,7 @@ const TEMP_COEFFICIENT = {
  * Reactance values for different conduit materials (ohms/1000ft)
  * Values are approximate and depend on conductor spacing
  */
-const REACTANCE = {
+export const REACTANCE = {
   PVC: {
     'single-phase': 0.050,  // X/1000ft for single-phase in PVC
     'three-phase': 0.043    // X/1000ft for three-phase in PVC
@@ -465,7 +475,27 @@ function calculateVoltageDropResultsInternal(inputs: VoltageDropInputs): Voltage
 }
 
 // Export the memoized version of the function
-export const calculateVoltageDropResults = memoizeCalculation(calculateVoltageDropResultsInternal);
+export const calculateVoltageDropResults = memoizeCalculation(
+  calculateVoltageDropResultsInternal,
+  (inputs: VoltageDropInputs) => {
+    // Create a simplified object with only the properties that affect calculation
+    const cacheObject = {
+      systemVoltage: inputs.systemVoltage,
+      loadCurrent: inputs.loadCurrent,
+      conductorLength: inputs.conductorLength,
+      conductorSize: inputs.conductorSize,
+      conductorMaterial: inputs.conductorMaterial,
+      conduitMaterial: inputs.conduitMaterial,
+      phaseConfiguration: inputs.phaseConfiguration,
+      temperature: inputs.temperature,
+      powerFactor: inputs.powerFactor || 0.85,
+      circuitType: inputs.circuitConfiguration.circuitType
+    };
+    
+    // Create hash by JSON stringifying the object
+    return JSON.stringify(cacheObject);
+  }
+);
 
 /**
  * Find the minimum conductor size that meets voltage drop requirements

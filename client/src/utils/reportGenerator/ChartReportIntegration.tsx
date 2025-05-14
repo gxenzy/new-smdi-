@@ -22,7 +22,7 @@ import {
   Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { ChartConfiguration, ChartType } from 'chart.js';
-import InteractiveChart from './InteractiveChart';
+import { AccessibleChartRenderer } from './ChartAccessibilityProvider';
 import ChartCustomizationPanel from './ChartCustomizationPanel';
 import { ChartGenerator } from './chartGenerator';
 
@@ -227,11 +227,12 @@ const ChartReportIntegration: React.FC<ChartReportIntegrationProps> = ({
               )}
               
               <Box sx={{ height: 150, mb: 2, flex: 1 }}>
-                <InteractiveChart
-                  title=""
+                <AccessibleChartRenderer
                   configuration={template.config}
-                  height={150}
+                  themeName="default"
                   showExportOptions={false}
+                  ariaLabel={`Chart preview: ${template.name}`}
+                  sizePreset="compact"
                 />
               </Box>
               
@@ -273,11 +274,12 @@ const ChartReportIntegration: React.FC<ChartReportIntegrationProps> = ({
               </Typography>
               
               <Box sx={{ height: 150, mb: 2, flex: 1 }}>
-                <InteractiveChart
-                  title=""
+                <AccessibleChartRenderer
                   configuration={chart}
-                  height={150}
+                  themeName="default"
                   showExportOptions={false}
+                  ariaLabel={`Chart preview: ${chart.options?.plugins?.title?.text || `Calculator Chart`}`}
+                  sizePreset="compact"
                 />
               </Box>
               
@@ -371,10 +373,12 @@ const ChartReportIntegration: React.FC<ChartReportIntegrationProps> = ({
             <Grid item xs={12} md={7}>
               {customizedChart && (
                 <Paper sx={{ p: 2, mb: 2 }}>
-                  <InteractiveChart
+                  <AccessibleChartRenderer
                     configuration={customizedChart}
-                    height={400}
+                    themeName="default"
                     showExportOptions={true}
+                    ariaLabel="Preview of customized chart for report"
+                    sizePreset="standard"
                   />
                 </Paper>
               )}

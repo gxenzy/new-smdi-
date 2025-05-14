@@ -5,6 +5,8 @@ import { useLocation } from 'react-router-dom';
 import { ErrorBoundary } from 'react-error-boundary';
 import { CircularProgress, Box, Typography, Button } from '@mui/material';
 import { EnergyAuditProvider } from './contexts/EnergyAuditContext';
+import { AccessibilitySettingsProvider } from './contexts/AccessibilitySettingsContext';
+import ChartAccessibilityProvider from './utils/reportGenerator/ChartAccessibilityProvider';
 
 function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
   return (
@@ -67,13 +69,17 @@ function App() {
         window.location.href = '/';
       }}
     >
-      <EnergyAuditProvider>
-        <Suspense fallback={<LoadingFallback />}>
-          <AnimatePresence mode="wait">
-            <AppRoutes key={location.pathname} />
-          </AnimatePresence>
-        </Suspense>
-      </EnergyAuditProvider>
+      <AccessibilitySettingsProvider>
+        <ChartAccessibilityProvider>
+          <EnergyAuditProvider>
+            <Suspense fallback={<LoadingFallback />}>
+              <AnimatePresence mode="wait">
+                <AppRoutes key={location.pathname} />
+              </AnimatePresence>
+            </Suspense>
+          </EnergyAuditProvider>
+        </ChartAccessibilityProvider>
+      </AccessibilitySettingsProvider>
     </ErrorBoundary>
   );
 }

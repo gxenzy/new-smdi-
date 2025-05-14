@@ -26,6 +26,7 @@ import {
 } from '@mui/icons-material';
 import { LoadItem, CIRCUIT_TYPE_OPTIONS, CIRCUIT_BREAKER_OPTIONS, CONDUCTOR_SIZE_OPTIONS } from './types';
 import { recommendCircuitComponents } from '../utils/pecComplianceUtils';
+import { circuitChangeTracker } from '../utils/circuitChangeTracker';
 
 interface CircuitDetailsDialogProps {
   open: boolean;
@@ -101,6 +102,20 @@ const CircuitDetailsDialog: React.FC<CircuitDetailsDialogProps> = ({
     // Clear any error for this field
     if (errors[field]) {
       setErrors({ ...errors, [field]: '' });
+    }
+
+    // Track the change with the circuit change tracker
+    if (updatedItem?.id) {
+      // Get the previous value
+      const previousValue = updatedItem[field as keyof LoadItem];
+      
+      // Track the change
+      circuitChangeTracker.trackChange(
+        updatedItem.id,
+        field,
+        previousValue,
+        value
+      );
     }
   };
 

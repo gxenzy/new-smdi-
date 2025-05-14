@@ -342,3 +342,38 @@ The system includes an adaptive learning mechanism that improves detection accur
 - Use the edit mode to move and resize rooms
 - Add new rooms with the "Add Room" button
 - Customize room properties in the Room Editor dialog
+
+## Accessibility Features
+
+The application provides several accessibility features to ensure it can be used by as many people as possible:
+
+### High Contrast Mode
+- Global toggle in accessibility settings
+- Enhanced contrast for charts and UI elements
+- Pattern fills for better distinction between chart elements
+- Optimized for screen readers and keyboard navigation
+
+### Color Blindness Simulation
+- Simulates 8 different types of color vision deficiencies
+- Helps developers understand how users with color blindness see the application
+- Provides accessible color palettes optimized for different types of color blindness
+- Visual demonstrations in the color blindness demo page
+- Accessible charts with improved color schemes
+
+### Keyboard Navigation
+- Full keyboard navigation support for all interactive elements
+- Enhanced keyboard support for charts with arrow key navigation
+- Focus indicators for keyboard users
+- Skip links for better keyboard accessibility
+
+### Screen Reader Support
+- Semantic HTML structure for better screen reader usage
+- ARIA labels for all interactive elements
+- Alternative text for all images and charts
+- Data tables as alternatives to visual charts
+
+### Accessibility Testing
+- Built-in accessibility testing tools
+- Automated accessibility testing with axe-core
+- Visual indicators for accessibility issues
+- Recommendations for fixing accessibility problems

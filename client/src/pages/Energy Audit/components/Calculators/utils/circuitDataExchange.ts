@@ -7,6 +7,7 @@
 
 import { VoltageDropInputs, CircuitType } from './voltageDropUtils';
 import { LoadSchedule, LoadItem } from '../ScheduleOfLoads/types';
+import { InsulationType } from './enhancedVoltageDropUtils';
 
 /**
  * Interface that represents a circuit with all necessary information
@@ -27,6 +28,17 @@ export interface UnifiedCircuitData {
   phaseConfiguration: 'single-phase' | 'three-phase';
   temperature: number;
   powerFactor: number;
+  
+  // Enhanced voltage drop parameters
+  insulationType?: InsulationType;
+  ambientTemperature?: number;
+  harmonicFactor?: number;
+  parallelSets?: number;
+  bundleAdjustmentFactor?: number;
+  distanceToFurthestOutlet?: number;
+  startingCurrentMultiplier?: number;
+  diversityFactor?: number;
+  demandFactor?: number;
   
   // Circuit configuration
   circuitType: CircuitType;
@@ -64,13 +76,20 @@ export function loadScheduleToUnifiedCircuit(loadSchedule: LoadSchedule): Unifie
     
     voltage: loadSchedule.voltage,
     current: loadSchedule.current,
-    conductorLength: 50, // Default, will need to be set by the user
+    conductorLength: loadSchedule.conductorLength || 50, // Default, will need to be set by the user
     conductorSize: loadSchedule.conductorSize || '12 AWG', // Default
     conductorMaterial: 'copper', // Default
     conduitMaterial: 'PVC', // Default
-    phaseConfiguration: 'single-phase', // Default, will need to be set by the user
+    phaseConfiguration: loadSchedule.phaseConfiguration || 'single-phase',
     temperature: 30, // Default, will need to be set by the user
     powerFactor: loadSchedule.powerFactor,
+    
+    // Enhanced voltage drop parameters
+    insulationType: loadSchedule.insulationType || 'THWN',
+    ambientTemperature: loadSchedule.ambientTemperature || 30,
+    harmonicFactor: loadSchedule.harmonicFactor || 1.0,
+    parallelSets: loadSchedule.parallelSets || 1,
+    bundleAdjustmentFactor: loadSchedule.bundleAdjustmentFactor || 1.0,
     
     circuitType: 'feeder', // Default, will need to be verified
     
@@ -99,21 +118,31 @@ export function loadItemToUnifiedCircuit(
   voltage: number,
   powerFactor: number
 ): UnifiedCircuitData {
+  // Determine the circuit type based on circuit details if available
+  const circuitType = loadItem.circuitDetails?.type === 'motor' ? 'motor' : 'branch';
+  
   return {
     id: loadItem.id,
     name: loadItem.description,
     
     voltage: voltage,
     current: loadItem.current || (loadItem.demandLoad / voltage),
-    conductorLength: 30, // Default, will need to be set by the user
+    conductorLength: loadItem.conductorLength || 30, // Default, will need to be set by the user
     conductorSize: loadItem.conductorSize || '12 AWG', // Default
     conductorMaterial: 'copper', // Default
     conduitMaterial: 'PVC', // Default
-    phaseConfiguration: 'single-phase', // Default, will need to be set by the user
+    phaseConfiguration: loadItem.circuitDetails?.phase === 'A-B-C' ? 'three-phase' : 'single-phase',
     temperature: 30, // Default, will need to be set by the user
     powerFactor: powerFactor,
     
-    circuitType: 'branch', // Default for load items
+    // Enhanced voltage drop parameters
+    insulationType: loadItem.insulationType || 'THWN',
+    ambientTemperature: loadItem.ambientTemperature || 30,
+    harmonicFactor: loadItem.harmonicFactor || 1.0,
+    parallelSets: loadItem.parallelSets || 1,
+    bundleAdjustmentFactor: loadItem.bundleAdjustmentFactor || 1.0,
+    
+    circuitType: circuitType, // Use the determined circuit type
     
     connectedLoad: loadItem.connectedLoad,
     demandLoad: loadItem.demandLoad,
@@ -144,11 +173,24 @@ export function unifiedCircuitToVoltageDropInputs(circuitData: UnifiedCircuitDat
     phaseConfiguration: circuitData.phaseConfiguration,
     temperature: circuitData.temperature,
     powerFactor: circuitData.powerFactor,
+    // Enhanced voltage drop parameters
+    insulationType: circuitData.insulationType,
+    ambientTemperature: circuitData.ambientTemperature,
+    harmonicFactor: circuitData.harmonicFactor,
+    parallelSets: circuitData.parallelSets,
+    bundleAdjustmentFactor: circuitData.bundleAdjustmentFactor,
+    distanceToFurthestOutlet: circuitData.distanceToFurthestOutlet,
+    startingCurrentMultiplier: circuitData.startingCurrentMultiplier,
+    diversityFactor: circuitData.diversityFactor,
+    demandFactor: circuitData.demandFactor,
     circuitConfiguration: {
       circuitType: circuitData.circuitType,
       // Add other circuit-specific configurations as needed
       hasVFD: false,
-      wireway: 'conduit'
+      wireway: 'conduit',
+      distanceToFurthestOutlet: circuitData.distanceToFurthestOutlet,
+      startingCurrentMultiplier: circuitData.startingCurrentMultiplier,
+      serviceFactor: 1.15 // Default service factor
     }
   };
 }

@@ -20,6 +20,23 @@ export interface LoadItem {
   isPECCompliant?: boolean;
   conductorLength?: number;
   optimalConductorSize?: string;
+  // Voltage drop analysis results
+  voltageDropResults?: {
+    voltageDropPercent: number;
+    voltageDropVolts?: number;
+    isCompliant?: boolean;
+    conductor?: string;
+    length?: number;
+    current?: number;
+  };
+  // Enhanced voltage drop parameters
+  insulationType?: 'THHN' | 'THWN' | 'XHHW' | 'RHW' | 'USE';
+  ambientTemperature?: number;
+  harmonicFactor?: number;
+  parallelSets?: number;
+  bundleAdjustmentFactor?: number;
+  distanceToFurthestOutlet?: number;
+  startingCurrentMultiplier?: number;
   // Optimization metadata
   optimizationMetadata?: {
     priority: 'critical' | 'high' | 'medium' | 'low';
@@ -78,6 +95,14 @@ export interface LoadSchedule {
   conductorLength?: number;
   optimalConductorSize?: string;
   phaseConfiguration?: 'single-phase' | 'three-phase';
+  // Enhanced voltage drop parameters
+  insulationType?: 'THHN' | 'THWN' | 'XHHW' | 'RHW' | 'USE';
+  ambientTemperature?: number;
+  harmonicFactor?: number;
+  parallelSets?: number;
+  bundleAdjustmentFactor?: number;
+  diversityFactor?: number;
+  demandFactor?: number;
   // Optimization parameters
   optimizationParams?: {
     operatingHoursPerYear: number;
@@ -127,4 +152,15 @@ export const CIRCUIT_TYPE_OPTIONS = [
   { value: 'hvac', label: 'HVAC' },
   { value: 'special', label: 'Special Purpose' },
   { value: 'other', label: 'Other' }
+];
+
+/**
+ * Define the insulation type options
+ */
+export const INSULATION_TYPE_OPTIONS = [
+  { value: 'THHN', label: 'THHN (90°C)' },
+  { value: 'THWN', label: 'THWN (75°C)' },
+  { value: 'XHHW', label: 'XHHW (90°C)' },
+  { value: 'RHW', label: 'RHW (75°C)' },
+  { value: 'USE', label: 'USE (75°C)' }
 ]; 

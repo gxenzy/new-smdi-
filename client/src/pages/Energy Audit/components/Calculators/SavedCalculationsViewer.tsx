@@ -61,6 +61,9 @@ interface SavedCalculationsViewerProps {
   selectedType?: string;
   calculationType?: string;
   onLoadCalculation?: (data: any) => void;
+  open?: boolean;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 interface TabPanelProps {
@@ -137,7 +140,10 @@ const SavedCalculationsViewer: React.FC<SavedCalculationsViewerProps> = ({
   onCalculationSelect,
   selectedType,
   calculationType,
-  onLoadCalculation
+  onLoadCalculation,
+  open,
+  isOpen,
+  onClose
 }) => {
   const [calculations, setCalculations] = useState<StoredCalculation[]>([]);
   const [filteredCalculations, setFilteredCalculations] = useState<StoredCalculation[]>([]);
@@ -153,8 +159,10 @@ const SavedCalculationsViewer: React.FC<SavedCalculationsViewerProps> = ({
   const [activeCalculation, setActiveCalculation] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
   
-  // Add new state for the dialog
-  const [dialogOpen, setDialogOpen] = useState(false);
+  // Use open or isOpen prop if provided, otherwise use internal state
+  const [internalDialogOpen, setInternalDialogOpen] = useState(false);
+  // Determine actual dialogOpen state based on props or internal state
+  const dialogOpen = open !== undefined ? open : (isOpen !== undefined ? isOpen : internalDialogOpen);
   
   const { enqueueSnackbar } = useSnackbar();
   
@@ -273,7 +281,7 @@ const SavedCalculationsViewer: React.FC<SavedCalculationsViewerProps> = ({
     }
 
     // Close the dialog after loading a calculation
-    setDialogOpen(false);
+    setInternalDialogOpen(false);
   };
   
   // Handle calculation delete
@@ -390,10 +398,20 @@ const SavedCalculationsViewer: React.FC<SavedCalculationsViewerProps> = ({
     }
   };
 
-  // Handle dialog open button click
+  // Handle dialog close
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      setInternalDialogOpen(false);
+    }
+  };
+  
+  // Update the handleOpenDialog function
   const handleOpenDialog = () => {
-    loadCalculations(); // Refresh the list when opening the dialog
-    setDialogOpen(true);
+    if (onClose === undefined) {
+      setInternalDialogOpen(true);
+    }
   };
   
   const handleLoadCalculation = (calculation: StoredCalculation) => {
@@ -438,24 +456,26 @@ const SavedCalculationsViewer: React.FC<SavedCalculationsViewerProps> = ({
       }
     }
     
-    setDialogOpen(false);
+    setInternalDialogOpen(false);
   };
   
   return (
     <>
-      {/* Display just a button instead of the entire component */}
-      <Tooltip title="Saved Calculations">
-        <IconButton onClick={handleOpenDialog} size="medium">
-          <FolderOpenIcon />
-        </IconButton>
-      </Tooltip>
+      <Button
+        variant="outlined"
+        color="primary"
+        startIcon={<FolderOpenIcon />}
+        onClick={handleOpenDialog}
+        size="small"
+      >
+        Saved Calculations
+      </Button>
       
-      {/* Dialog that contains all the saved calculations */}
       <Dialog
-        open={dialogOpen} 
-        onClose={() => setDialogOpen(false)}
-        fullWidth
+        open={dialogOpen}
+        onClose={handleClose}
         maxWidth="md"
+        fullWidth
       >
         <DialogTitle>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -559,7 +579,7 @@ const SavedCalculationsViewer: React.FC<SavedCalculationsViewerProps> = ({
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>Close</Button>
+          <Button onClick={handleClose}>Close</Button>
         </DialogActions>
       </Dialog>
       

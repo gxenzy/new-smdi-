@@ -42,6 +42,7 @@ import ThemeSwitcher from '../../components/ThemeSwitcher';
 import { useThemeMode } from '../../contexts/ThemeContext';
 import { designTokens } from '../../theme';
 import { alpha } from '@mui/material/styles';
+import AccessibilitySettingsButton from '../../components/UI/AccessibilitySettingsButton';
 
 const drawerWidth = 190;
 
@@ -318,6 +319,11 @@ const MainLayout: React.FC<MainLayoutProps> = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {/* Theme Switcher */}
             <ThemeSwitcher />
+            
+            {/* Accessibility Settings Button */}
+            <Box sx={{ mx: 1 }}>
+              <AccessibilitySettingsButton size="medium" tooltip="Accessibility Settings (Alt+A)" />
+            </Box>
             
             {/* Notifications */}
             <NotificationCenter onNavigate={navigate} />

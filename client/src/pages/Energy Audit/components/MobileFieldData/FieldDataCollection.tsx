@@ -70,8 +70,17 @@ import useEnergyAuditRealTime from '../../../../hooks/useEnergyAuditRealTime';
 import useEnergyAuditRealTimeActivity from '../../../../hooks/useEnergyAuditRealTimeActivity';
 import RealTimeIndicator from '../../../../components/RealTimeIndicator';
 import SimpleActivityLog from '../../../../components/SimpleActivityLog';
-import { ActivityLogEvent } from '../../../../components/EnergyAudit/ActivityLog';
-import NotificationCenter from '../../../../components/EnergyAudit/NotificationCenter';
+// Define ActivityLogEvent interface locally
+interface ActivityLogEvent {
+  id: string;
+  type: string;
+  message: string;
+  userId: string;
+  userName: string;
+  timestamp: number | string;
+  details?: any;
+}
+import NotificationCenter from '../../../../components/NotificationCenter';
 
 // Mock audit areas
 const mockAuditAreas = [

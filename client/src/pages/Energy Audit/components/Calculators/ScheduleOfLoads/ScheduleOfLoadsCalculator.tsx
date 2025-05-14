@@ -38,7 +38,9 @@ import {
   List,
   ListItem,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  SelectChangeEvent,
+  DialogContentText
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -61,7 +63,12 @@ import {
   Sync as SyncIcon,
   Assessment as AssessmentIcon,
   CheckCircle as CheckCircleIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  AttachMoney as AttachMoneyIcon,
+  InsightsOutlined as InsightsIcon,
+  FolderOpen as FolderOpenIcon,
+  TrendingUp as TrendingUpIcon,
+  Upgrade as UpgradeIcon
 } from '@mui/icons-material';
 import { LoadItem, LoadSchedule, PowerCalculationResults, CIRCUIT_BREAKER_OPTIONS, CONDUCTOR_SIZE_OPTIONS, CIRCUIT_TYPE_OPTIONS } from './types';
 import { v4 as uuidv4 } from 'uuid';
@@ -78,6 +85,21 @@ import PhaseBalanceDisplay from './PhaseBalanceDisplay';
 import CircuitDetailsDialog from './CircuitDetailsDialog';
 import ComplianceReportTab from './ComplianceReportTab';
 import { updateLoadScheduleCompliance } from '../utils/pecComplianceUtils';
+import EconomicSizingAnalysisDialog from './EconomicSizingAnalysisDialog';
+import EnhancedVoltageDropAnalysisDialog from './EnhancedVoltageDropAnalysisDialog';
+import RecalculationStatusIndicator from './RecalculationStatusIndicator';
+import CircuitInsightsDashboardDialog from './CircuitInsightsDashboardDialog';
+import { exportScheduleOfLoadsToPdf } from '../utils/enhancedScheduleOfLoadsPdfExport';
+import BatchSizingOptimizationDialog from './BatchSizingOptimizationDialog';
+import { VoltageDropRecalculator } from '../utils/voltageDropRecalculator';
+import { 
+  saveCalculatorState, 
+  loadCalculatorState, 
+  hasDraftState, 
+  clearDraftState,
+  createAutoSave 
+} from '../utils/calculatorStateStorage';
+import CalculatorStateRecoveryDialog from '../utils/CalculatorStateRecoveryDialog';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -136,6 +158,17 @@ const defaultLoadSchedule: LoadSchedule = {
   loads: [],
 };
 
+// Standard circuit breaker size options (amperes)
+const CircuitBreakerOptions = [
+  5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100,
+  110, 125, 150, 175, 200, 225, 250, 300, 350, 400, 450, 500, 600, 700, 800, 1000, 1200
+];
+
+// Standard conductor size options (mm²)
+const ConductorSizeOptions = [
+  "1.5", "2.0", "2.5", "4.0", "6.0", "10", "16", "25", "35", "50", "70", "95", "120", "150", "185", "240", "300", "400", "500", "630"
+];
+
 const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({ 
   onSave, 
   onExportPdf,
@@ -152,6 +185,8 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
   const [quickStartOpen, setQuickStartOpen] = useState(false);
   const [errorHelpOpen, setErrorHelpOpen] = useState(false);
   const [calculationResults, setCalculationResults] = useState<PowerCalculationResults | null>(null);
+  const [saveName, setSaveName] = useState('');
+  const [helpDialogOpen, setHelpDialogOpen] = useState(false);
   
   // Add snackbar
   const { enqueueSnackbar } = useSnackbar();
@@ -160,17 +195,89 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
   const [newLoadItem, setNewLoadItem] = useState<Omit<LoadItem, 'id'>>({...defaultLoadItem});
   
   // Add state for voltage drop analysis
-  const [voltageDropDialogOpen, setVoltageDropDialogOpen] = useState(false);
-  const [selectedLoadItem, setSelectedLoadItem] = useState<LoadItem | null>(null);
+  const [voltageDropDialogOpen, setVoltageDropDialogOpen] = useState<boolean>(false);
+  const [enhancedVoltageDropDialogOpen, setEnhancedVoltageDropDialogOpen] = useState<boolean>(false);
+  const [selectedLoadForVoltageDrop, setSelectedLoadForVoltageDrop] = useState<LoadItem | null>(null);
   const [itemInfoDialogOpen, setItemInfoDialogOpen] = useState(false);
   
   // Get circuit sync context
   const circuitSync = useCircuitSync();
 
+  // Create voltage drop recalculator instance
+  const voltageDropRecalculator = React.useMemo(() => {
+    // Create a circuit data provider function that gets circuit data from the circuit sync context
+    const circuitDataProvider = (circuitId: string) => {
+      const circuits = Array.from(circuitSync.circuitData || []);
+      return circuits.find((circuit) => circuit.id === circuitId);
+    };
+    
+    return new VoltageDropRecalculator(circuitDataProvider);
+  }, [circuitSync]);
+  
   // Add state for circuit details dialog
   const [circuitDetailsDialogOpen, setCircuitDetailsDialogOpen] = useState(false);
   const [selectedCircuitItem, setSelectedCircuitItem] = useState<LoadItem | null>(null);
 
+  // Add state for economic sizing analysis
+  const [economicSizingDialogOpen, setEconomicSizingDialogOpen] = useState<boolean>(false);
+  const [selectedLoadForEconomicSizing, setSelectedLoadForEconomicSizing] = useState<LoadItem | null>(null);
+
+  // Add state for circuit insights dashboard
+  const [circuitInsightsDashboardOpen, setCircuitInsightsDashboardOpen] = useState(false);
+
+  // Add state for saved calculations viewer
+  const [savedCalculationsOpen, setSavedCalculationsOpen] = useState<boolean>(false);
+
+  // Add state for batch sizing optimization
+  const [batchSizingOptimizationOpen, setBatchSizingOptimizationOpen] = useState<boolean>(false);
+
+  // Add state variables for draft recovery
+  const [recoveryDialogOpen, setRecoveryDialogOpen] = useState<boolean>(false);
+  const [isInitialLoad, setIsInitialLoad] = useState<boolean>(true);
+  
+  // Create auto-save function using the utility
+  const autoSave = React.useMemo(() => 
+    createAutoSave<LoadSchedule>('schedule-of-loads', 3000), 
+  []);
+  
+  // Check for draft state on initial load
+  useEffect(() => {
+    if (isInitialLoad) {
+      setIsInitialLoad(false);
+      
+      // Check if we should show draft recovery dialog
+      // Only show if there's a draft and no initialData was provided
+      if (hasDraftState('schedule-of-loads') && !initialData) {
+        setRecoveryDialogOpen(true);
+      }
+    }
+  }, [isInitialLoad, initialData]);
+  
+  // Set up auto-save when loadSchedule changes
+  useEffect(() => {
+    if (!isInitialLoad && loadSchedule.loads.length > 0) {
+      autoSave(loadSchedule);
+    }
+  }, [autoSave, loadSchedule, isInitialLoad]);
+  
+  // Handle recovery of draft state
+  const handleRecoverDraft = () => {
+    const draftState = loadCalculatorState<LoadSchedule>('schedule-of-loads', true);
+    
+    if (draftState) {
+      setLoadSchedule(draftState);
+      enqueueSnackbar('Recovered unsaved work', { variant: 'success' });
+    } else {
+      enqueueSnackbar('Failed to recover unsaved work', { variant: 'error' });
+    }
+  };
+  
+  // Handle discarding draft state
+  const handleDiscardDraft = () => {
+    clearDraftState('schedule-of-loads');
+    enqueueSnackbar('Discarded unsaved work', { variant: 'info' });
+  };
+  
   // Update the circuit sync context whenever the loadSchedule changes
   useEffect(() => {
     // Only update if not from an initial load and if we have actual loads
@@ -314,45 +421,46 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
   
   // Handle input change for new load item
   const handleNewItemChange = (field: keyof Omit<LoadItem, 'id' | 'connectedLoad' | 'demandLoad' | 'current' | 'voltAmpere'>) => (
-    e: React.ChangeEvent<HTMLInputElement | { value: unknown }>
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent<string | number>
   ) => {
-    const value = field === 'description' || field === 'circuitBreaker' || field === 'conductorSize'
-      ? e.target.value as string
-      : Number(e.target.value);
-      
-    setNewLoadItem({
-      ...newLoadItem,
-      [field]: value
-    });
+    const value = event.target.value;
     
-    // Clear error for this field
-    if (errors[field]) {
-      const { [field]: _, ...restErrors } = errors;
-      setErrors(restErrors);
-    }
+    setNewLoadItem(prev => {
+      const updated = { ...prev, [field]: value };
+      
+      // Calculate other values based on quantity, rating, and demandFactor
+      if (field === 'quantity' || field === 'rating' || field === 'demandFactor') {
+        return calculateLoadValues(updated);
+      }
+      
+      return updated;
+    });
   };
   
   // Handle input change for editing load item
   const handleEditingItemChange = (field: keyof Omit<LoadItem, 'id' | 'connectedLoad' | 'demandLoad' | 'current' | 'voltAmpere'>) => (
-    e: React.ChangeEvent<HTMLInputElement | { value: unknown }>
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent<string | number>
   ) => {
     if (!editingLoad) return;
     
-    const value = field === 'description' || field === 'circuitBreaker' || field === 'conductorSize'
-      ? e.target.value as string
-      : Number(e.target.value);
-      
-    setEditingLoad({
-      ...editingLoad,
-      [field]: value
-    });
+    const value = event.target.value;
     
-    // Clear error for this field
-    const errorField = `edit${field.charAt(0).toUpperCase() + field.slice(1)}`;
-    if (errors[errorField]) {
-      const { [errorField]: _, ...restErrors } = errors;
-      setErrors(restErrors);
-    }
+    setEditingLoad(prev => {
+      if (!prev) return prev;
+      
+      const updated = { ...prev, [field]: value };
+      
+      // Calculate other values based on quantity, rating, and demandFactor
+      if (field === 'quantity' || field === 'rating' || field === 'demandFactor') {
+        return {
+          ...calculateLoadValues(updated),
+          id: prev.id, // Preserve the id to fix the TypeScript error
+          circuitDetails: prev.circuitDetails // Preserve circuit details
+        };
+      }
+      
+      return updated;
+    });
   };
 
   // Initialize or reset the component
@@ -476,17 +584,41 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
   
   // Handle PDF export
   const handleExportPdf = async () => {
-    if (!onExportPdf || !loadSchedule) {
-      setErrors({ ...errors, general: 'Unable to generate PDF at this time' });
+    if (!loadSchedule) {
+      setErrors({ ...errors, general: 'No load schedule data available' });
       return;
     }
     
     setCalculating(true);
     try {
-      await onExportPdf(loadSchedule);
+      // Create a more resilient PDF export function call
+      await exportScheduleOfLoadsToPdf(
+        loadSchedule,
+        calculationResults || null, // Provide null if calculationResults is undefined
+        {
+          title: `Schedule of Loads - ${loadSchedule.panelName}`,
+          fileName: `schedule-of-loads-${loadSchedule.panelName.replace(/\s+/g, '-').toLowerCase()}.pdf`,
+          includeEconomicAnalysis: true,
+          includeVoltageDropAnalysis: true,
+          includePhaseBalanceAnalysis: loadSchedule.phaseConfiguration === 'three-phase',
+          includeComplianceDetails: true
+        }
+      ).catch(err => {
+        console.error('Error in PDF export:', err);
+        throw new Error(`PDF generation failed: ${err.message || 'Unknown error'}`);
+      });
+
+      // Also call the parent's onExportPdf if provided
+      if (onExportPdf) {
+        await onExportPdf(loadSchedule);
+      }
+      
+      // Show success message
+      enqueueSnackbar('PDF report generated successfully', { variant: 'success' });
     } catch (error) {
       console.error('Error exporting PDF:', error);
       setErrors({ ...errors, general: 'Error generating PDF' });
+      enqueueSnackbar(`Error generating PDF: ${error instanceof Error ? error.message : 'Unknown error'}`, { variant: 'error' });
     } finally {
       setCalculating(false);
     }
@@ -499,45 +631,24 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
     }
   }, [activeTab, loadSchedule.loads.length, calculationResults]);
 
-  // Add handler to open voltage drop analysis for a specific load
-  const handleOpenVoltageDropForLoad = (loadItem: LoadItem) => {
-    setSelectedLoadItem(loadItem);
-    setVoltageDropDialogOpen(true);
+  // Handle opening voltage drop dialog for a specific load
+  const handleOpenVoltageDropDialog = (loadItem: LoadItem | null) => {
+    setSelectedLoadForVoltageDrop(loadItem);
+    // Use enhanced dialog instead of the basic one
+    setEnhancedVoltageDropDialogOpen(true);
   };
   
-  // Add handler to open voltage drop analysis for the entire panel
-  const handleOpenVoltageDropForPanel = () => {
-    setSelectedLoadItem(null);
-    setVoltageDropDialogOpen(true);
-  };
-  
-  // Add handler for saving voltage drop analysis results
+  // Handle saving voltage drop results
   const handleSaveVoltageDropResults = (
     loadItem: LoadItem | null,
     updatedLoadSchedule: LoadSchedule
   ) => {
-    if (loadItem) {
-      // Update the specific load item with voltage drop results
-      const updatedLoads = loadSchedule.loads.map(item => 
-        item.id === loadItem.id ? loadItem : item
-      );
-      
-      setLoadSchedule({
-        ...loadSchedule,
-        loads: updatedLoads
-      });
-      
-      // Also update in circuit sync context
-      circuitSync.updateLoadItem(loadItem);
-      
-      enqueueSnackbar('Voltage drop analysis results saved to load item', { 
-        variant: 'success',
-        autoHideDuration: 3000
-      });
-    }
+    setLoadSchedule(updatedLoadSchedule);
     
-    setVoltageDropDialogOpen(false);
-    setSelectedLoadItem(null);
+    // If this was a specific load item, update the selected load
+    if (loadItem) {
+      setSelectedLoadForVoltageDrop(loadItem);
+    }
   };
 
   // Check if a load item has been analyzed with voltage drop
@@ -635,6 +746,132 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
     enqueueSnackbar('Panel settings updated successfully', { variant: 'success' });
   };
 
+  // Handle applying an economic sizing recommendation
+  const handleApplyEconomicSizingRecommendation = (loadId: string, newConductorSize: string) => {
+    // Find and update the specific load item with the new conductor size
+    const updatedLoads = loadSchedule.loads.map(item => {
+      if (item.id === loadId) {
+        return {
+          ...item,
+          conductorSize: newConductorSize
+        };
+      }
+      return item;
+    });
+    
+    // Update the load schedule
+    setLoadSchedule({
+      ...loadSchedule,
+      loads: updatedLoads
+    });
+    
+    // Show notification
+    enqueueSnackbar(`Updated conductor size for circuit ${loadId}`, { 
+      variant: 'success',
+      autoHideDuration: 3000 
+    });
+  };
+
+  // Open economic sizing dialog for a specific load
+  const handleOpenEconomicSizingForLoad = (loadItem: LoadItem) => {
+    setSelectedLoadForEconomicSizing(loadItem);
+    setEconomicSizingDialogOpen(true);
+  };
+  
+  // Open economic sizing dialog for the entire panel
+  const handleOpenEconomicSizingForPanel = () => {
+    setSelectedLoadForEconomicSizing(null);
+    setEconomicSizingDialogOpen(true);
+  };
+
+  // Handle opening the circuit insights dashboard
+  const handleOpenCircuitInsightsDashboard = () => {
+    setCircuitInsightsDashboardOpen(true);
+  };
+  
+  // Handle selecting a circuit from the insights dashboard
+  const handleSelectCircuitFromInsights = (circuitId: string, panelId: string) => {
+    // Find the load item with the given ID
+    const selectedLoad = loadSchedule.loads.find(load => load.id === circuitId);
+    
+    if (selectedLoad) {
+      setSelectedLoadForVoltageDrop(selectedLoad);
+      setVoltageDropDialogOpen(true);
+    }
+  };
+
+  const handleOpenSavedCalculations = () => {
+    setSavedCalculationsOpen(true);
+  };
+  
+  const handleLoadSavedCalculation = (calculationData: any) => {
+    try {
+      console.log('Loading saved calculation:', calculationData);
+      
+      if (calculationData && typeof calculationData === 'object') {
+        // Set the loaded data as the current loadSchedule
+        setLoadSchedule(calculationData);
+        
+        // Set calculation name
+        setCalculationName(calculationData.name || 'Loaded Calculation');
+        
+        // Show success message
+        enqueueSnackbar('Calculation loaded successfully', { variant: 'success' });
+        
+        // Close the saved calculations dialog
+        setSavedCalculationsOpen(false);
+      }
+    } catch (error) {
+      console.error('Error loading calculation:', error);
+      enqueueSnackbar('Failed to load calculation', { variant: 'error' });
+    }
+  };
+
+  const handleConfirmSaveCalculation = () => {
+    if (!saveName) {
+      enqueueSnackbar('Please enter a name for the calculation', { variant: 'error' });
+      return;
+    }
+    
+    try {
+      // Create a calculation object to save
+      const calculationToSave = {
+        ...loadSchedule,
+        name: saveName,
+        savedAt: new Date().toISOString(),
+        calculationType: 'schedule-of-loads'
+      };
+      
+      // Save the calculation
+      saveCalculation('schedule-of-loads', saveName, calculationToSave);
+      
+      // Also save it to non-draft storage for persistence
+      saveCalculatorState('schedule-of-loads', calculationToSave, false);
+      
+      // Clear the draft state since we've now saved properly
+      clearDraftState('schedule-of-loads');
+      
+      // Update the calculation name in the current state
+      setCalculationName(saveName);
+      
+      // Close the dialog
+      setSaveDialogOpen(false);
+      
+      // Reset the form
+      setSaveName('');
+      
+      // Show success message
+      enqueueSnackbar('Calculation saved successfully', { variant: 'success' });
+    } catch (error) {
+      console.error('Error saving calculation:', error);
+      enqueueSnackbar('Failed to save calculation', { variant: 'error' });
+    }
+  };
+
+  const handleOpenBatchSizingOptimization = () => {
+    setBatchSizingOptimizationOpen(true);
+  };
+
   const renderPanelSummary = () => {
     return (
       <Card variant="outlined">
@@ -648,11 +885,62 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
                   variant="outlined"
                   color="primary"
                   startIcon={<WaterDropIcon />}
-                  onClick={handleOpenVoltageDropForPanel}
+                  onClick={() => handleOpenVoltageDropDialog(null)}
                   size="small"
                   sx={{ mr: 1 }}
                 >
                   Voltage Drop
+                </Button>
+              </Tooltip>
+              
+              <Tooltip title="Economic Sizing Analysis">
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<AttachMoneyIcon />}
+                  onClick={handleOpenEconomicSizingForPanel}
+                  size="small"
+                  sx={{ mr: 1 }}
+                >
+                  Economic Sizing
+                </Button>
+              </Tooltip>
+              
+              <Tooltip title="Circuit Insights Dashboard">
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<InsightsIcon />}
+                  onClick={handleOpenCircuitInsightsDashboard}
+                  size="small"
+                  sx={{ mr: 1 }}
+                >
+                  Insights
+                </Button>
+              </Tooltip>
+              
+              <Tooltip title="Batch Sizing Optimization">
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<UpgradeIcon />}
+                  onClick={handleOpenBatchSizingOptimization}
+                  size="small"
+                  sx={{ mr: 1 }}
+                >
+                  Batch Sizing
+                </Button>
+              </Tooltip>
+              
+              <Tooltip title="Saved Calculations">
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<FolderOpenIcon />}
+                  onClick={handleOpenSavedCalculations}
+                  size="small"
+                >
+                  Saved Calculations
                 </Button>
               </Tooltip>
               
@@ -783,7 +1071,7 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
                           label={item.voltageDropPercent?.toFixed(1) + '%'} 
                           color={item.isPECCompliant ? "success" : "error"}
                           onClick={() => {
-                            setSelectedLoadItem(item);
+                            setSelectedLoadForVoltageDrop(item);
                             setItemInfoDialogOpen(true);
                           }}
                         />
@@ -822,12 +1110,23 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
                         <IconButton 
                           size="small" 
                           onClick={() => {
-                            setSelectedLoadItem(item);
-                            setVoltageDropDialogOpen(true);
+                            setSelectedLoadForVoltageDrop(item);
+                            setEnhancedVoltageDropDialogOpen(true);
                           }}
                           color={hasVoltageDropAnalysis(item) ? "primary" : "default"}
+                          sx={{ mx: 0.5 }}
                         >
-                          <AssessmentIcon fontSize="small" />
+                          <WaterDropIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Economic Sizing Analysis">
+                        <IconButton 
+                          size="small" 
+                          onClick={() => handleOpenEconomicSizingForLoad(item)}
+                          color="primary"
+                          sx={{ mx: 0.5 }}
+                        >
+                          <AttachMoneyIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                     </Box>
@@ -951,17 +1250,55 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
                   helperText={errors.demandFactor}
                 />
               </Grid>
-              <Grid item xs={12} md={2}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  color="primary"
-                  onClick={handleAddLoadItem}
-                  startIcon={<AddIcon />}
-                  sx={{ mt: 1 }}
-                >
-                  Add
-                </Button>
+              <Grid item xs={12}>
+                <Box display="flex" alignItems="center" gap={2}>
+                  {/* Circuit Breaker Size selection */}
+                  <FormControl sx={{ minWidth: 150 }} error={!!errors.circuitBreaker}>
+                    <InputLabel id="circuit-breaker-label">Circuit Breaker</InputLabel>
+                    <Select
+                      labelId="circuit-breaker-label"
+                      value={newLoadItem.circuitBreaker || ''}
+                      onChange={handleNewItemChange('circuitBreaker')}
+                      label="Circuit Breaker"
+                    >
+                      <MenuItem value=""><em>Select</em></MenuItem>
+                      {CIRCUIT_BREAKER_OPTIONS.map((option) => (
+                        <MenuItem key={option} value={option}>{option} A</MenuItem>
+                      ))}
+                    </Select>
+                    {errors.circuitBreaker && (
+                      <FormHelperText>{errors.circuitBreaker}</FormHelperText>
+                    )}
+                  </FormControl>
+                  
+                  {/* Conductor Size selection */}
+                  <FormControl sx={{ minWidth: 150 }} error={!!errors.conductorSize}>
+                    <InputLabel id="conductor-size-label">Conductor Size</InputLabel>
+                    <Select
+                      labelId="conductor-size-label"
+                      value={newLoadItem.conductorSize || ''}
+                      onChange={handleNewItemChange('conductorSize')}
+                      label="Conductor Size"
+                    >
+                      <MenuItem value=""><em>Select</em></MenuItem>
+                      {CONDUCTOR_SIZE_OPTIONS.map((option) => (
+                        <MenuItem key={option} value={option}>{option}</MenuItem>
+                      ))}
+                    </Select>
+                    {errors.conductorSize && (
+                      <FormHelperText>{errors.conductorSize}</FormHelperText>
+                    )}
+                  </FormControl>
+                  
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={handleAddLoadItem}
+                    sx={{ ml: 'auto' }}
+                  >
+                    Add Item
+                  </Button>
+                </Box>
               </Grid>
             </Grid>
           </Box>
@@ -1100,16 +1437,18 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
             </Button>
             
             <Box>
-              <Button
-                variant="outlined"
-                color="primary"
-                startIcon={<SaveIcon />}
-                onClick={() => setSaveDialogOpen(true)}
-                sx={{ mr: 1 }}
-                disabled={loadSchedule.loads.length === 0}
-              >
-                Save
-              </Button>
+              <Tooltip title="Save current calculation to your saved calculations library for future use">
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<SaveIcon />}
+                  onClick={() => setSaveDialogOpen(true)}
+                  sx={{ mr: 1 }}
+                  disabled={loadSchedule.loads.length === 0}
+                >
+                  Save Calculation
+                </Button>
+              </Tooltip>
               
               <Button
                 variant="outlined"
@@ -1238,28 +1577,103 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
         </TabPanel>
       </Box>
       
-      {/* Save Dialog */}
+      {/* Toolbar with actions */}
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Button
+            variant="outlined"
+            startIcon={<AddIcon />}
+            onClick={() => setActiveTab(0)}
+            size="small"
+          >
+            Add Loads
+          </Button>
+          
+          <Button
+            variant="outlined"
+            startIcon={<CalculateIcon />}
+            onClick={calculatePowerConsumption}
+            disabled={calculating || loadSchedule.loads.length === 0}
+            size="small"
+          >
+            Calculate
+          </Button>
+          
+          <Button
+            variant="outlined"
+            startIcon={<PictureAsPdfIcon />}
+            onClick={handleExportPdf}
+            disabled={calculating || !calculationResults}
+            size="small"
+          >
+            Export PDF
+          </Button>
+          
+          <Button
+            variant="outlined"
+            startIcon={<TrendingUpIcon />}
+            onClick={() => setEconomicSizingDialogOpen(true)}
+            disabled={calculating || !calculationResults}
+            size="small"
+          >
+            Economic Sizing
+          </Button>
+          
+          {/* Load Saved Calculation Button */}
+          <Button
+            variant="outlined"
+            startIcon={<FolderOpenIcon />}
+            onClick={handleOpenSavedCalculations}
+            size="small"
+          >
+            Saved Calculations
+          </Button>
+        </Box>
+        
+        <Box>
+          <Button
+            variant="outlined"
+            startIcon={<HelpOutlineIcon />}
+            onClick={() => setHelpDialogOpen(true)}
+            size="small"
+          >
+            Help
+          </Button>
+        </Box>
+      </Box>
+      
+      {/* Save Calculation Dialog */}
       <Dialog
         open={saveDialogOpen}
         onClose={() => setSaveDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
       >
         <DialogTitle>Save Calculation</DialogTitle>
         <DialogContent>
+          <DialogContentText>
+            Enter a name for this schedule of loads calculation to save it for future reference.
+          </DialogContentText>
           <TextField
             autoFocus
             margin="dense"
+            id="name"
             label="Calculation Name"
+            type="text"
             fullWidth
+            value={saveName}
+            onChange={(e) => setSaveName(e.target.value)}
             variant="outlined"
-            value={calculationName}
-            onChange={(e) => setCalculationName(e.target.value)}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setSaveDialogOpen(false)} color="primary">
-            Cancel
-          </Button>
-          <Button onClick={handleSave} color="primary" disabled={!calculationName}>
+          <Button onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
+          <Button 
+            onClick={handleConfirmSaveCalculation} 
+            variant="contained" 
+            color="primary"
+            disabled={!saveName}
+          >
             Save
           </Button>
         </DialogActions>
@@ -1273,7 +1687,7 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
       <VoltageDropAnalysisDialog
         open={voltageDropDialogOpen}
         onClose={() => setVoltageDropDialogOpen(false)}
-        loadItem={selectedLoadItem}
+        loadItem={selectedLoadForVoltageDrop}
         loadSchedule={loadSchedule}
         onSaveResults={handleSaveVoltageDropResults}
       />
@@ -1281,7 +1695,7 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
       <LoadItemInfoDialog
         open={itemInfoDialogOpen}
         onClose={() => setItemInfoDialogOpen(false)}
-        loadItem={selectedLoadItem}
+        loadItem={selectedLoadForVoltageDrop}
       />
       
       {/* Circuit Details Dialog */}
@@ -1291,6 +1705,216 @@ const ScheduleOfLoadsCalculator: React.FC<ScheduleOfLoadsCalculatorProps> = ({
         loadItem={selectedCircuitItem}
         onSave={handleSaveCircuitDetails}
         systemVoltage={loadSchedule.voltage}
+      />
+      
+      {/* Enhanced Voltage Drop Analysis Dialog */}
+      <EnhancedVoltageDropAnalysisDialog
+        open={enhancedVoltageDropDialogOpen}
+        onClose={() => setEnhancedVoltageDropDialogOpen(false)}
+        loadItem={selectedLoadForVoltageDrop}
+        loadSchedule={loadSchedule}
+        onSaveResults={handleSaveVoltageDropResults}
+      />
+      
+      {/* Economic Sizing Analysis Dialog */}
+      <EconomicSizingAnalysisDialog
+        open={economicSizingDialogOpen}
+        onClose={() => setEconomicSizingDialogOpen(false)}
+        loadItem={selectedLoadForEconomicSizing}
+        loadSchedule={loadSchedule}
+        onApplyRecommendation={handleApplyEconomicSizingRecommendation}
+      />
+      
+      {/* Recalculation Status Indicator */}
+      <RecalculationStatusIndicator recalculator={voltageDropRecalculator} />
+      
+      {/* Circuit Insights Dashboard */}
+      {circuitInsightsDashboardOpen && (
+        <CircuitInsightsDashboardDialog
+          open={circuitInsightsDashboardOpen}
+          onClose={() => setCircuitInsightsDashboardOpen(false)}
+          loadSchedules={[loadSchedule]}
+          onSelectCircuit={handleSelectCircuitFromInsights}
+        />
+      )}
+      
+      {/* Batch Sizing Optimization Dialog */}
+      {batchSizingOptimizationOpen && (
+        <BatchSizingOptimizationDialog
+          open={batchSizingOptimizationOpen}
+          onClose={() => setBatchSizingOptimizationOpen(false)}
+          loadSchedule={loadSchedule}
+          onSaveResults={(updatedLoadSchedule) => {
+            setLoadSchedule(updatedLoadSchedule);
+            calculatePowerConsumption();
+            enqueueSnackbar('Batch sizing optimization applied successfully', { variant: 'success' });
+          }}
+        />
+      )}
+      
+      {/* Edit Load Item Dialog */}
+      <Dialog
+        open={editingLoad !== null}
+        onClose={() => setEditingLoad(null)}
+        maxWidth="md"
+      >
+        <DialogTitle>
+          Edit Load Item
+          <IconButton
+            aria-label="close"
+            onClick={() => setEditingLoad(null)}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {editingLoad && (
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <TextField 
+                  fullWidth
+                  label="Description"
+                  value={editingLoad.description}
+                  onChange={handleEditingItemChange('description')}
+                  error={!!errors.editDescription}
+                  helperText={errors.editDescription}
+                  margin="normal"
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <TextField 
+                  fullWidth
+                  label="Quantity"
+                  type="number"
+                  value={editingLoad.quantity}
+                  onChange={handleEditingItemChange('quantity')}
+                  InputProps={{ inputProps: { min: 1 } }}
+                  error={!!errors.editQuantity}
+                  helperText={errors.editQuantity}
+                  margin="normal"
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <TextField 
+                  fullWidth
+                  label="Rating"
+                  type="number"
+                  value={editingLoad.rating}
+                  onChange={handleEditingItemChange('rating')}
+                  InputProps={{ 
+                    inputProps: { min: 0, step: 0.1 },
+                    endAdornment: <InputAdornment position="end">VA</InputAdornment>
+                  }}
+                  error={!!errors.editRating}
+                  helperText={errors.editRating}
+                  margin="normal"
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <TextField 
+                  fullWidth
+                  label="Demand Factor"
+                  type="number"
+                  value={editingLoad.demandFactor}
+                  onChange={handleEditingItemChange('demandFactor')}
+                  InputProps={{ inputProps: { min: 0, max: 1, step: 0.1 } }}
+                  error={!!errors.editDemandFactor}
+                  helperText={errors.editDemandFactor}
+                  margin="normal"
+                />
+              </Grid>
+              
+              {/* Add circuit breaker selection dropdown */}
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth margin="normal">
+                  <InputLabel id="edit-circuit-breaker-label">Circuit Breaker</InputLabel>
+                  <Select
+                    labelId="edit-circuit-breaker-label"
+                    value={editingLoad.circuitBreaker || ''}
+                    onChange={(e) => {
+                      setEditingLoad({
+                        ...editingLoad,
+                        circuitBreaker: e.target.value
+                      });
+                    }}
+                    label="Circuit Breaker"
+                  >
+                    {CIRCUIT_BREAKER_OPTIONS.map((option) => (
+                      <MenuItem key={option} value={option}>{option} A</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              {/* Add conductor size selection dropdown */}
+              <Grid item xs={12} md={5}>
+                <FormControl fullWidth margin="normal">
+                  <InputLabel id="edit-conductor-size-label">Conductor Size</InputLabel>
+                  <Select
+                    labelId="edit-conductor-size-label"
+                    value={editingLoad.conductorSize || ''}
+                    onChange={(e) => {
+                      setEditingLoad({
+                        ...editingLoad,
+                        conductorSize: e.target.value
+                      });
+                    }}
+                    label="Conductor Size"
+                  >
+                    {CONDUCTOR_SIZE_OPTIONS.map((option) => (
+                      <MenuItem key={option} value={option}>{option}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              {/* Add circuit details button */}
+              <Grid item xs={12}>
+                <Button
+                  variant="outlined"
+                  startIcon={<ElectricalServicesIcon />}
+                  onClick={() => {
+                    setSelectedCircuitItem(editingLoad);
+                    setCircuitDetailsDialogOpen(true);
+                  }}
+                  sx={{ mt: 1 }}
+                >
+                  Edit Circuit Details
+                </Button>
+              </Grid>
+            </Grid>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditingLoad(null)} color="inherit">
+            Cancel
+          </Button>
+          <Button onClick={handleUpdateLoadItem} color="primary" variant="contained">
+            Save Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Add Recovery Dialog */}
+      <CalculatorStateRecoveryDialog
+        open={recoveryDialogOpen}
+        onClose={() => setRecoveryDialogOpen(false)}
+        calculatorType="schedule-of-loads"
+        onRecoverDraft={handleRecoverDraft}
+        onDiscardDraft={handleDiscardDraft}
+      />
+      
+      {/* SavedCalculationsViewer dialog */}
+      <SavedCalculationsViewer
+        open={savedCalculationsOpen}
+        onClose={() => setSavedCalculationsOpen(false)}
+        calculationType="schedule-of-loads"
+        onLoadCalculation={handleLoadSavedCalculation}
       />
     </Paper>
   );

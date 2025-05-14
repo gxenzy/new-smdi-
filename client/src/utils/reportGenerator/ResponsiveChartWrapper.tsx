@@ -1,143 +1,152 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Box, useTheme, useMediaQuery } from '@mui/material';
-import { debounce } from 'lodash';
+import React, { useEffect, useRef, useState } from 'react';
+import { Box, useMediaQuery, useTheme } from '@mui/material';
 
 /**
- * Props for the ResponsiveChartWrapper component
+ * Props for the responsive chart wrapper
  */
 interface ResponsiveChartWrapperProps {
-  /** The chart component to render */
-  children: React.ReactNode;
-  /** Minimum height for the chart */
+  /**
+   * Minimum height for the chart
+   */
   minHeight?: number;
-  /** Maximum height for the chart */
+  
+  /**
+   * Maximum height for the chart
+   */
   maxHeight?: number;
-  /** Aspect ratio for the chart (width:height) */
+  
+  /**
+   * Aspect ratio for the chart (width:height)
+   */
   aspectRatio?: number;
-  /** Whether to allow the chart to scale below the minHeight on small screens */
+  
+  /**
+   * Whether to allow the chart to be smaller on mobile
+   */
   allowSmallerOnMobile?: boolean;
-  /** Class name to apply to the wrapper */
+  
+  /**
+   * Additional class name
+   */
   className?: string;
-  /** Additional style properties */
+  
+  /**
+   * Additional styles
+   */
   style?: React.CSSProperties;
-  /** Callback function called when dimensions change */
+  
+  /**
+   * Predefined size preset
+   */
+  sizePreset?: 'compact' | 'standard' | 'large' | 'report' | 'dashboard';
+  
+  /**
+   * Callback when dimensions change
+   */
   onDimensionsChange?: (width: number, height: number) => void;
+  
+  /**
+   * Children as a render prop function that receives width and height
+   */
+  children: React.ReactNode | ((dimensions: { width: number; height: number }) => React.ReactNode);
 }
 
 /**
- * A wrapper component that provides responsive sizing for charts
- * 
- * This component resizes charts based on:
- * 1. Container width
- * 2. Aspect ratio
- * 3. Device size (responsive breakpoints)
- * 4. Min/max height constraints
+ * Size preset configurations
+ */
+const sizePresets: Record<string, { minHeight: number; maxHeight: number; aspectRatio: number }> = {
+  compact: { minHeight: 180, maxHeight: 300, aspectRatio: 4/3 },
+  standard: { minHeight: 250, maxHeight: 600, aspectRatio: 16/9 },
+  large: { minHeight: 300, maxHeight: 800, aspectRatio: 16/9 },
+  report: { minHeight: 250, maxHeight: 500, aspectRatio: 3/2 },
+  dashboard: { minHeight: 200, maxHeight: 400, aspectRatio: 5/3 }
+};
+
+/**
+ * Component that provides responsive sizing for charts based on container width
  */
 const ResponsiveChartWrapper: React.FC<ResponsiveChartWrapperProps> = ({
-  children,
-  minHeight = 200,
-  maxHeight = 600,
-  aspectRatio = 16/9,
+  minHeight: propMinHeight,
+  maxHeight: propMaxHeight,
+  aspectRatio: propAspectRatio,
   allowSmallerOnMobile = true,
+  children,
   className,
   style,
+  sizePreset = 'standard',
   onDimensionsChange
 }) => {
-  const theme = useTheme();
-  const isXsScreen = useMediaQuery(theme.breakpoints.down('sm'));
-  const isSmScreen = useMediaQuery(theme.breakpoints.between('sm', 'md'));
-  const isMdScreen = useMediaQuery(theme.breakpoints.between('md', 'lg'));
-  
-  // Reference to the container element
   const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
-  // State to track dimensions
-  const [dimensions, setDimensions] = useState({
-    width: 0,
-    height: 0,
-  });
-
-  // Calculate the optimal height based on screen size and container width
-  const calculateHeight = (containerWidth: number): number => {
-    // Base height calculation based on aspect ratio
-    let calculatedHeight = containerWidth / aspectRatio;
-    
-    // Apply min/max constraints
-    calculatedHeight = Math.max(calculatedHeight, allowSmallerOnMobile && isXsScreen ? minHeight * 0.75 : minHeight);
-    calculatedHeight = Math.min(calculatedHeight, maxHeight);
-    
-    // Apply responsive adjustments based on screen size
-    if (isXsScreen) {
-      // On extra small screens, use a more compact height
-      calculatedHeight = Math.min(calculatedHeight, maxHeight * 0.8);
-    } else if (isSmScreen) {
-      // On small screens, use slightly reduced height
-      calculatedHeight = Math.min(calculatedHeight, maxHeight * 0.9);
-    } else if (isMdScreen) {
-      // On medium screens, use full height
-      calculatedHeight = Math.min(calculatedHeight, maxHeight);
-    }
-    
-    return Math.floor(calculatedHeight);
-  };
-
-  // Update dimensions when container size changes
-  const updateDimensions = () => {
-    if (containerRef.current) {
-      const containerWidth = containerRef.current.clientWidth;
-      const containerHeight = calculateHeight(containerWidth);
-      
-      setDimensions({
-        width: containerWidth,
-        height: containerHeight,
-      });
-      
-      if (onDimensionsChange) {
-        onDimensionsChange(containerWidth, containerHeight);
-      }
-    }
-  };
+  // Get preset values or use props
+  const preset = sizePresets[sizePreset] || sizePresets.standard;
+  const minHeight = propMinHeight ?? preset.minHeight;
+  const maxHeight = propMaxHeight ?? preset.maxHeight;
+  const aspectRatio = propAspectRatio ?? preset.aspectRatio;
   
-  // Debounced resize handler for better performance
-  const debouncedUpdateDimensions = debounce(updateDimensions, 250);
+  // Adjust minHeight for mobile if allowed
+  const effectiveMinHeight = isMobile && allowSmallerOnMobile
+    ? Math.min(minHeight, 180) // Use smaller height on mobile
+    : minHeight;
   
-  // Set up resize observer and window resize listener
+  // Create ResizeObserver to monitor container size changes
   useEffect(() => {
-    // Initialize dimensions
-    updateDimensions();
+    if (!containerRef.current) return;
     
-    // Set up ResizeObserver to detect container size changes
-    let resizeObserver: ResizeObserver | null = null;
-    if (containerRef.current && window.ResizeObserver) {
-      resizeObserver = new ResizeObserver(debouncedUpdateDimensions);
-      resizeObserver.observe(containerRef.current);
-    }
-    
-    // Fallback to window resize for browsers without ResizeObserver
-    window.addEventListener('resize', debouncedUpdateDimensions);
-    
-    // Clean up listeners
-    return () => {
-      if (resizeObserver) {
-        resizeObserver.disconnect();
+    const calculateDimensions = () => {
+      if (!containerRef.current) return;
+      
+      // Get container width
+      const containerWidth = containerRef.current.clientWidth;
+      
+      // Calculate height based on aspect ratio, constrained by min/max
+      let calculatedHeight = containerWidth / aspectRatio;
+      calculatedHeight = Math.max(effectiveMinHeight, Math.min(calculatedHeight, maxHeight));
+      
+      // Update state if dimensions changed
+      if (dimensions.width !== containerWidth || dimensions.height !== calculatedHeight) {
+        setDimensions({
+          width: containerWidth,
+          height: calculatedHeight
+        });
+        
+        if (onDimensionsChange) {
+          onDimensionsChange(containerWidth, calculatedHeight);
+        }
       }
-      window.removeEventListener('resize', debouncedUpdateDimensions);
-      debouncedUpdateDimensions.cancel();
     };
-  }, [aspectRatio, minHeight, maxHeight, allowSmallerOnMobile, isXsScreen, isSmScreen, isMdScreen]);
+    
+    // Calculate initial dimensions
+    calculateDimensions();
+    
+    // Set up ResizeObserver
+    const resizeObserver = new ResizeObserver(calculateDimensions);
+    resizeObserver.observe(containerRef.current);
+    
+    // Clean up ResizeObserver on unmount
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [aspectRatio, dimensions, effectiveMinHeight, maxHeight, onDimensionsChange]);
   
   return (
-    <Box 
+    <Box
       ref={containerRef}
       className={className}
-      style={{
+      sx={{
         width: '100%',
-        height: dimensions.height > 0 ? dimensions.height : minHeight,
+        height: dimensions.height,
+        minHeight: effectiveMinHeight,
+        maxHeight,
         ...style
       }}
-      data-testid="responsive-chart-wrapper"
     >
-      {dimensions.width > 0 && dimensions.height > 0 && children}
+      {typeof children === 'function'
+        ? children(dimensions)
+        : children}
     </Box>
   );
 };

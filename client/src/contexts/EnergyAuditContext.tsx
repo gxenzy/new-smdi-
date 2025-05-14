@@ -6,8 +6,16 @@ import energyAuditService, {
 } from '../services/energyAuditService';
 import energyAuditWebSocketService, { WebSocketEvent } from '../services/energyAuditWebSocketService';
 
-// Import ActivityLogEvent type from the ActivityLog component
-import { ActivityLogEvent } from '../components/EnergyAudit/ActivityLog';
+// Define ActivityLogEvent type directly to avoid import errors
+interface ActivityLogEvent {
+  id: string;
+  type: string;
+  message: string;
+  userId: string;
+  userName: string;
+  timestamp: number | string;
+  details?: any;
+}
 
 // Define types for the context
 type Audit = EnergyAuditData;

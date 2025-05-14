@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -72,6 +72,9 @@ import {
   BatchOptimizationResult
 } from '../utils/circuitOptimizationUtils';
 import { exportBatchVoltageDropToPdf } from '../utils/batchVoltageDropReport';
+import { voltageDropRecalculator, VoltageDropRecalculator, RecalculationEvent } from '../utils/voltageDropRecalculator';
+import RecalculationStatusIndicator from './RecalculationStatusIndicator';
+import { UnifiedCircuitData } from '../utils/CircuitSynchronization';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -161,6 +164,9 @@ const BatchVoltageDropAnalysisDialog: React.FC<BatchVoltageDropAnalysisDialogPro
     paperSize: 'a4' as 'a4' | 'letter',
     orientation: 'landscape' as 'portrait' | 'landscape'
   });
+  const [autoRecalculate, setAutoRecalculate] = useState<boolean>(true);
+  const [recalculator, setRecalculator] = useState<VoltageDropRecalculator | null>(null);
+  const [batchResults, setBatchResults] = useState<Record<string, VoltageDropResult>>({});
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -179,6 +185,36 @@ const BatchVoltageDropAnalysisDialog: React.FC<BatchVoltageDropAnalysisDialogPro
       });
     }
   }, [open, loadSchedule]);
+
+  // Initialize the recalculator
+  useEffect(() => {
+    if (!loadSchedule) return;
+
+    // Create a function to get circuit data by ID
+    const getCircuitData = (circuitId: string): UnifiedCircuitData | undefined => {
+      const loadItem = loadSchedule.loads.find(item => item.id === circuitId);
+      
+      if (loadItem) {
+        return loadItemToUnifiedCircuit(
+          loadItem,
+          loadSchedule.voltage,
+          loadSchedule.powerFactor
+        );
+      }
+      
+      return undefined;
+    };
+
+    // Create the recalculator
+    const newRecalculator = new VoltageDropRecalculator(getCircuitData);
+    newRecalculator.setEnabled(autoRecalculate);
+    setRecalculator(newRecalculator);
+
+    return () => {
+      // Clean up by clearing pending recalculations
+      newRecalculator.clearPendingRecalculations();
+    };
+  }, [loadSchedule, autoRecalculate]);
 
   // Handle tab change
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -252,6 +288,74 @@ const BatchVoltageDropAnalysisDialog: React.FC<BatchVoltageDropAnalysisDialogPro
       return matchesSearch && matchesCompliance;
     });
   };
+
+  // Handle toggling automatic recalculation
+  const handleToggleAutoRecalculate = useCallback(() => {
+    setAutoRecalculate(prev => !prev);
+    if (recalculator) {
+      recalculator.setEnabled(!autoRecalculate);
+    }
+  }, [autoRecalculate, recalculator]);
+
+  // Add a handler for recalculation events to update results
+  useEffect(() => {
+    if (!recalculator || !loadSchedule) return;
+
+    const handleRecalculationEvent = (event: RecalculationEvent) => {
+      if (event.completed && event.results) {
+        // Update batch results with new voltage drop calculations
+        const newBatchResults = { ...batchResults };
+        
+        event.circuitIds.forEach(circuitId => {
+          if (event.results[circuitId]) {
+            // Convert VoltageDropCalculationResult to VoltageDropResult
+            // by adding any missing properties required by VoltageDropResult
+            const calculationResult = event.results[circuitId];
+            const voltageDropResult: VoltageDropResult = {
+              ...calculationResult,
+              // Add missing properties required by VoltageDropResult
+              reactiveLoss: 0, // Default value since it's missing in VoltageDropCalculationResult
+            };
+            
+            newBatchResults[circuitId] = voltageDropResult;
+          }
+        });
+        
+        setBatchResults(newBatchResults);
+        
+        // Update progress
+        const totalCircuits = loadSchedule.loads.length;
+        const processedCircuits = Object.keys(newBatchResults).length;
+        setProgress((processedCircuits / totalCircuits) * 100);
+        
+        // Check if all circuits have been processed
+        if (processedCircuits === totalCircuits) {
+          setIsAnalyzing(false);
+        }
+      }
+    };
+
+    const removeListener = recalculator.addRecalculationListener(handleRecalculationEvent);
+
+    return () => {
+      removeListener();
+    };
+  }, [recalculator, loadSchedule, batchResults]);
+
+  // Modify the calculateAll function to use the recalculator
+  const calculateAll = useCallback(() => {
+    if (!loadSchedule || !recalculator) return;
+    
+    setIsAnalyzing(true);
+    setProgress(0);
+    setBatchResults({});
+    
+    // Get IDs of all circuits in the load schedule
+    const circuitIds = loadSchedule.loads.map(item => item.id);
+    
+    // Request batch recalculation
+    recalculator.requestBatchRecalculation(circuitIds);
+  }, [loadSchedule, recalculator]);
 
   // Start the batch analysis
   const handleStartAnalysis = async () => {
@@ -662,6 +766,28 @@ const BatchVoltageDropAnalysisDialog: React.FC<BatchVoltageDropAnalysisDialogPro
             </Grid>
           </CardContent>
         </Card>
+
+        <Box sx={{ mb: 2 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={autoRecalculate}
+                onChange={handleToggleAutoRecalculate}
+                color="primary"
+              />
+            }
+            label="Auto-recalculate when circuit properties change"
+          />
+          
+          {recalculator && (
+            <Box sx={{ mt: 1 }}>
+              <RecalculationStatusIndicator 
+                recalculator={recalculator}
+                onToggleEnabled={handleToggleAutoRecalculate}
+              />
+            </Box>
+          )}
+        </Box>
       </Box>
     );
   };

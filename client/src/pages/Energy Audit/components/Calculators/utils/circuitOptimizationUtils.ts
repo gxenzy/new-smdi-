@@ -20,15 +20,18 @@ import {
 
 export interface CircuitOptimizationResult {
   loadItem: LoadItem;
+  loadId: string;
   originalConductorSize: string;
   optimizedConductorSize: string;
   originalVoltageDropPercent: number;
   optimizedVoltageDropPercent: number;
   isPECCompliantAfterOptimization: boolean;
+  isNonCompliant: boolean;
   materialCostChange: number; // Estimate of cost difference
   energySavingsAnnual: number; // Estimate of energy savings in kWh/year
   priority: 'critical' | 'high' | 'medium' | 'low';
   optimizationReason: string;
+  breakEvenTimeMonths: number;
 }
 
 export interface BatchOptimizationResult {
@@ -240,17 +243,26 @@ export function optimizeCircuit(
     optimizationReason = 'Very close to voltage drop limit';
   }
   
+  // Calculate payback period in months
+  const annualSavings = energySavingsAnnual * energyCostPerKwh;
+  const breakEvenTimeMonths = materialCostChange > 0 && annualSavings > 0 ? 
+    (materialCostChange / annualSavings) * 12 : 
+    999; // Default to a high value if no savings or negative cost change
+  
   return {
     loadItem,
+    loadId: loadItem.id,
     originalConductorSize,
     optimizedConductorSize: optimalConductorSize,
     originalVoltageDropPercent: originalResults.voltageDropPercent,
     optimizedVoltageDropPercent: optimizedResults.voltageDropPercent,
     isPECCompliantAfterOptimization: optimizedResults.compliance === 'compliant',
+    isNonCompliant: originalResults.compliance !== 'compliant',
     materialCostChange,
     energySavingsAnnual,
     priority,
-    optimizationReason
+    optimizationReason,
+    breakEvenTimeMonths
   };
 }
 
@@ -273,6 +285,7 @@ export function optimizeAllCircuits(
     maxVoltageDropPercent?: number;
     operatingHoursPerYear?: number;
     energyCostPerKwh?: number;
+    onProgress?: (completedItems: number, totalItems: number) => void;
   } = {}
 ): BatchOptimizationResult {
   // Start timing
@@ -284,30 +297,40 @@ export function optimizeAllCircuits(
   let totalMaterialCostChange = 0;
   let totalEnergySavingsAnnual = 0;
   
+  // Get valid load items for optimization
+  const validLoads = loadSchedule.loads.filter(loadItem => loadItem.current && loadItem.current > 0);
+  const totalItems = validLoads.length;
+  
   // Process each load item
-  const results: CircuitOptimizationResult[] = loadSchedule.loads
-    .filter(loadItem => loadItem.current && loadItem.current > 0) // Skip items with no current
-    .map(loadItem => {
-      const result = optimizeCircuit(
-        loadItem,
-        loadSchedule.voltage,
-        loadSchedule.powerFactor,
-        parameters
-      );
-      
-      // Update totals
-      if (result.originalVoltageDropPercent > (parameters.maxVoltageDropPercent || 3.0)) {
-        totalNonCompliantCircuits++;
-      }
-      
-      if (result.optimizedConductorSize !== result.originalConductorSize) {
-        totalOptimizedCircuits++;
-        totalMaterialCostChange += result.materialCostChange;
-        totalEnergySavingsAnnual += result.energySavingsAnnual;
-      }
-      
-      return result;
-    });
+  const results: CircuitOptimizationResult[] = [];
+  
+  // Process items with progress tracking
+  validLoads.forEach((loadItem, index) => {
+    const result = optimizeCircuit(
+      loadItem,
+      loadSchedule.voltage,
+      loadSchedule.powerFactor,
+      parameters
+    );
+    
+    // Update totals
+    if (result.originalVoltageDropPercent > (parameters.maxVoltageDropPercent || 3.0)) {
+      totalNonCompliantCircuits++;
+    }
+    
+    if (result.optimizedConductorSize !== result.originalConductorSize) {
+      totalOptimizedCircuits++;
+      totalMaterialCostChange += result.materialCostChange;
+      totalEnergySavingsAnnual += result.energySavingsAnnual;
+    }
+    
+    results.push(result);
+    
+    // Call progress callback if provided
+    if (parameters.onProgress) {
+      parameters.onProgress(index + 1, totalItems);
+    }
+  });
   
   // Calculate execution time
   const executionTimeMs = performance.now() - startTime;

@@ -99,25 +99,65 @@ export function getCacheSize(): number {
 }
 
 /**
- * Higher-order function that memoizes a voltage drop calculation function
- * 
- * @param calculationFn The function to memoize (must take VoltageDropInputs and return VoltageDropResult)
- * @returns A memoized version of the function
+ * A function that memoizes the results of a calculation function
+ * to avoid redundant calculations with the same inputs.
+ *
+ * @param fn - The calculation function to memoize
+ * @param keyGenerator - A function that generates a unique key for the inputs
+ * @returns A memoized version of the calculation function
  */
-export function memoizeCalculation(
-  calculationFn: (inputs: VoltageDropInputs) => VoltageDropResult
-): (inputs: VoltageDropInputs) => VoltageDropResult {
-  return (inputs: VoltageDropInputs) => {
-    // Check if result is already cached
-    const cachedResult = getCachedResult(inputs);
-    if (cachedResult) {
-      return cachedResult;
+export function memoizeCalculation<T, R>(
+  fn: (arg: T) => R,
+  keyGenerator: (arg: T) => string
+): (arg: T) => R {
+  const cache = new Map<string, R>();
+  
+  return (arg: T): R => {
+    const key = keyGenerator(arg);
+    if (cache.has(key)) {
+      return cache.get(key)!;
     }
-    
-    // Calculate and cache the result
-    const result = calculationFn(inputs);
-    cacheResult(inputs, result);
-    
+    const result = fn(arg);
+    cache.set(key, result);
     return result;
+  };
+}
+
+/**
+ * An enhanced version of memoizeCalculation that supports cache invalidation
+ * for specific entries or the entire cache.
+ * 
+ * @param fn - The calculation function to memoize
+ * @param keyGenerator - A function that generates a unique key for the inputs
+ * @returns An object with the memoized function and invalidation methods
+ */
+export function memoizeCalculationWithInvalidation<T, R>(
+  fn: (arg: T) => R,
+  keyGenerator: (arg: T) => string
+): {
+  compute: (arg: T) => R;
+  invalidate: (key?: string) => void;
+  invalidateAll: () => void;
+} {
+  const cache = new Map<string, R>();
+  
+  return {
+    compute: (arg: T): R => {
+      const key = keyGenerator(arg);
+      if (cache.has(key)) {
+        return cache.get(key)!;
+      }
+      const result = fn(arg);
+      cache.set(key, result);
+      return result;
+    },
+    invalidate: (key?: string): void => {
+      if (key) {
+        cache.delete(key);
+      }
+    },
+    invalidateAll: (): void => {
+      cache.clear();
+    }
   };
 } 

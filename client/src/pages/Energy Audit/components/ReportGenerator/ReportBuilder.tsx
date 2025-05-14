@@ -43,7 +43,7 @@ import {
   InsertDriveFile as FileIcon
 } from '@mui/icons-material';
 import ChartReportIntegration from '../../../../utils/reportGenerator/ChartReportIntegration';
-import { InteractiveChart } from '../../../../utils/reportGenerator';
+import { AccessibleChartRenderer } from '../../../../utils/reportGenerator/ChartAccessibilityProvider';
 
 // Define interfaces for report components
 interface ReportComponent {
@@ -279,11 +279,13 @@ const ReportBuilder: React.FC = () => {
             <Box>
               <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>{component.title}</Typography>
               <Paper sx={{ p: 2, boxShadow: 1 }}>
-                <InteractiveChart
-                  title=""
+                <AccessibleChartRenderer
                   configuration={component.settings.chartConfig}
+                  themeName="default"
                   height={240}
                   showExportOptions={false}
+                  ariaLabel={`Chart: ${component.title}`}
+                  sizePreset="report"
                 />
               </Paper>
             </Box>
