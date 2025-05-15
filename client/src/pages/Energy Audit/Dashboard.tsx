@@ -49,17 +49,17 @@ const Dashboard = (): ReactElement => {
 
   // Main feature cards for the dashboard
   const featureCards = [
+  // wagtangon sa:  {
+   // wagtangon sa:   title: 'Building Visualization',
+   // wagtangon sa:   description: 'Interactive 3D building visualization with energy analysis overlays.',
+   // wagtangon sa:   icon: <ViewInArIcon />,
+  // wagtangon sa:    path: '/energy-audit/building-visualization'
+  // wagtangon sa:  },
     {
-      title: 'Building Visualization',
-      description: 'Interactive 3D building visualization with energy analysis overlays.',
-      icon: <ViewInArIcon />,
-      path: '/energy-audit/building-visualization'
-    },
-    {
-      title: 'Standards Compliance',
+      title: 'Standards Reference',
       description: 'Access energy codes and standards for compliance verification.',
       icon: <RuleIcon />,
-      path: '/energy-audit/standards-compliance'
+      path: '/energy-audit/standards-reference'
     },
     {
       title: 'Energy Analytics',

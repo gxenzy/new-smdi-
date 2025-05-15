@@ -7,37 +7,112 @@ import { apiConfig } from '../config/database';
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 /**
- * Service for user-related API operations
+ * Get all users
+ * @returns Promise with array of users
  */
-const userService = {
-  /**
-   * Get all users
-   * @returns Promise with array of users
-   */
-  getAllUsers: async (): Promise<User[]> => {
+export const getAllUsers = async (): Promise<User[]> => {
+  try {
+    // First try regular API endpoint with full URL
+    console.log('[GET ALL] Using standard endpoint /users');
+    const response = await axios.get(`${apiConfig.baseUrl}/users`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    console.log('[GET ALL] Standard API success:', response.data);
+    return response.data;
+  } catch (error) {
+    console.warn('[GET ALL] Standard API failed:', error);
+    
     try {
-      const response = await api.get('/users');
+      // Use a clean base URL without duplicating /api
+      const baseUrl = apiConfig.baseUrl.endsWith('/api') 
+        ? apiConfig.baseUrl 
+        : `${apiConfig.baseUrl}/api`;
+        
+      console.log(`[GET ALL] Trying direct endpoint with baseUrl ${baseUrl}`);
+      const response = await axios.get(`${baseUrl}/users`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('[GET ALL] Direct API success:', response.data);
       return response.data;
-    } catch (error) {
-      console.error('Error getting users:', error);
-      throw error;
+    } catch (alternateError) {
+      console.warn('[GET ALL] Direct API failed, trying debug endpoint:', alternateError);
+      
+      // Last try with debug endpoint
+      const cleanBaseUrl = apiConfig.baseUrl.endsWith('/api')
+        ? apiConfig.baseUrl.substring(0, apiConfig.baseUrl.length - 4)
+        : apiConfig.baseUrl;
+      
+      console.log(`[GET ALL] Trying debug endpoint ${cleanBaseUrl}/debug/users`);
+      const debugResponse = await axios.get(`${cleanBaseUrl}/debug/users`);
+      
+      if (debugResponse.data && debugResponse.data.success && debugResponse.data.users) {
+        console.log('[GET ALL] Debug API success:', debugResponse.data.users);
+        return debugResponse.data.users;
+      } else {
+        console.error('[GET ALL] Invalid response format from debug endpoint');
+        throw new Error('Invalid response format from debug endpoint');
+      }
     }
-  },
+  }
+};
 
-  /**
-   * Get user by ID
-   * @param id User ID
-   * @returns Promise with user data
-   */
-  getUserById: async (id: string): Promise<User> => {
+/**
+ * Get user by ID (admin or self)
+ */
+export const getUserById = async (userId: string | number): Promise<User> => {
+  try {
+    // First try regular API endpoint with full URL
+    console.log(`[GET] Using standard endpoint /users/${userId}`);
+    const response = await axios.get(`${apiConfig.baseUrl}/users/${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    console.log(`[GET] Standard API success:`, response.data);
+    return response.data;
+  } catch (error) {
+    console.warn(`[GET] Standard API failed:`, error);
+    
     try {
-      const response = await api.get(`/users/${id}`);
+      // Use a clean base URL without duplicating /api
+      const baseUrl = apiConfig.baseUrl.endsWith('/api') 
+        ? apiConfig.baseUrl 
+        : `${apiConfig.baseUrl}/api`;
+        
+      console.log(`[GET] Trying direct endpoint with baseUrl ${baseUrl}`);
+      const response = await axios.get(`${baseUrl}/users/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log(`[GET] Direct API success:`, response.data);
       return response.data;
-    } catch (error) {
-      console.error(`Error getting user ${id}:`, error);
-      throw error;
+    } catch (alternateError) {
+      console.warn(`[GET] Direct API failed, trying debug endpoint:`, alternateError);
+      
+      // Last try with debug endpoint
+      const cleanBaseUrl = apiConfig.baseUrl.endsWith('/api')
+        ? apiConfig.baseUrl.substring(0, apiConfig.baseUrl.length - 4)
+        : apiConfig.baseUrl;
+      
+      const debugResponse = await axios.get(`${cleanBaseUrl}/debug/users/${userId}`);
+      
+      if (debugResponse.data?.success && debugResponse.data?.user) {
+        console.log(`[GET] Debug API success:`, debugResponse.data.user);
+        return debugResponse.data.user;
+      }
+      
+      throw new Error(`User with ID ${userId} not found`);
     }
-  },
+  }
 };
 
 /**
@@ -163,114 +238,6 @@ export const getUserActivity = async (params?: {
 }> => {
   const response = await api.get('/users/activity', { params });
   return response.data;
-};
-
-/**
- * Get all users (admin only)
- */
-export const getAllUsers = async (): Promise<User[]> => {
-  try {
-    // First try regular API endpoint with full URL
-    console.log('[GET ALL] Using standard endpoint /users');
-    const response = await axios.get(`${apiConfig.baseUrl}/users`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    console.log('[GET ALL] Standard API success:', response.data);
-    return response.data;
-  } catch (error) {
-    console.warn('[GET ALL] Standard API failed:', error);
-    
-    try {
-      // Use a clean base URL without duplicating /api
-      const baseUrl = apiConfig.baseUrl.endsWith('/api') 
-        ? apiConfig.baseUrl 
-        : `${apiConfig.baseUrl}/api`;
-        
-      console.log(`[GET ALL] Trying direct endpoint with baseUrl ${baseUrl}`);
-      const response = await axios.get(`${baseUrl}/users`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      console.log('[GET ALL] Direct API success:', response.data);
-      return response.data;
-    } catch (alternateError) {
-      console.warn('[GET ALL] Direct API failed, trying debug endpoint:', alternateError);
-      
-      // Last try with debug endpoint
-      const cleanBaseUrl = apiConfig.baseUrl.endsWith('/api')
-        ? apiConfig.baseUrl.substring(0, apiConfig.baseUrl.length - 4)
-        : apiConfig.baseUrl;
-      
-      console.log(`[GET ALL] Trying debug endpoint ${cleanBaseUrl}/debug/users`);
-      const debugResponse = await axios.get(`${cleanBaseUrl}/debug/users`);
-      
-      if (debugResponse.data && debugResponse.data.success && debugResponse.data.users) {
-        console.log('[GET ALL] Debug API success:', debugResponse.data.users);
-        return debugResponse.data.users;
-      } else {
-        console.error('[GET ALL] Invalid response format from debug endpoint');
-        throw new Error('Invalid response format from debug endpoint');
-      }
-    }
-  }
-};
-
-/**
- * Get user by ID (admin or self)
- */
-export const getUserById = async (userId: string | number): Promise<User> => {
-  try {
-    // First try regular API endpoint with full URL
-    console.log(`[GET] Using standard endpoint /users/${userId}`);
-    const response = await axios.get(`${apiConfig.baseUrl}/users/${userId}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    console.log(`[GET] Standard API success:`, response.data);
-    return response.data;
-  } catch (error) {
-    console.warn(`[GET] Standard API failed:`, error);
-    
-    try {
-      // Use a clean base URL without duplicating /api
-      const baseUrl = apiConfig.baseUrl.endsWith('/api') 
-        ? apiConfig.baseUrl 
-        : `${apiConfig.baseUrl}/api`;
-        
-      console.log(`[GET] Trying direct endpoint with baseUrl ${baseUrl}`);
-      const response = await axios.get(`${baseUrl}/users/${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      console.log(`[GET] Direct API success:`, response.data);
-      return response.data;
-    } catch (alternateError) {
-      console.warn(`[GET] Direct API failed, trying debug endpoint:`, alternateError);
-      
-      // Last try with debug endpoint
-      const cleanBaseUrl = apiConfig.baseUrl.endsWith('/api')
-        ? apiConfig.baseUrl.substring(0, apiConfig.baseUrl.length - 4)
-        : apiConfig.baseUrl;
-      
-      const debugResponse = await axios.get(`${cleanBaseUrl}/debug/users/${userId}`);
-      
-      if (debugResponse.data?.success && debugResponse.data?.user) {
-        console.log(`[GET] Debug API success:`, debugResponse.data.user);
-        return debugResponse.data.user;
-      }
-      
-      throw new Error(`User with ID ${userId} not found`);
-    }
-  }
 };
 
 /**
@@ -408,7 +375,69 @@ export const getUserAuditLogs = async (userId: string | number): Promise<any[]> 
   return response.data;
 };
 
-export default {
+/**
+ * Get users with specific roles (for task assignment)
+ * @param roles - Array of role names to filter by (e.g., ['admin', 'manager', 'auditor'])
+ * @returns A list of users with the specified roles
+ */
+export const getUsersByRoles = async (roles: string[] = []): Promise<User[]> => {
+  try {
+    // Build query for roles filter
+    const rolesQuery = roles.length > 0 
+      ? `?roles=${roles.join(',')}`
+      : '';
+    
+    const response = await api.get(`/users/by-roles${rolesQuery}`);
+    
+    // Format user data to ensure names are properly displayed
+    return response.data.map((user: any) => {
+      // Create a formatted user object with proper name handling
+      return {
+        ...user,
+        // Use first_name and last_name if available, otherwise fallback to appropriate values
+        first_name: user.first_name || user.firstName || user.username || 'User',
+        last_name: user.last_name || user.lastName || user.id || '',
+        // Add a formatted name field that will be used for display
+        name: `${user.first_name || user.firstName || user.username || 'User'} ${user.last_name || user.lastName || user.id || ''}`
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching users by roles:', error);
+    
+    // Fallback to getting all users and filtering client-side
+    try {
+      const allUsers = await getAllUsers();
+      
+      // If no roles specified, return all users
+      if (roles.length === 0) {
+        // Format all users to ensure names are properly displayed
+        return allUsers.map((user: any) => ({
+          ...user,
+          first_name: user.first_name || user.firstName || user.username || 'User',
+          last_name: user.last_name || user.lastName || user.id || '',
+          name: `${user.first_name || user.firstName || user.username || 'User'} ${user.last_name || user.lastName || user.id || ''}`
+        }));
+      }
+      
+      // Filter users by role and format their names
+      return allUsers
+        .filter(user => roles.includes(user.role.toLowerCase()))
+        .map((user: any) => ({
+          ...user,
+          first_name: user.first_name || user.firstName || user.username || 'User',
+          last_name: user.last_name || user.lastName || user.id || '',
+          name: `${user.first_name || user.firstName || user.username || 'User'} ${user.last_name || user.lastName || user.id || ''}`
+        }));
+    } catch (fallbackError) {
+      console.error('Fallback for getting users by roles also failed:', fallbackError);
+      throw fallbackError;
+    }
+  }
+};
+
+// Create a userService object with all the functions
+const userService = {
+  getUsersByRoles,
   getAllUsers,
   getUserById,
   createUser,
@@ -418,4 +447,17 @@ export default {
   resetPassword,
   bulkUpdateUsers,
   getUserAuditLogs,
-}; 
+  getProfile,
+  updateProfile,
+  uploadProfileImage,
+  updateProfileImage,
+  changePassword,
+  getNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  updateNotificationPreferences,
+  getUserActivity
+};
+
+// Export the object as default
+export default userService; 

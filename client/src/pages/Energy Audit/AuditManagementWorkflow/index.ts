@@ -6,6 +6,7 @@
 
 // Export the AuditWorkflow component
 export { default as AuditWorkflow } from './AuditWorkflow';
+export { default as TaskAnalyticsDashboard } from './TaskAnalyticsDashboard';
 
 // Empty export to make this a module
 export {}; 
